@@ -61,6 +61,27 @@ This is a professional tool for managing valuable collections with multiple inte
 - **Progression**: Select item for sale → Generate listing draft → Review AI-suggested title/description → Set price (manual or AI-suggested) → Configure shipping → Preview listing → Publish or save draft → Track listing status → Record sale when completed
 - **Success criteria**: Draft generation completes in <3s, copy is marketplace-ready, pricing suggestions are reasonable, status tracking is accurate
 
+### Watchlist & Market Monitoring
+- **Functionality**: Create targeted watch items for specific artists, releases, or pressings; receive scored bargain alerts when matching listings appear across eBay and Discogs marketplaces
+- **Purpose**: Enables proactive acquisition strategy by automating market surveillance for wanted records at target prices
+- **Trigger**: User clicks "Add Watch" from watchlist view
+- **Progression**: Click add watch → Select watch type (artist/release/pressing/freetext) → Enter search criteria → Set optional target price → Enable/disable notifications → Save watch → Scan market manually or wait for scheduled scans → Review bargain cards with AI-scored opportunities → Visit promising listings
+- **Success criteria**: Watches save correctly, market scans return relevant listings, bargain scores align with actual value opportunities, watch management is intuitive
+
+### Cross-Marketplace Bargain Discovery (eBay + Discogs)
+- **Functionality**: Real-time integration with eBay Finding API and Discogs Marketplace API to scan thousands of live listings, analyze them with AI for bargain potential, and surface undervalued records with detailed scoring and reasoning
+- **Purpose**: Transforms passive collecting into active deal-hunting by identifying misdescribed listings, underpriced records, rare variants, and hidden gems before other buyers
+- **Trigger**: User clicks "Scan Market" button in Bargains view
+- **Progression**: Configure API credentials (Settings) → Test connections to verify → Add watchlist items with search criteria → Click scan market → System queries eBay Finding API with watchlist terms → System queries Discogs Marketplace API with same terms → Each listing analyzed by GPT-4 for bargain signals → Listings scored 40+ saved as bargain cards → Results displayed sorted by score → User reviews signals, estimated upside, matched releases → Click "View Listing" to visit actual marketplace page
+- **Success criteria**: API connections authenticate successfully, scans return 50-500 listings per watchlist item, AI analysis completes in <15s total for 100 listings, bargain scores correlate with actual value opportunities (80%+ accuracy), users can easily distinguish high-quality leads from noise
+
+### Marketplace Configuration & Testing
+- **Functionality**: Secure storage and validation of eBay App ID and Discogs authentication credentials with connection testing
+- **Purpose**: Enables real marketplace API integration while keeping credentials secure in browser storage
+- **Trigger**: User opens marketplace settings from Bargains view
+- **Progression**: Click settings icon → Enable eBay and/or Discogs → Enter API credentials (eBay App ID, Discogs personal token OR consumer key/secret) → Click test connection → System validates credentials with test API call → Display success/error message → Save validated configuration → Credentials persist in browser KV store
+- **Success criteria**: API key input is password-masked, test connections provide clear success/failure feedback, invalid configurations prevent saves with helpful error messages, credentials persist between sessions
+
 ## Edge Case Handling
 
 - **Unidentified Items**: Allow custom title/notes when pressing cannot be matched; flag for later identification
@@ -71,6 +92,12 @@ This is a professional tool for managing valuable collections with multiple inte
 - **Image Upload Failures**: Queue for retry; allow listings without images; show upload status clearly
 - **Valuation Uncertainty**: Display confidence warnings; show wide ranges when comps are scarce; allow manual overrides
 - **Marketplace Sync Errors**: Log failures with actionable messages; support manual retry; prevent data loss
+- **API Rate Limits**: Respect eBay (5000/day) and Discogs (60/min) rate limits; show clear progress during scans; queue requests appropriately
+- **Invalid API Credentials**: Prevent scans when credentials missing/invalid; show helpful setup guidance; test connections before heavy use
+- **Empty Watchlists**: Provide default search terms when watchlist empty; guide users to add watches for better results
+- **Cross-Currency Listings**: Display all prices in original currency; support GBP/USD/EUR uniformly; note currency in all bargain cards
+- **Duplicate Listings**: Deduplicate by external listing ID; handle relisted items; track price changes over time
+- **Marketplace API Changes**: Gracefully handle API response schema changes; log parsing errors; continue processing valid listings
 
 ## Design Direction
 

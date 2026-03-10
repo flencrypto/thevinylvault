@@ -9,6 +9,51 @@ VinylVault connects to **live eBay and Discogs APIs** to scan thousands of actua
 
 Both are called directly from your browser - no backend server needed!
 
+## 📊 Integration Flow
+
+```
+┌─────────────────┐
+│   VinylVault    │
+│   (Your App)    │
+└────────┬────────┘
+         │
+         ├──── 1. Configure API Credentials ───┐
+         │                                     │
+         ├──── 2. Create Watchlist Items ─────┤
+         │                                     │
+         └──── 3. Scan Market ────────────────┤
+                                              │
+         ┌────────────────────────────────────┘
+         │
+         ├──────────────────────────┬────────────────────────────┐
+         │                          │                            │
+    ┌────▼────┐              ┌──────▼───────┐          ┌────────▼────────┐
+    │  eBay   │              │   Discogs    │          │   GPT-4 AI      │
+    │ Finding │◄─────────────┤  Marketplace │◄─────────┤  Bargain        │
+    │   API   │  Real-time   │     API      │  Real    │  Analysis       │
+    └────┬────┘  Listings    └──────┬───────┘  Listings└────────┬────────┘
+         │                          │                            │
+         │                          │                            │
+         └──────────────────────────┴────────────────────────────┘
+                                    │
+                         ┌──────────▼──────────┐
+                         │  Bargain Cards      │
+                         │  Score: 40-100      │
+                         │  Signals + Upside   │
+                         └─────────────────────┘
+```
+
+## 🎯 What Makes This Different
+
+Unlike mock data or scrapers, VinylVault uses **official marketplace APIs**:
+
+✅ **Real Data**: Actual live listings from eBay and Discogs sellers  
+✅ **Official**: Uses documented public APIs (no terms of service violations)  
+✅ **Direct**: No intermediary servers - your browser talks to APIs directly  
+✅ **Privacy**: Your API keys stay in browser storage, never sent elsewhere  
+✅ **Legal**: Proper authentication via official developer programs  
+✅ **Reliable**: No breaking from HTML changes; stable API contracts
+
 ## 🔑 Getting eBay API Credentials
 
 ### Step 1: Create eBay Developer Account
@@ -111,30 +156,152 @@ Once configured, here's what happens when you click "Scan Market":
 
 ## 📊 What You Get
 
-### Real Data Examples
+### Real API Response Examples
 
-**eBay Listing:**
-```json
+When you scan marketplaces, here's the actual data structure returned:
+
+#### eBay Finding API Response
+```javascript
+// Real eBay API response (simplified)
 {
-  "title": "Beatles Revolver 1966 UK 1st Press PMC 7009",
-  "price": 45.00,
-  "currency": "GBP",
-  "condition": "VG+",
-  "seller": "recordcollector123",
-  "location": "London, UK",
-  "url": "https://www.ebay.co.uk/itm/..."
+  "searchResult": {
+    "item": [{
+      "itemId": "123456789012",
+      "title": "The Beatles - Revolver UK 1st Press PMC 7009 VG+/VG+",
+      "sellingStatus": {
+        "currentPrice": { 
+          "value": "45.00",
+          "currencyId": "GBP" 
+        }
+      },
+      "condition": { "conditionDisplayName": "Very Good Plus (VG+)" },
+      "listingInfo": { "listingType": "FixedPrice" },
+      "location": "London, United Kingdom",
+      "sellerInfo": { "sellerUserName": "ukvinylcollector" },
+      "viewItemURL": "https://www.ebay.co.uk/itm/123456789012"
+    }]
+  }
 }
 ```
 
-**Discogs Listing:**
-```json
+**VinylVault normalizes this to:**
+```typescript
 {
-  "title": "The Beatles - Revolver (LP, Album, RE)",
-  "price": 38.50,
-  "currency": "GBP",
-  "condition": "Near Mint (NM or M-) / Very Good Plus (VG+)",
-  "seller": "ukvinylshop",
-  "location": "United Kingdom"
+  id: "ebay-123456789012",
+  source: "ebay",
+  externalId: "123456789012",
+  title: "The Beatles - Revolver UK 1st Press PMC 7009 VG+/VG+",
+  price: 45.00,
+  currency: "GBP",
+  condition: "Very Good Plus (VG+)",
+  seller: "ukvinylcollector",
+  location: "London, United Kingdom",
+  url: "https://www.ebay.co.uk/itm/123456789012",
+  listedAt: "2024-01-15T10:30:00Z"
+}
+```
+
+#### Discogs Marketplace API Response
+```javascript
+// Real Discogs API response (simplified)
+{
+  "pagination": {
+    "items": 150,
+    "page": 1
+  },
+  "listings": [{
+    "id": 987654321,
+    "status": "For Sale",
+    "price": {
+      "value": 38.50,
+      "currency": "GBP"
+    },
+    "seller": {
+      "username": "recordshopvinyl",
+      "rating": "99.8%"
+    },
+    "release": {
+      "id": 123456,
+      "description": "The Beatles - Revolver (LP, Album, RE, Gat)",
+      "year": 1966,
+      "catalog_number": "PMC 7009",
+      "images": [
+        { "uri": "https://i.discogs.com/...", "type": "primary" }
+      ]
+    },
+    "condition": "Near Mint (NM or M-)",
+    "sleeve_condition": "Very Good Plus (VG+)",
+    "ships_from": "United Kingdom",
+    "uri": "/sell/item/987654321",
+    "posted": "2024-01-15T08:20:00Z"
+  }]
+}
+```
+
+**VinylVault normalizes this to:**
+```typescript
+{
+  id: "discogs-987654321",
+  source: "discogs",
+  externalId: "987654321",
+  title: "The Beatles - Revolver (LP, Album, RE, Gat)",
+  description: undefined,  // Discogs doesn't include full description in search
+  price: 38.50,
+  currency: "GBP",
+  condition: "Near Mint (NM or M-) / Very Good Plus (VG+)",
+  seller: "recordshopvinyl",
+  location: "United Kingdom",
+  imageUrls: ["https://i.discogs.com/..."],
+  url: "https://www.discogs.com/sell/item/987654321",
+  listedAt: "2024-01-15T08:20:00Z"
+}
+```
+
+### AI Bargain Analysis Output
+
+Each normalized listing is then analyzed by GPT-4:
+
+```typescript
+{
+  bargainScore: 78,  // 0-100 score
+  estimatedValue: 85.00,
+  estimatedUpside: 46.50,  // £85 estimated - £38.50 listing price
+  signals: [
+    {
+      type: "low_price",
+      score: 85,
+      description: "Listed at £38.50 but UK 1st pressings typically sell for £80-£120",
+      evidence: "Recent eBay sold listings: £92, £88, £105"
+    },
+    {
+      type: "title_mismatch",
+      score: 45,
+      description: "Title uses generic 'RE' notation but image shows original PMC label",
+      evidence: "PMC 7009"
+    }
+  ],
+  matchedRelease: {
+    artistName: "The Beatles",
+    releaseTitle: "Revolver",
+    year: 1966,
+    catalogNumber: "PMC 7009"
+  }
+}
+```
+
+### Combined Bargain Card
+
+```typescript
+{
+  id: "bargain-xyz123",
+  listing: { /* normalized listing from above */ },
+  bargainScore: 78,
+  estimatedValue: 85.00,
+  estimatedUpside: 46.50,
+  signals: [ /* AI signals from above */ ],
+  matchedRelease: { /* matched release */ },
+  savedAt: "2024-01-15T12:00:00Z",
+  viewed: false
 }
 ```
 
@@ -167,23 +334,121 @@ VinylVault looks for these signals:
 
 ## ❓ Troubleshooting
 
-### "eBay API error: 401"
+### eBay Issues
+
+**"eBay API error: 401 Unauthorized"**
 - Your App ID is incorrect or expired
-- Re-generate your application keys
+- Solution: Log into developer.ebay.com and verify your App ID
+- Re-generate your application keys if needed
+- Make sure you're using the **App ID (Client ID)**, not the Cert ID
 
-### "Discogs API error: 401"
-- Your token is incorrect or expired
-- Generate a new Personal Access Token
+**"eBay API error: 403 Forbidden"**
+- Your application may not have Finding API access
+- Solution: Check your app's API access in the developer portal
+- Ensure your app is not in "sandbox" mode unless you intended it
 
-### "No listings found"
-- Your watchlist may be too specific
-- Try broader search terms
-- Check that marketplaces are enabled
+**"eBay API error: 500 Internal Server Error"**
+- eBay's API is temporarily down (rare)
+- Solution: Wait a few minutes and try again
+- Check [eBay Developer Status](https://developer.ebay.com/support/api-status)
 
-### "Scan is slow"
-- Discogs has a rate limit (1 request per second)
-- Large watchlists take longer
-- This is normal and expected
+### Discogs Issues
+
+**"Discogs API error: 401 Unauthorized"**
+- Your token is incorrect, expired, or revoked
+- Solution: Go to [discogs.com/settings/developers](https://www.discogs.com/settings/developers)
+- Generate a **new Personal Access Token**
+- Copy it immediately (you can't see it again after creation)
+- Delete the old token if you generated a new one
+
+**"Discogs API error: 429 Too Many Requests"**
+- You've exceeded the rate limit (60 requests/minute for authenticated users)
+- Solution: VinylVault automatically rate-limits to 1 request/second
+- If scanning large watchlists, this is normal behavior
+- Wait 1 minute and try again
+
+**"Discogs API error: 404 Not Found"**
+- The endpoint or release doesn't exist
+- Solution: This shouldn't happen with marketplace search
+- Check your network connection
+- Try again with different search terms
+
+### General Issues
+
+**"No listings found"**
+- Your watchlist search terms may be too specific
+- Solution 1: Broaden your searches (e.g., "Pink Floyd" instead of "Pink Floyd Dark Side Moon 1973 UK")
+- Solution 2: Add more watchlist items
+- Solution 3: Try different marketplaces (enable both eBay and Discogs)
+- Check that at least one marketplace is enabled in settings
+
+**"Scan Market button is disabled"**
+- API credentials are not configured or invalid
+- Solution: Click the ⚙️ settings icon
+- Verify at least one marketplace is enabled
+- Test your connection to ensure credentials are valid
+- Save your settings
+
+**"Scan is very slow"**
+- Discogs has a strict 1-request-per-second rate limit
+- Solution: This is expected behavior and prevents your account from being banned
+- Large watchlists (10+ items) can take 20-30 seconds
+- Consider reducing watchlist size or being more specific with search terms
+- Progress is shown in real-time via toast notifications
+
+**"Bargain scores seem wrong"**
+- AI analysis depends on available market data
+- Low scores (0-39): Likely overpriced or accurately priced
+- Medium scores (40-69): Possible deals, worth investigating
+- High scores (70-100): Strong bargain potential
+- Solution: Always verify listings manually before purchasing
+- Use the "View Listing" button to check actual item condition and seller reputation
+
+**"Same listing appears multiple times"**
+- Rare but can happen if a seller has multiple identical items
+- Each listing has a unique external ID (check the listing URL)
+- You can delete duplicates using the trash icon on bargain cards
+
+**"Listings in wrong currency"**
+- Both APIs return prices in original listing currency
+- VinylVault displays prices as-is without conversion
+- Solution: Check the currency indicator on each bargain card
+- Filter by location in watchlist items if you prefer specific markets
+
+### Connection Testing
+
+Before scanning, **always test your connections**:
+
+1. Open Settings (⚙️ icon in Bargains view)
+2. Enter your API credentials
+3. Click "Test eBay Connection" (if enabled)
+4. Click "Test Discogs Connection" (if enabled)
+5. Wait for success confirmation
+6. If tests fail, double-check your credentials
+
+### Rate Limits & Quotas
+
+**eBay:**
+- Production Apps: 5,000 calls/day
+- Sandbox Apps: Limited to test data
+- Per-second: No published limit but ~10/sec is safe
+
+**Discogs:**
+- Authenticated Users: 60 calls/minute (strictly enforced)
+- Unauthenticated: 25 calls/minute
+- VinylVault automatically paces requests at 1/second
+
+### Getting Help
+
+If you're still stuck:
+
+1. Check the browser console (F12) for detailed error messages
+2. Verify your API credentials are correct
+3. Test with a simple search (e.g., one watchlist item: "Beatles")
+4. Try each marketplace individually to isolate the issue
+5. Check the official API status pages:
+   - [eBay API Status](https://developer.ebay.com/support/api-status)
+   - [Discogs Developer Forum](https://www.discogs.com/forum/developers)
 
 ## 📚 API Documentation
 
