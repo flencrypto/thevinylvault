@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useKV } from '@github/spark/hooks'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -12,8 +14,9 @@ import { ImageUpload } from '@/components/ImageUpload'
 import { ItemImage, Format, FORMAT_LABELS } from '@/lib/types'
 import { analyzeVinylImage } from '@/lib/image-analysis-ai'
 import { identifyPressing, ScoredPressingCandidate } from '@/lib/pressing-identification-ai'
-import { Sparkle, CheckCircle, Warning, Info, X } from '@phosphor-icons/react'
+import { Sparkle, CheckCircle, Warning, Info, X, Database } from '@phosphor-icons/react'
 import { toast } from 'sonner'
+import type { DiscogsApiConfig } from '@/lib/marketplace-discogs'
 
 interface PressingIdentificationDialogProps {
   open: boolean
@@ -41,6 +44,8 @@ export function PressingIdentificationDialog({
   const [analysisProgress, setAnalysisProgress] = useState(0)
   const [candidates, setCandidates] = useState<ScoredPressingCandidate[]>([])
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null)
+  const [discogsEnabled, setDiscogsEnabled] = useState(true)
+  const [discogsConfig] = useKV<DiscogsApiConfig>('discogs-config', {})
 
   const handleAddImage = (image: ItemImage) => {
     setImages(prev => [...prev, image])
@@ -96,7 +101,8 @@ export function PressingIdentificationDialog({
         imageAnalysis: imageAnalysis.length > 0 ? imageAnalysis : undefined,
         ocrRunoutValues: runoutValues.length > 0 ? runoutValues : undefined,
         manualHints: hints,
-        discogsSearchEnabled: false,
+        discogsSearchEnabled: discogsEnabled,
+        discogsApiToken: discogsConfig?.userToken,
       })
 
       setAnalysisProgress(100)
@@ -212,6 +218,31 @@ export function PressingIdentificationDialog({
                   onChange={(e) => setOcrRunoutValues(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">Comma-separated values</p>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div>
+              <h3 className="font-semibold mb-3">Discogs Database Search</h3>
+              <div className="flex items-center justify-between space-x-2">
+                <div className="flex-1">
+                  <Label htmlFor="discogs-toggle" className="flex items-center gap-2">
+                    <Database size={16} />
+                    Search Discogs database for accurate pressing data
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {discogsConfig?.userToken 
+                      ? 'Discogs API configured - real database searches enabled' 
+                      : 'No API token configured - using AI-generated suggestions'}
+                  </p>
+                </div>
+                <Switch
+                  id="discogs-toggle"
+                  checked={discogsEnabled}
+                  onCheckedChange={setDiscogsEnabled}
+                  disabled={!discogsConfig?.userToken}
+                />
               </div>
             </div>
 

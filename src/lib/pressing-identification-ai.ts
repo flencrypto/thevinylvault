@@ -13,6 +13,7 @@ export interface PressingIdentificationInput {
     labelName?: string
   }
   discogsSearchEnabled?: boolean
+  discogsApiToken?: string
 }
 
 export interface IdentifierMatch {
@@ -60,7 +61,23 @@ export async function identifyPressing(
     ? input.imageAnalysis.reduce((sum, r) => sum + r.confidence, 0) / input.imageAnalysis.length
     : 0.5
 
-  const prompt = spark.llmPrompt`You are an expert vinyl record pressing identification system. Your task is to analyze extracted image data, OCR runout values, manual hints, and optionally Discogs metadata to produce ranked pressing candidates with detailed evidence.
+  let discogsReleases: DiscogsRelease[] = []
+  
+  if (input.discogsSearchEnabled && (input.manualHints?.artist || input.manualHints?.catalogNumber || allCatalogNumbers.length > 0)) {
+    const searchQuery = {
+      artist: input.manualHints?.artist,
+      title: input.manualHints?.title,
+      catalogNumber: input.manualHints?.catalogNumber || allCatalogNumbers[0],
+      barcode: allBarcodes[0],
+      format: input.manualHints?.format,
+      country: input.manualHints?.country,
+      year: input.manualHints?.year,
+    }
+
+    discogsReleases = await searchDiscogsDatabase(searchQuery, input.discogsApiToken)
+  }
+
+  const prompt = spark.llmPrompt`You are an expert vinyl record pressing identification system. Your task is to analyze extracted image data, OCR runout values, manual hints, and Discogs database results to produce ranked pressing candidates with detailed evidence.
 
 **IMAGE EXTRACTION DATA:**
 ${allExtractedText.length > 0 ? `- Visible text: ${allExtractedText.join(', ')}` : '- No extracted text'}
@@ -78,6 +95,26 @@ ${input.manualHints?.year ? `- Year: ${input.manualHints.year}` : ''}
 ${input.manualHints?.format ? `- Format: ${input.manualHints.format}` : ''}
 ${input.manualHints?.labelName ? `- Label name: ${input.manualHints.labelName}` : ''}
 
+**DISCOGS DATABASE MATCHES:**
+${discogsReleases.length > 0 ? discogsReleases.map((release, idx) => {
+  const labelInfo = release.labels?.[0]
+  const formatInfo = release.formats?.[0]
+  const artist = release.artists?.[0]?.name || 'Unknown'
+  const matrixInfo = release.identifiers?.filter(id => id.type.includes('Matrix') || id.type.includes('Runout'))
+  
+  return `
+  Release #${idx + 1}:
+  - Discogs ID: ${release.id}
+  - Title: ${artist} - ${release.title}
+  - Year: ${release.year || 'Unknown'}
+  - Country: ${release.country || 'Unknown'}
+  - Format: ${formatInfo?.name || 'Unknown'} ${formatInfo?.descriptions?.join(', ') || ''}
+  - Label: ${labelInfo?.name || 'Unknown'}
+  - Catalog Number: ${labelInfo?.catno || 'Unknown'}
+  - Matrix/Runout: ${matrixInfo?.map(m => m.value).join(', ') || 'None listed'}
+  `
+}).join('\n') : '- No Discogs database matches found'}
+
 **SCORING SIGNALS:**
 When scoring candidates, consider these factors (in priority order):
 1. Catalog number exact match (highest weight)
@@ -88,12 +125,17 @@ When scoring candidates, consider these factors (in priority order):
 6. Label text similarity
 7. Year plausibility (within ±2 years)
 
+${discogsReleases.length > 0 ? `
+**IMPORTANT:** Discogs database matches have been provided above. PRIORITIZE these real database entries over AI-generated guesses. When a Discogs release matches the extracted data well, use that release's information to create pressing candidates with high confidence. Include the Discogs ID in the candidate's id field as "discogs-{id}".
+` : ''}
+
 **TASK:**
 Generate up to 3 pressing candidates ranked by total score. For each candidate:
 1. Calculate a confidence score (0.0-1.0) based on the scoring signals above
 2. Provide specific evidence snippets explaining why this candidate matched
-3. List all matched identifiers with their sources
+3. List all matched identifiers with their sources (including 'discogs_database' when applicable)
 4. Include detailed pressing information
+5. For Discogs-based candidates, use format "discogs-{id}" for the id field
 
 If the data is genuinely ambiguous or insufficient, DO NOT fabricate certainty. Return fewer candidates with honest confidence scores rather than padding with guesses.
 
@@ -170,6 +212,33 @@ Return JSON with this structure:
   }
 }
 
+export interface DiscogsRelease {
+  id: number
+  title: string
+  year?: number
+  country?: string
+  formats?: Array<{
+    name: string
+    qty: string
+    descriptions?: string[]
+  }>
+  labels?: Array<{
+    name: string
+    catno?: string
+  }>
+  artists?: Array<{
+    name: string
+  }>
+  identifiers?: Array<{
+    type: string
+    value: string
+  }>
+  images?: Array<{
+    uri: string
+    type: string
+  }>
+}
+
 export async function searchDiscogsDatabase(
   query: {
     artist?: string
@@ -179,17 +248,108 @@ export async function searchDiscogsDatabase(
     format?: string
     country?: string
     year?: number
+  },
+  apiToken?: string
+): Promise<DiscogsRelease[]> {
+  if (!apiToken) {
+    console.warn('No Discogs API token provided, using AI fallback')
+    return searchDiscogsDatabaseFallback(query)
   }
-): Promise<Array<{
-  id: string
-  title: string
-  artist: string
-  year: number
-  country: string
-  format: string[]
-  catalogNumber?: string
-  label?: string
-}>> {
+
+  try {
+    const searchParams = new URLSearchParams()
+    
+    if (query.artist && query.title) {
+      searchParams.append('release_title', query.title)
+      searchParams.append('artist', query.artist)
+    } else if (query.artist) {
+      searchParams.append('artist', query.artist)
+    } else if (query.title) {
+      searchParams.append('release_title', query.title)
+    }
+    
+    if (query.catalogNumber) {
+      searchParams.append('catno', query.catalogNumber)
+    }
+    
+    if (query.barcode) {
+      searchParams.append('barcode', query.barcode)
+    }
+    
+    if (query.format) {
+      searchParams.append('format', query.format)
+    }
+    
+    if (query.country) {
+      searchParams.append('country', query.country)
+    }
+    
+    if (query.year) {
+      searchParams.append('year', query.year.toString())
+    }
+
+    searchParams.append('type', 'release')
+    searchParams.append('per_page', '10')
+
+    const headers: HeadersInit = {
+      'User-Agent': 'VinylVault/1.0',
+      'Authorization': `Discogs token=${apiToken}`,
+    }
+
+    const response = await fetch(
+      `https://api.discogs.com/database/search?${searchParams.toString()}`,
+      { headers }
+    )
+
+    if (!response.ok) {
+      throw new Error(`Discogs API error: ${response.status} ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    
+    const releaseIds = data.results
+      ?.filter((r: any) => r.type === 'release' && r.id)
+      .slice(0, 5)
+      .map((r: any) => r.id) || []
+
+    const releases: DiscogsRelease[] = []
+    
+    for (const releaseId of releaseIds) {
+      try {
+        await new Promise(resolve => setTimeout(resolve, 1100))
+        
+        const releaseResponse = await fetch(
+          `https://api.discogs.com/releases/${releaseId}`,
+          { headers }
+        )
+
+        if (releaseResponse.ok) {
+          const release = await releaseResponse.json()
+          releases.push(release)
+        }
+      } catch (error) {
+        console.error(`Failed to fetch release ${releaseId}:`, error)
+      }
+    }
+
+    return releases
+  } catch (error) {
+    console.error('Discogs database search failed:', error)
+    return searchDiscogsDatabaseFallback(query)
+  }
+}
+
+async function searchDiscogsDatabaseFallback(
+  query: {
+    artist?: string
+    title?: string
+    catalogNumber?: string
+    barcode?: string
+    format?: string
+    country?: string
+    year?: number
+  }
+): Promise<DiscogsRelease[]> {
   const prompt = spark.llmPrompt`You are simulating a Discogs database search for vinyl records.
 
 Generate 2-5 realistic pressing records that match this search query:
@@ -207,24 +367,44 @@ Return JSON:
 {
   "results": [
     {
-      "id": "discogs-12345",
-      "title": "Low",
-      "artist": "David Bowie",
+      "id": 12345,
+      "title": "David Bowie - Low",
       "year": 1977,
       "country": "UK",
-      "format": ["LP", "Album"],
-      "catalogNumber": "PL 12030",
-      "label": "RCA Victor"
+      "formats": [
+        {
+          "name": "Vinyl",
+          "qty": "1",
+          "descriptions": ["LP", "Album"]
+        }
+      ],
+      "labels": [
+        {
+          "name": "RCA Victor",
+          "catno": "PL 12030"
+        }
+      ],
+      "artists": [
+        {
+          "name": "David Bowie"
+        }
+      ],
+      "identifiers": [
+        {
+          "type": "Matrix / Runout",
+          "value": "A1/B1"
+        }
+      ]
     }
   ]
 }`
 
   try {
     const response = await spark.llm(prompt, 'gpt-4o', true)
-    const result = JSON.parse(response) as { results: Array<any> }
+    const result = JSON.parse(response) as { results: DiscogsRelease[] }
     return result.results || []
   } catch (error) {
-    console.error('Discogs search simulation failed:', error)
+    console.error('Discogs search fallback failed:', error)
     return []
   }
 }
