@@ -1,23 +1,31 @@
 import { useState, useMemo } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { CollectionItem, CollectionStats } from '@/lib/types'
+import { CollectionItem, CollectionStats, ListingDraft } from '@/lib/types'
 import { calculateCollectionValue, formatCurrency } from '@/lib/helpers'
 import { StatCard } from '@/components/StatCard'
 import { ItemCard } from '@/components/ItemCard'
 import { AddItemDialog } from '@/components/AddItemDialog'
+import { ListingGenerator } from '@/components/ListingGenerator'
+import { ListingDraftCard } from '@/components/ListingDraftCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Toaster } from '@/components/ui/sonner'
-import { Plus, Record, TrendUp, Package, ChartLine, MagnifyingGlass } from '@phosphor-icons/react'
+import { Plus, Record, TrendUp, Package, ChartLine, MagnifyingGlass, Storefront, Sparkle } from '@phosphor-icons/react'
+import { toast } from 'sonner'
 
 function App() {
   const [items, setItems] = useKV<CollectionItem[]>('collection-items', [])
+  const [listingDrafts, setListingDrafts] = useKV<ListingDraft[]>('listing-drafts', [])
   const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const [listingGenOpen, setListingGenOpen] = useState(false)
+  const [selectedItemForListing, setSelectedItemForListing] = useState<CollectionItem | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [mainView, setMainView] = useState<'collection' | 'listings'>('collection')
 
   const safeItems = items || []
+  const safeDrafts = listingDrafts || []
 
   const stats: CollectionStats = useMemo(() => {
     const totalValue = calculateCollectionValue(safeItems)
@@ -68,6 +76,20 @@ function App() {
     setItems(currentItems => [...(currentItems || []), newItem])
   }
 
+  const handleCreateListing = (item: CollectionItem) => {
+    setSelectedItemForListing(item)
+    setListingGenOpen(true)
+  }
+
+  const handleSaveListingDraft = (draft: ListingDraft) => {
+    setListingDrafts(currentDrafts => [...(currentDrafts || []), draft])
+  }
+
+  const handleDeleteDraft = (draftId: string) => {
+    setListingDrafts(currentDrafts => (currentDrafts || []).filter(d => d.id !== draftId))
+    toast.success('Draft deleted')
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Toaster />
@@ -75,11 +97,31 @@ function App() {
       <header className="border-b border-border bg-card sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Record size={32} weight="fill" className="text-accent" />
-              <div>
-                <h1 className="text-2xl font-bold">VinylVault</h1>
-                <p className="text-sm text-muted-foreground">Collection Management System</p>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-3">
+                <Record size={32} weight="fill" className="text-accent" />
+                <div>
+                  <h1 className="text-2xl font-bold">VinylVault</h1>
+                  <p className="text-sm text-muted-foreground">Collection Management System</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  variant={mainView === 'collection' ? 'default' : 'outline'}
+                  onClick={() => setMainView('collection')}
+                  className="gap-2"
+                >
+                  <Package size={18} />
+                  Collection
+                </Button>
+                <Button 
+                  variant={mainView === 'listings' ? 'default' : 'outline'}
+                  onClick={() => setMainView('listings')}
+                  className="gap-2"
+                >
+                  <Storefront size={18} />
+                  Listings ({safeDrafts.length})
+                </Button>
               </div>
             </div>
             <Button onClick={() => setAddDialogOpen(true)} className="gap-2">
@@ -91,94 +133,163 @@ function App() {
       </header>
 
       <main className="container mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard
-            title="Total Items"
-            value={stats.totalItems}
-            icon={<Package size={24} />}
-            subtitle={`${stats.recentAdditions} added this month`}
-          />
-          <StatCard
-            title="Collection Value"
-            value={formatCurrency(stats.totalValue, stats.currency)}
-            icon={<TrendUp size={24} />}
-            subtitle={`Avg ${formatCurrency(stats.averageValue, stats.currency)} per item`}
-            animate
-          />
-          <StatCard
-            title="For Sale"
-            value={stats.itemsByStatus.for_sale}
-            icon={<ChartLine size={24} />}
-            subtitle={`${stats.itemsByStatus.owned} in collection`}
-          />
-          <StatCard
-            title="LPs"
-            value={stats.itemsByFormat.LP}
-            icon={<Record size={24} />}
-            subtitle={`${stats.itemsByFormat['7in']} singles`}
-          />
-        </div>
-
-        <div className="bg-card border border-border rounded-lg p-6">
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
-            <div className="flex-1 relative">
-              <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
-              <Input
-                placeholder="Search by artist, title, or catalog number..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+        {mainView === 'collection' ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <StatCard
+                title="Total Items"
+                value={stats.totalItems}
+                icon={<Package size={24} />}
+                subtitle={`${stats.recentAdditions} added this month`}
+              />
+              <StatCard
+                title="Collection Value"
+                value={formatCurrency(stats.totalValue, stats.currency)}
+                icon={<TrendUp size={24} />}
+                subtitle={`Avg ${formatCurrency(stats.averageValue, stats.currency)} per item`}
+                animate
+              />
+              <StatCard
+                title="For Sale"
+                value={stats.itemsByStatus.for_sale}
+                icon={<ChartLine size={24} />}
+                subtitle={`${stats.itemsByStatus.owned} in collection`}
+              />
+              <StatCard
+                title="LPs"
+                value={stats.itemsByFormat.LP}
+                icon={<Record size={24} />}
+                subtitle={`${stats.itemsByFormat['7in']} singles`}
               />
             </div>
-          </div>
 
-          <Tabs value={statusFilter} onValueChange={setStatusFilter} className="mb-6">
-            <TabsList>
-              <TabsTrigger value="all">All Items ({safeItems.length})</TabsTrigger>
-              <TabsTrigger value="owned">In Collection ({stats.itemsByStatus.owned})</TabsTrigger>
-              <TabsTrigger value="for_sale">For Sale ({stats.itemsByStatus.for_sale})</TabsTrigger>
-              <TabsTrigger value="sold">Sold ({stats.itemsByStatus.sold})</TabsTrigger>
-            </TabsList>
+            <div className="bg-card border border-border rounded-lg p-6">
+              <div className="flex flex-col md:flex-row gap-4 mb-6">
+                <div className="flex-1 relative">
+                  <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
+                  <Input
+                    placeholder="Search by artist, title, or catalog number..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
 
-            <TabsContent value={statusFilter} className="mt-6">
-              {filteredItems.length === 0 ? (
-                <div className="text-center py-12">
-                  <Record size={64} className="text-muted-foreground mx-auto mb-4" weight="thin" />
-                  <h3 className="text-lg font-semibold mb-2">
-                    {safeItems.length === 0 ? 'No items in collection' : 'No items match your filter'}
-                  </h3>
-                  <p className="text-muted-foreground mb-4">
-                    {safeItems.length === 0 
-                      ? 'Start building your collection by adding your first vinyl record'
-                      : 'Try adjusting your search or filter criteria'}
-                  </p>
-                  {safeItems.length === 0 && (
-                    <Button onClick={() => setAddDialogOpen(true)} className="gap-2">
-                      <Plus size={20} />
-                      Add Your First Item
-                    </Button>
+              <Tabs value={statusFilter} onValueChange={setStatusFilter} className="mb-6">
+                <TabsList>
+                  <TabsTrigger value="all">All Items ({safeItems.length})</TabsTrigger>
+                  <TabsTrigger value="owned">In Collection ({stats.itemsByStatus.owned})</TabsTrigger>
+                  <TabsTrigger value="for_sale">For Sale ({stats.itemsByStatus.for_sale})</TabsTrigger>
+                  <TabsTrigger value="sold">Sold ({stats.itemsByStatus.sold})</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value={statusFilter} className="mt-6">
+                  {filteredItems.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Record size={64} className="text-muted-foreground mx-auto mb-4" weight="thin" />
+                      <h3 className="text-lg font-semibold mb-2">
+                        {safeItems.length === 0 ? 'No items in collection' : 'No items match your filter'}
+                      </h3>
+                      <p className="text-muted-foreground mb-4">
+                        {safeItems.length === 0 
+                          ? 'Start building your collection by adding your first vinyl record'
+                          : 'Try adjusting your search or filter criteria'}
+                      </p>
+                      {safeItems.length === 0 && (
+                        <Button onClick={() => setAddDialogOpen(true)} className="gap-2">
+                          <Plus size={20} />
+                          Add Your First Item
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {filteredItems.map(item => (
+                        <div key={item.id} className="relative group">
+                          <ItemCard
+                            item={item}
+                            onClick={() => {}}
+                          />
+                          <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              size="sm"
+                              onClick={() => handleCreateListing(item)}
+                              className="gap-2"
+                            >
+                              <Sparkle size={16} />
+                              Generate Listing
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-4">
-                  {filteredItems.map(item => (
-                    <ItemCard
-                      key={item.id}
-                      item={item}
-                      onClick={() => {}}
-                    />
-                  ))}
-                </div>
+                </TabsContent>
+              </Tabs>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-3xl font-bold">Listing Drafts</h2>
+                <p className="text-muted-foreground mt-1">
+                  AI-generated marketplace listings ready to publish
+                </p>
+              </div>
+              {safeItems.length > 0 && (
+                <Button onClick={() => setMainView('collection')} variant="outline" className="gap-2">
+                  <Package size={18} />
+                  Back to Collection
+                </Button>
               )}
-            </TabsContent>
-          </Tabs>
-        </div>
+            </div>
+
+            {safeDrafts.length === 0 ? (
+              <div className="bg-card border border-border rounded-lg p-12 text-center">
+                <Storefront size={64} className="text-muted-foreground mx-auto mb-4" weight="thin" />
+                <h3 className="text-lg font-semibold mb-2">No listing drafts yet</h3>
+                <p className="text-muted-foreground mb-4 max-w-md mx-auto">
+                  Generate marketplace-ready listings from your collection items using AI-powered SEO optimization
+                </p>
+                {safeItems.length > 0 && (
+                  <Button onClick={() => setMainView('collection')} className="gap-2">
+                    <Sparkle size={20} />
+                    Browse Collection
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {safeDrafts.map(draft => (
+                  <ListingDraftCard
+                    key={draft.id}
+                    draft={draft}
+                    onDelete={() => handleDeleteDraft(draft.id)}
+                    onCopy={() => {
+                      navigator.clipboard.writeText(draft.description)
+                      toast.success('Description copied to clipboard')
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
       <AddItemDialog
         open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
         onAdd={handleAddItem}
+      />
+
+      <ListingGenerator
+        open={listingGenOpen}
+        onOpenChange={setListingGenOpen}
+        item={selectedItemForListing}
+        onSave={handleSaveListingDraft}
       />
     </div>
   )
