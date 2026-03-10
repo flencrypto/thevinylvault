@@ -10,8 +10,10 @@ import { CollectionItem, Format, MediaGrade, SleeveGrade, SourceType, PressingCa
 import { ImageUpload } from '@/components/ImageUpload'
 import { PressingIdentificationDialog } from '@/components/PressingIdentificationDialog'
 import { ConditionGradingDialog } from '@/components/ConditionGradingDialog'
+import { ImageAnalysisDialog } from '@/components/ImageAnalysisDialog'
 import { suggestGradingNotes } from '@/lib/condition-grading-ai'
-import { Sparkle, Eye } from '@phosphor-icons/react'
+import { generateListingNotes, ImageAnalysisOutput } from '@/lib/openai-vision-service'
+import { Sparkle, Eye, ScanSmiley } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
 interface AddItemDialogProps {
@@ -40,6 +42,7 @@ export function AddItemDialog({ open, onOpenChange, onAdd }: AddItemDialogProps)
   const [images, setImages] = useState<ItemImage[]>([])
   const [identificationDialogOpen, setIdentificationDialogOpen] = useState(false)
   const [conditionGradingDialogOpen, setConditionGradingDialogOpen] = useState(false)
+  const [imageAnalysisDialogOpen, setImageAnalysisDialogOpen] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -137,6 +140,48 @@ export function AddItemDialog({ open, onOpenChange, onAdd }: AddItemDialogProps)
     toast.success('Condition grades applied from AI analysis')
   }
 
+  const handleImageAnalysisComplete = async (results: Map<string, ImageAnalysisOutput>) => {
+    const allMetadata = Array.from(results.values())
+    
+    const artistNames = allMetadata.map(r => r.extractedMetadata.artistName).filter(Boolean) as string[]
+    const titles = allMetadata.map(r => r.extractedMetadata.title).filter(Boolean) as string[]
+    const catalogNumbers = allMetadata.map(r => r.extractedMetadata.catalogNumber).filter(Boolean) as string[]
+    const allDefects = allMetadata.flatMap(r => r.conditionDefects)
+
+    const newFormData = { ...formData }
+    
+    if (artistNames.length > 0 && !formData.artistName) {
+      newFormData.artistName = artistNames[0]!
+    }
+    if (titles.length > 0 && !formData.releaseTitle) {
+      newFormData.releaseTitle = titles[0]!
+    }
+    if (catalogNumbers.length > 0 && !formData.catalogNumber) {
+      newFormData.catalogNumber = catalogNumbers[0]!
+    }
+
+    if (allDefects.length > 0) {
+      const listingNotes = await generateListingNotes(allDefects, allMetadata[0].extractedMetadata)
+      
+      if (listingNotes.gradeSuggestion) {
+        if (listingNotes.gradeSuggestion.media) {
+          newFormData.mediaGrade = listingNotes.gradeSuggestion.media as MediaGrade
+        }
+        if (listingNotes.gradeSuggestion.sleeve) {
+          newFormData.sleeveGrade = listingNotes.gradeSuggestion.sleeve as SleeveGrade
+        }
+      }
+
+      const defectSummary = listingNotes.sellerNotes.join('. ')
+      newFormData.notes = formData.notes 
+        ? `${formData.notes}\n\nAI Analysis: ${defectSummary}`
+        : `AI Analysis: ${defectSummary}`
+    }
+
+    setFormData(newFormData)
+    toast.success('Image analysis complete - metadata and condition extracted')
+  }
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -167,6 +212,22 @@ export function AddItemDialog({ open, onOpenChange, onAdd }: AddItemDialogProps)
               >
                 <Eye size={20} weight="fill" />
                 Grade Condition
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  if (images.length === 0) {
+                    toast.error('Please upload images first')
+                    return
+                  }
+                  setImageAnalysisDialogOpen(true)
+                }}
+                className="gap-2 border-accent text-accent hover:bg-accent hover:text-accent-foreground"
+                disabled={images.length === 0}
+              >
+                <ScanSmiley size={20} weight="fill" />
+                AI Image Analysis
               </Button>
             </div>
 
@@ -378,6 +439,13 @@ export function AddItemDialog({ open, onOpenChange, onAdd }: AddItemDialogProps)
       onOpenChange={setConditionGradingDialogOpen}
       onApply={handleConditionGraded}
       existingImages={images}
+    />
+
+    <ImageAnalysisDialog
+      open={imageAnalysisDialogOpen}
+      onOpenChange={setImageAnalysisDialogOpen}
+      images={images}
+      onAnalysisComplete={handleImageAnalysisComplete}
     />
   </>
   )
