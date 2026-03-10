@@ -54,6 +54,13 @@ This is a professional tool for managing valuable collections with multiple inte
 - **Progression**: Upload condition photos (media, labels, sleeve, spine) → AI analyzes images for defects → Detects scratches, wear, damage on both media and sleeve → Assigns separate Goldmine grades (M/NM/EX/VG+/VG/G/F/P) → Lists all defects with severity (minor/moderate/major) and location → Generates professional grading notes → Displays confidence score → User reviews and applies grades to form
 - **Success criteria**: Analysis completes in <8s for multiple images, suggests reasonable grades aligned with Goldmine standards, detects 80%+ of visible defects, categorizes severity accurately, generates marketplace-ready grading notes
 
+### Pressing Identification Engine
+- **Functionality**: Advanced AI-powered pressing identification system that combines image analysis, OCR runout extraction, manual hints, and optional Discogs database matching to generate ranked pressing candidates with comprehensive evidence and confidence scoring
+- **Purpose**: Eliminates tedious manual research and dramatically improves cataloging accuracy by automatically identifying specific pressings from uploaded images and metadata clues
+- **Trigger**: User clicks "Identify Pressing" button in add item dialog or accesses standalone pressing identification workflow
+- **Progression**: Upload images (front/back cover, labels, runouts) → Enter OCR runout values if known → Add optional manual hints (artist, title, catalog number, country, year, format, label) → Click "Identify Pressing" → AI analyzes all images for text, catalog numbers, matrix codes, label names → Extracts and normalizes identifiers → Scores candidates based on catalog number match, barcode match, matrix similarity, country match, format match, label similarity, year plausibility → Returns ranked top 3 candidates with confidence bands (high/medium/low/ambiguous) → Each candidate displays evidence snippets explaining matches → User selects best candidate or chooses "none of these" for ambiguous results
+- **Success criteria**: Analysis completes in <10s for 3-6 images, correctly identifies pressing in 70%+ of cases with clear images, provides detailed evidence for each candidate, confidence bands accurately reflect match quality, supports ambiguous outcomes without fabricating certainty, gracefully handles incomplete data, manual hints improve results when images are unclear
+
 ### Inventory & Listing Workflow
 - **Functionality**: Manage items for sale, create marketplace listings with AI-generated descriptions, track listing status and sales
 - **Purpose**: Streamlines seller workflow from inventory flagging to marketplace publishing

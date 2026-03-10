@@ -3,294 +3,432 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Progress } from '@/components/ui/progress'
-import { Card } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { ItemImage, PressingCandidate } from '@/lib/types'
+import { Progress } from '@/components/ui/progress'
 import { ImageUpload } from '@/components/ImageUpload'
-import { analyzeVinylImage, identifyPressing } from '@/lib/image-analysis-ai'
-import { Sparkle, CheckCircle, Warning, ArrowRight } from '@phosphor-icons/react'
+import { ItemImage, Format, FORMAT_LABELS } from '@/lib/types'
+import { analyzeVinylImage } from '@/lib/image-analysis-ai'
+import { identifyPressing, ScoredPressingCandidate } from '@/lib/pressing-identification-ai'
+import { Sparkle, CheckCircle, Warning, Info, X } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
 interface PressingIdentificationDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSelect: (candidate: PressingCandidate, images: ItemImage[]) => void
+  onSelect?: (pressing: ScoredPressingCandidate, images: ItemImage[]) => void
 }
 
 export function PressingIdentificationDialog({
   open,
   onOpenChange,
-  onSelect
+  onSelect,
 }: PressingIdentificationDialogProps) {
   const [images, setImages] = useState<ItemImage[]>([])
-  const [artistHint, setArtistHint] = useState('')
-  const [titleHint, setTitleHint] = useState('')
-  const [yearHint, setYearHint] = useState('')
+  const [manualHints, setManualHints] = useState({
+    artist: '',
+    title: '',
+    catalogNumber: '',
+    country: '',
+    year: '',
+    format: '' as Format | '',
+    labelName: '',
+  })
+  const [ocrRunoutValues, setOcrRunoutValues] = useState('')
   const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [progress, setProgress] = useState(0)
-  const [candidates, setCandidates] = useState<PressingCandidate[]>([])
-  const [selectedCandidate, setSelectedCandidate] = useState<PressingCandidate | null>(null)
+  const [analysisProgress, setAnalysisProgress] = useState(0)
+  const [candidates, setCandidates] = useState<ScoredPressingCandidate[]>([])
+  const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null)
 
-  const handleAnalyze = async () => {
-    if (images.length === 0) {
-      toast.error('Please upload at least one image')
+  const handleAddImage = (image: ItemImage) => {
+    setImages(prev => [...prev, image])
+  }
+
+  const handleRemoveImage = (imageId: string) => {
+    setImages(prev => prev.filter(img => img.id !== imageId))
+  }
+
+  const handleIdentifyPressing = async () => {
+    if (images.length === 0 && !manualHints.artist && !manualHints.catalogNumber) {
+      toast.error('Please upload at least one image or provide manual hints')
       return
     }
 
     setIsAnalyzing(true)
-    setProgress(0)
+    setAnalysisProgress(10)
     setCandidates([])
+    setSelectedCandidate(null)
 
     try {
-      setProgress(20)
-      toast.info('Analyzing images...')
-
-      const analysisPromises = images.map(img => 
-        analyzeVinylImage(img.dataUrl, img.type)
-      )
-
-      const analysisResults = await Promise.all(analysisPromises)
+      const imageAnalysis = []
       
-      setProgress(60)
-      toast.info('Identifying pressing...')
-
-      const userHints = {
-        artist: artistHint || undefined,
-        title: titleHint || undefined,
-        year: yearHint ? parseInt(yearHint) : undefined,
+      if (images.length > 0) {
+        setAnalysisProgress(20)
+        for (const [index, image] of images.entries()) {
+          const analysis = await analyzeVinylImage(image.dataUrl, image.type)
+          imageAnalysis.push(analysis)
+          setAnalysisProgress(20 + (index + 1) / images.length * 30)
+        }
       }
 
-      const identifiedCandidates = await identifyPressing(analysisResults, userHints)
-      
-      setProgress(100)
-      setCandidates(identifiedCandidates)
+      setAnalysisProgress(60)
 
-      if (identifiedCandidates.length > 0) {
-        toast.success(`Found ${identifiedCandidates.length} potential match${identifiedCandidates.length > 1 ? 'es' : ''}`)
-        setSelectedCandidate(identifiedCandidates[0])
+      const runoutValues = ocrRunoutValues
+        .split(',')
+        .map(v => v.trim())
+        .filter(v => v.length > 0)
+
+      const hints = {
+        artist: manualHints.artist || undefined,
+        title: manualHints.title || undefined,
+        catalogNumber: manualHints.catalogNumber || undefined,
+        country: manualHints.country || undefined,
+        year: manualHints.year ? parseInt(manualHints.year) : undefined,
+        format: manualHints.format || undefined,
+        labelName: manualHints.labelName || undefined,
+      }
+
+      setAnalysisProgress(70)
+
+      const results = await identifyPressing({
+        imageAnalysis: imageAnalysis.length > 0 ? imageAnalysis : undefined,
+        ocrRunoutValues: runoutValues.length > 0 ? runoutValues : undefined,
+        manualHints: hints,
+        discogsSearchEnabled: false,
+      })
+
+      setAnalysisProgress(100)
+      setCandidates(results)
+
+      if (results.length === 0) {
+        toast.error('No pressing candidates found', {
+          description: 'Try adding more images or manual hints'
+        })
       } else {
-        toast.warning('No confident matches found. Try adding more images or hints.')
+        toast.success(`Found ${results.length} pressing candidate${results.length > 1 ? 's' : ''}`)
       }
     } catch (error) {
-      console.error('Analysis failed:', error)
-      toast.error('Analysis failed. Please try again.')
+      console.error('Identification failed:', error)
+      toast.error('Pressing identification failed')
     } finally {
       setIsAnalyzing(false)
+      setAnalysisProgress(0)
     }
   }
 
-  const handleSelectCandidate = () => {
-    if (!selectedCandidate) return
-    onSelect(selectedCandidate, images)
-    handleReset()
-    onOpenChange(false)
+  const handleSelectCandidate = (candidateId: string) => {
+    const candidate = candidates.find(c => c.id === candidateId)
+    if (candidate && onSelect) {
+      onSelect(candidate, images)
+      onOpenChange(false)
+      toast.success('Pressing selected')
+    }
   }
 
   const handleReset = () => {
     setImages([])
-    setArtistHint('')
-    setTitleHint('')
-    setYearHint('')
+    setManualHints({
+      artist: '',
+      title: '',
+      catalogNumber: '',
+      country: '',
+      year: '',
+      format: '',
+      labelName: '',
+    })
+    setOcrRunoutValues('')
     setCandidates([])
     setSelectedCandidate(null)
-    setProgress(0)
   }
 
-  const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 0.8) return 'text-green-500'
-    if (confidence >= 0.6) return 'text-yellow-500'
-    return 'text-orange-500'
+  const handleNoneOfThese = () => {
+    toast.info('No pressing selected', {
+      description: 'You can manually enter pressing details instead'
+    })
+    onOpenChange(false)
   }
 
-  const getConfidenceLabel = (confidence: number) => {
-    if (confidence >= 0.8) return 'High Confidence'
-    if (confidence >= 0.6) return 'Medium Confidence'
-    return 'Low Confidence'
+  const getConfidenceBadgeVariant = (band: string) => {
+    switch (band) {
+      case 'high':
+        return 'default'
+      case 'medium':
+        return 'secondary'
+      case 'low':
+        return 'outline'
+      case 'ambiguous':
+        return 'destructive'
+      default:
+        return 'outline'
+    }
+  }
+
+  const getConfidenceIcon = (band: string) => {
+    switch (band) {
+      case 'high':
+        return <CheckCircle size={16} weight="fill" />
+      case 'medium':
+        return <Info size={16} weight="fill" />
+      case 'low':
+      case 'ambiguous':
+        return <Warning size={16} weight="fill" />
+      default:
+        return null
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkle size={24} weight="fill" className="text-accent" />
-            AI Pressing Identification
+            Pressing Identification Engine
           </DialogTitle>
           <DialogDescription>
-            Upload images of your vinyl and let AI identify the pressing details
+            Upload images, provide OCR runout values, and add manual hints to identify the specific pressing
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
-          <div className="space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
+          <div className="space-y-6">
             <div>
-              <h3 className="text-sm font-semibold mb-3">Upload Images</h3>
+              <h3 className="font-semibold mb-3">Image Upload</h3>
               <ImageUpload images={images} onImagesChange={setImages} maxImages={6} />
             </div>
 
             <Separator />
 
             <div>
-              <h3 className="text-sm font-semibold mb-3">Optional Hints (improves accuracy)</h3>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="artistHint">Artist</Label>
+              <h3 className="font-semibold mb-3">OCR Runout Values</h3>
+              <div className="space-y-2">
+                <Label htmlFor="runout-values">Matrix/Runout Numbers</Label>
+                <Input
+                  id="runout-values"
+                  placeholder="e.g., A1, B1, SHVL 804-A-1"
+                  value={ocrRunoutValues}
+                  onChange={(e) => setOcrRunoutValues(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">Comma-separated values</p>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div>
+              <h3 className="font-semibold mb-3">Manual Hints</h3>
+              <div className="space-y-3">
+                <div>
+                  <Label htmlFor="artist-hint">Artist</Label>
                   <Input
-                    id="artistHint"
-                    value={artistHint}
-                    onChange={(e) => setArtistHint(e.target.value)}
-                    placeholder="David Bowie"
+                    id="artist-hint"
+                    placeholder="e.g., David Bowie"
+                    value={manualHints.artist}
+                    onChange={(e) => setManualHints(prev => ({ ...prev, artist: e.target.value }))}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="titleHint">Album Title</Label>
+                <div>
+                  <Label htmlFor="title-hint">Title</Label>
                   <Input
-                    id="titleHint"
-                    value={titleHint}
-                    onChange={(e) => setTitleHint(e.target.value)}
-                    placeholder="Low"
+                    id="title-hint"
+                    placeholder="e.g., Low"
+                    value={manualHints.title}
+                    onChange={(e) => setManualHints(prev => ({ ...prev, title: e.target.value }))}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="yearHint">Year</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="catalog-hint">Catalog Number</Label>
+                    <Input
+                      id="catalog-hint"
+                      placeholder="e.g., PL 12030"
+                      value={manualHints.catalogNumber}
+                      onChange={(e) => setManualHints(prev => ({ ...prev, catalogNumber: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="year-hint">Year</Label>
+                    <Input
+                      id="year-hint"
+                      type="number"
+                      placeholder="e.g., 1977"
+                      value={manualHints.year}
+                      onChange={(e) => setManualHints(prev => ({ ...prev, year: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="country-hint">Country</Label>
+                    <Input
+                      id="country-hint"
+                      placeholder="e.g., UK, US"
+                      value={manualHints.country}
+                      onChange={(e) => setManualHints(prev => ({ ...prev, country: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="format-hint">Format</Label>
+                    <Select value={manualHints.format} onValueChange={(value) => setManualHints(prev => ({ ...prev, format: value as Format }))}>
+                      <SelectTrigger id="format-hint">
+                        <SelectValue placeholder="Select format" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(FORMAT_LABELS).map(([key, label]) => (
+                          <SelectItem key={key} value={key}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="label-hint">Label Name</Label>
                   <Input
-                    id="yearHint"
-                    type="number"
-                    value={yearHint}
-                    onChange={(e) => setYearHint(e.target.value)}
-                    placeholder="1977"
+                    id="label-hint"
+                    placeholder="e.g., RCA Victor"
+                    value={manualHints.labelName}
+                    onChange={(e) => setManualHints(prev => ({ ...prev, labelName: e.target.value }))}
                   />
                 </div>
               </div>
             </div>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={handleIdentifyPressing}
+                disabled={isAnalyzing}
+                className="flex-1 gap-2"
+              >
+                <Sparkle size={18} weight="fill" />
+                {isAnalyzing ? 'Analyzing...' : 'Identify Pressing'}
+              </Button>
+              <Button variant="outline" onClick={handleReset}>
+                Reset
+              </Button>
+            </div>
+
+            {isAnalyzing && (
+              <div className="space-y-2">
+                <Progress value={analysisProgress} />
+                <p className="text-sm text-muted-foreground text-center">
+                  Analyzing images and matching candidates...
+                </p>
+              </div>
+            )}
           </div>
 
-          {isAnalyzing && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Analyzing...</span>
-                <span className="font-mono">{progress}%</span>
-              </div>
-              <Progress value={progress} />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">Ranked Candidates</h3>
+              {candidates.length > 0 && (
+                <Button variant="ghost" size="sm" onClick={handleNoneOfThese}>
+                  None of these
+                </Button>
+              )}
             </div>
-          )}
 
-          {candidates.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold">Identified Pressings</h3>
+            {candidates.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Info size={48} className="mx-auto mb-3 opacity-50" weight="thin" />
+                <p>No candidates yet</p>
+                <p className="text-sm mt-1">Upload images or provide hints to identify pressings</p>
+              </div>
+            ) : (
               <div className="space-y-3">
-                {candidates.map((candidate) => (
+                {candidates.map((candidate, index) => (
                   <Card
                     key={candidate.id}
-                    className={`p-4 cursor-pointer transition-all ${
-                      selectedCandidate?.id === candidate.id
-                        ? 'ring-2 ring-accent bg-accent/5'
-                        : 'hover:bg-muted/50'
+                    className={`p-4 cursor-pointer transition-all hover:shadow-md ${
+                      selectedCandidate === candidate.id ? 'ring-2 ring-accent' : ''
                     }`}
-                    onClick={() => setSelectedCandidate(candidate)}
+                    onClick={() => setSelectedCandidate(candidate.id)}
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center gap-2">
-                          {selectedCandidate?.id === candidate.id && (
-                            <CheckCircle size={20} weight="fill" className="text-accent" />
-                          )}
-                          <h4 className="font-semibold">
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge variant="outline" className="font-mono">
+                              #{index + 1}
+                            </Badge>
+                            <Badge variant={getConfidenceBadgeVariant(candidate.confidenceBand)} className="gap-1">
+                              {getConfidenceIcon(candidate.confidenceBand)}
+                              {candidate.confidenceBand}
+                            </Badge>
+                            <span className="text-sm text-muted-foreground font-mono">
+                              {Math.round(candidate.confidence * 100)}%
+                            </span>
+                          </div>
+                          <h4 className="font-semibold">{candidate.pressingName}</h4>
+                          <p className="text-sm text-muted-foreground">
                             {candidate.artistName} - {candidate.releaseTitle}
-                          </h4>
+                          </p>
                         </div>
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                          <span className="font-mono">{candidate.catalogNumber || 'N/A'}</span>
-                          <span>•</span>
-                          <span>{candidate.pressingName}</span>
-                          <span>•</span>
-                          <span>{candidate.year}</span>
-                          <span>•</span>
-                          <span>{candidate.country}</span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Year:</span>{' '}
+                          <span className="font-medium">{candidate.year}</span>
                         </div>
-                        {candidate.matrixNumbers && candidate.matrixNumbers.length > 0 && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">Matrix:</span>
-                            <code className="text-xs font-mono bg-muted px-2 py-1 rounded">
-                              {candidate.matrixNumbers.join(' / ')}
-                            </code>
+                        <div>
+                          <span className="text-muted-foreground">Country:</span>{' '}
+                          <span className="font-medium">{candidate.country}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Format:</span>{' '}
+                          <span className="font-medium">{FORMAT_LABELS[candidate.format]}</span>
+                        </div>
+                        {candidate.catalogNumber && (
+                          <div>
+                            <span className="text-muted-foreground">Cat#:</span>{' '}
+                            <span className="font-medium font-mono">{candidate.catalogNumber}</span>
                           </div>
                         )}
-                        <p className="text-xs text-muted-foreground">{candidate.reasoning}</p>
-                        {candidate.matchedIdentifiers.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {candidate.matchedIdentifiers.map((id, idx) => (
-                              <Badge key={idx} variant="secondary" className="text-xs">
-                                {id}
-                              </Badge>
+                      </div>
+
+                      {candidate.evidenceSnippets && candidate.evidenceSnippets.length > 0 && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase">Evidence</p>
+                          <ul className="space-y-1">
+                            {candidate.evidenceSnippets.slice(0, 3).map((evidence, idx) => (
+                              <li key={idx} className="text-xs text-muted-foreground flex gap-2">
+                                <span className="text-accent">•</span>
+                                <span>{evidence}</span>
+                              </li>
                             ))}
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-right space-y-1">
-                        <div className={`text-2xl font-bold font-mono ${getConfidenceColor(candidate.confidence)}`}>
-                          {Math.round(candidate.confidence * 100)}%
+                          </ul>
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {getConfidenceLabel(candidate.confidence)}
+                      )}
+
+                      {candidate.matchedIdentifiers && candidate.matchedIdentifiers.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {candidate.matchedIdentifiers.map((identifier, idx) => (
+                            <Badge key={idx} variant="secondary" className="text-xs font-mono">
+                              {identifier}
+                            </Badge>
+                          ))}
                         </div>
-                      </div>
+                      )}
+
+                      {selectedCandidate === candidate.id && (
+                        <Button
+                          onClick={() => handleSelectCandidate(candidate.id)}
+                          className="w-full gap-2"
+                        >
+                          <CheckCircle size={18} weight="fill" />
+                          Select This Pressing
+                        </Button>
+                      )}
                     </div>
                   </Card>
                 ))}
               </div>
-            </div>
-          )}
-
-          <div className="flex justify-between gap-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                handleReset()
-                onOpenChange(false)
-              }}
-            >
-              Cancel
-            </Button>
-            <div className="flex gap-3">
-              {candidates.length === 0 ? (
-                <Button
-                  onClick={handleAnalyze}
-                  disabled={images.length === 0 || isAnalyzing}
-                  className="gap-2"
-                >
-                  <Sparkle size={18} />
-                  Analyze Images
-                </Button>
-              ) : (
-                <>
-                  <Button variant="outline" onClick={handleReset}>
-                    Start Over
-                  </Button>
-                  <Button
-                    onClick={handleSelectCandidate}
-                    disabled={!selectedCandidate}
-                    className="gap-2"
-                  >
-                    Use Selected Pressing
-                    <ArrowRight size={18} />
-                  </Button>
-                </>
-              )}
-            </div>
+            )}
           </div>
-
-          {candidates.length > 0 && (
-            <div className="bg-muted/50 border border-border rounded-lg p-3 flex items-start gap-3">
-              <Warning size={20} className="text-yellow-500 flex-shrink-0 mt-0.5" />
-              <div className="text-xs text-muted-foreground">
-                AI identification is a helpful starting point but may not be 100% accurate. Always verify pressing details against known sources and your physical record.
-              </div>
-            </div>
-          )}
         </div>
       </DialogContent>
     </Dialog>
