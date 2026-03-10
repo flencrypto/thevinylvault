@@ -10,12 +10,15 @@ import { ListingDraftCard } from '@/components/ListingDraftCard'
 import { BargainCard } from '@/components/BargainCard'
 import { WatchlistCard } from '@/components/WatchlistCard'
 import { AddWatchlistDialog } from '@/components/AddWatchlistDialog'
+import { MarketplaceSettingsDialog } from '@/components/MarketplaceSettingsDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Toaster } from '@/components/ui/sonner'
-import { Plus, Record, TrendUp, Package, ChartLine, MagnifyingGlass, Storefront, Sparkle, Binoculars, Lightning } from '@phosphor-icons/react'
+import { Plus, Record, TrendUp, Package, ChartLine, MagnifyingGlass, Storefront, Sparkle, Binoculars, Lightning, Gear } from '@phosphor-icons/react'
 import { toast } from 'sonner'
+import { scanMarketplaces, MarketplaceConfig, getDefaultMarketplaceConfig, validateMarketplaceConfig } from '@/lib/marketplace-scanner'
+import { analyzeBargainPotential } from '@/lib/bargain-detection-ai'
 
 type MainView = 'collection' | 'listings' | 'watchlist' | 'bargains'
 
@@ -24,13 +27,16 @@ function App() {
   const [listingDrafts, setListingDrafts] = useKV<ListingDraft[]>('listing-drafts', [])
   const [watchlistItems, setWatchlistItems] = useKV<WatchlistItem[]>('watchlist-items', [])
   const [bargainCards, setBargainCards] = useKV<BargainCardType[]>('bargain-cards', [])
+  const [marketplaceConfig] = useKV<MarketplaceConfig>('marketplace-config', getDefaultMarketplaceConfig())
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [listingGenOpen, setListingGenOpen] = useState(false)
   const [watchlistDialogOpen, setWatchlistDialogOpen] = useState(false)
+  const [marketplaceSettingsOpen, setMarketplaceSettingsOpen] = useState(false)
   const [selectedItemForListing, setSelectedItemForListing] = useState<CollectionItem | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [mainView, setMainView] = useState<MainView>('collection')
+  const [isScanning, setIsScanning] = useState(false)
 
   const safeItems = items || []
   const safeDrafts = listingDrafts || []
@@ -344,42 +350,75 @@ function App() {
                   AI-discovered deals, misdescribed lots, and undervalued listings
                 </p>
               </div>
-              <Button 
-                onClick={async () => {
-                  toast.loading('Scanning marketplace...')
-                  const { generateMockMarketListings } = await import('@/lib/bargain-detection-ai')
-                  const { analyzeBargainPotential } = await import('@/lib/bargain-detection-ai')
-                  
-                  const listings = await generateMockMarketListings(5)
-                  const newBargains: BargainCardType[] = []
-                  
-                  for (const listing of listings) {
-                    const analysis = await analyzeBargainPotential({ listing, watchlistItems: safeWatchlist })
-                    
-                    if (analysis.bargainScore >= 40) {
-                      const newBargain: BargainCardType = {
-                        id: `bargain-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                        listing,
-                        bargainScore: analysis.bargainScore,
-                        estimatedValue: analysis.estimatedValue,
-                        estimatedUpside: analysis.estimatedUpside,
-                        signals: analysis.signals,
-                        matchedRelease: analysis.matchedRelease,
-                        savedAt: new Date().toISOString(),
-                        viewed: false,
-                      }
-                      newBargains.push(newBargain)
+              <div className="flex gap-2">
+                <Button 
+                  onClick={async () => {
+                    const config = marketplaceConfig || getDefaultMarketplaceConfig()
+                    const validation = validateMarketplaceConfig(config)
+                    if (!validation.valid) {
+                      toast.error('Please configure marketplace settings first')
+                      setMarketplaceSettingsOpen(true)
+                      return
                     }
-                  }
-                  
-                  setBargainCards(currentBargains => [...(currentBargains || []), ...newBargains])
-                  toast.success(`Found ${newBargains.length} potential bargains`)
-                }} 
-                className="gap-2"
-              >
-                <Lightning size={20} weight="fill" />
-                Scan Market
-              </Button>
+
+                    setIsScanning(true)
+                    const loadingToast = toast.loading('Scanning marketplaces for bargains...')
+                    
+                    try {
+                      const listings = await scanMarketplaces(safeWatchlist, config, {
+                        maxResults: 100,
+                      })
+                      
+                      const newBargains: BargainCardType[] = []
+                      
+                      for (const listing of listings) {
+                        const analysis = await analyzeBargainPotential({ listing, watchlistItems: safeWatchlist })
+                        
+                        if (analysis.bargainScore >= 40) {
+                          const newBargain: BargainCardType = {
+                            id: `bargain-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                            listing,
+                            bargainScore: analysis.bargainScore,
+                            estimatedValue: analysis.estimatedValue,
+                            estimatedUpside: analysis.estimatedUpside,
+                            signals: analysis.signals,
+                            matchedRelease: analysis.matchedRelease,
+                            savedAt: new Date().toISOString(),
+                            viewed: false,
+                          }
+                          newBargains.push(newBargain)
+                        }
+                      }
+                      
+                      setBargainCards(currentBargains => [...(currentBargains || []), ...newBargains])
+                      toast.success(`Found ${newBargains.length} potential bargains from ${listings.length} listings`, {
+                        id: loadingToast,
+                      })
+                    } catch (error) {
+                      console.error('Marketplace scan error:', error)
+                      toast.error('Marketplace scan failed', {
+                        id: loadingToast,
+                        description: error instanceof Error ? error.message : 'Unknown error',
+                      })
+                    } finally {
+                      setIsScanning(false)
+                    }
+                  }} 
+                  className="gap-2"
+                  disabled={isScanning}
+                >
+                  <Lightning size={20} weight="fill" />
+                  {isScanning ? 'Scanning...' : 'Scan Market'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setMarketplaceSettingsOpen(true)}
+                  title="Marketplace Settings"
+                >
+                  <Gear size={20} />
+                </Button>
+              </div>
             </div>
 
             {safeBargains.length === 0 ? (
@@ -390,37 +429,59 @@ function App() {
                   Run market scans to find undervalued listings, misdescribed lots, and hidden gems
                 </p>
                 <Button onClick={async () => {
-                  toast.loading('Scanning marketplace...')
-                  const { generateMockMarketListings } = await import('@/lib/bargain-detection-ai')
-                  const { analyzeBargainPotential } = await import('@/lib/bargain-detection-ai')
-                  
-                  const listings = await generateMockMarketListings(10)
-                  const newBargains: BargainCardType[] = []
-                  
-                  for (const listing of listings) {
-                    const analysis = await analyzeBargainPotential({ listing, watchlistItems: safeWatchlist })
-                    
-                    if (analysis.bargainScore >= 40) {
-                      const newBargain: BargainCardType = {
-                        id: `bargain-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                        listing,
-                        bargainScore: analysis.bargainScore,
-                        estimatedValue: analysis.estimatedValue,
-                        estimatedUpside: analysis.estimatedUpside,
-                        signals: analysis.signals,
-                        matchedRelease: analysis.matchedRelease,
-                        savedAt: new Date().toISOString(),
-                        viewed: false,
-                      }
-                      newBargains.push(newBargain)
-                    }
+                  const config = marketplaceConfig || getDefaultMarketplaceConfig()
+                  const validation = validateMarketplaceConfig(config)
+                  if (!validation.valid) {
+                    toast.error('Please configure marketplace settings first')
+                    setMarketplaceSettingsOpen(true)
+                    return
                   }
+
+                  setIsScanning(true)
+                  const loadingToast = toast.loading('Scanning marketplaces for bargains...')
                   
-                  setBargainCards(currentBargains => [...(currentBargains || []), ...newBargains])
-                  toast.success(`Found ${newBargains.length} potential bargains`)
-                }} className="gap-2">
+                  try {
+                    const listings = await scanMarketplaces(safeWatchlist, config, {
+                      maxResults: 100,
+                    })
+                    
+                    const newBargains: BargainCardType[] = []
+                    
+                    for (const listing of listings) {
+                      const analysis = await analyzeBargainPotential({ listing, watchlistItems: safeWatchlist })
+                      
+                      if (analysis.bargainScore >= 40) {
+                        const newBargain: BargainCardType = {
+                          id: `bargain-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                          listing,
+                          bargainScore: analysis.bargainScore,
+                          estimatedValue: analysis.estimatedValue,
+                          estimatedUpside: analysis.estimatedUpside,
+                          signals: analysis.signals,
+                          matchedRelease: analysis.matchedRelease,
+                          savedAt: new Date().toISOString(),
+                          viewed: false,
+                        }
+                        newBargains.push(newBargain)
+                      }
+                    }
+                    
+                    setBargainCards(currentBargains => [...(currentBargains || []), ...newBargains])
+                    toast.success(`Found ${newBargains.length} potential bargains from ${listings.length} listings`, {
+                      id: loadingToast,
+                    })
+                  } catch (error) {
+                    console.error('Marketplace scan error:', error)
+                    toast.error('Marketplace scan failed', {
+                      id: loadingToast,
+                      description: error instanceof Error ? error.message : 'Unknown error',
+                    })
+                  } finally {
+                    setIsScanning(false)
+                  }
+                }} className="gap-2" disabled={isScanning}>
                   <Lightning size={20} weight="fill" />
-                  Scan Market Now
+                  {isScanning ? 'Scanning...' : 'Scan Market Now'}
                 </Button>
               </div>
             ) : (
@@ -507,6 +568,11 @@ function App() {
         onOpenChange={setListingGenOpen}
         item={selectedItemForListing}
         onSave={handleSaveListingDraft}
+      />
+
+      <MarketplaceSettingsDialog
+        open={marketplaceSettingsOpen}
+        onOpenChange={setMarketplaceSettingsOpen}
       />
     </div>
   )
