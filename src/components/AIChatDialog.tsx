@@ -23,7 +23,9 @@ import {
   Pencil,
   Robot,
   User,
-  Lightbulb
+  Lightbulb,
+  Microphone,
+  Stop
 } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
@@ -48,10 +50,53 @@ export function AIChatDialog({
   const [isLoading, setIsLoading] = useState(false)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [editedContent, setEditedContent] = useState('')
+  const [isRecording, setIsRecording] = useState(false)
+  const [isSupported, setIsSupported] = useState(false)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const recognitionRef = useRef<any>(null)
 
   const safeMessages = messages || []
   const safeLearning = learningData || []
+
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (SpeechRecognition) {
+      setIsSupported(true)
+      recognitionRef.current = new SpeechRecognition()
+      recognitionRef.current.continuous = false
+      recognitionRef.current.interimResults = false
+      recognitionRef.current.lang = 'en-US'
+
+      recognitionRef.current.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript
+        setInput(transcript)
+        setIsRecording(false)
+        toast.success('Voice captured successfully')
+      }
+
+      recognitionRef.current.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error)
+        setIsRecording(false)
+        if (event.error === 'no-speech') {
+          toast.error('No speech detected')
+        } else if (event.error === 'not-allowed') {
+          toast.error('Microphone access denied')
+        } else {
+          toast.error('Voice input failed')
+        }
+      }
+
+      recognitionRef.current.onend = () => {
+        setIsRecording(false)
+      }
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop()
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -159,6 +204,27 @@ export function AIChatDialog({
   const handleCancelEdit = () => {
     setEditingMessageId(null)
     setEditedContent('')
+  }
+
+  const handleVoiceInput = () => {
+    if (!isSupported) {
+      toast.error('Voice input not supported in this browser')
+      return
+    }
+
+    if (isRecording) {
+      recognitionRef.current?.stop()
+      setIsRecording(false)
+    } else {
+      try {
+        recognitionRef.current?.start()
+        setIsRecording(true)
+        toast.info('Listening... Speak now')
+      } catch (error) {
+        console.error('Failed to start recording:', error)
+        toast.error('Failed to start voice input')
+      }
+    }
   }
 
   const conversationMessages = item
@@ -374,22 +440,42 @@ export function AIChatDialog({
           )}
 
           <div className="flex gap-2">
-            <Input
-              placeholder={item ? "Ask about this record..." : "Ask about your collection..."}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  handleSend()
-                }
-              }}
-              disabled={isLoading}
-              className="flex-1"
-            />
+            <div className="relative flex-1">
+              <Input
+                placeholder={item ? "Ask about this record..." : "Ask about your collection..."}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    handleSend()
+                  }
+                }}
+                disabled={isLoading || isRecording}
+                className="pr-12"
+              />
+              {isSupported && (
+                <Button
+                  size="icon"
+                  variant={isRecording ? "default" : "ghost"}
+                  onClick={handleVoiceInput}
+                  disabled={isLoading}
+                  className={`absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 ${
+                    isRecording ? 'animate-pulse bg-destructive hover:bg-destructive' : ''
+                  }`}
+                  title={isRecording ? 'Stop recording' : 'Start voice input'}
+                >
+                  {isRecording ? (
+                    <Stop size={18} weight="fill" />
+                  ) : (
+                    <Microphone size={18} weight="fill" />
+                  )}
+                </Button>
+              )}
+            </div>
             <Button
               onClick={handleSend}
-              disabled={!input.trim() || isLoading}
+              disabled={!input.trim() || isLoading || isRecording}
               className="gap-2"
             >
               <PaperPlaneRight size={18} weight="fill" />
