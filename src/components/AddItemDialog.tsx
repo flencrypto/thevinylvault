@@ -9,7 +9,9 @@ import { Separator } from '@/components/ui/separator'
 import { CollectionItem, Format, MediaGrade, SleeveGrade, SourceType, PressingCandidate, ItemImage } from '@/lib/types'
 import { ImageUpload } from '@/components/ImageUpload'
 import { PressingIdentificationDialog } from '@/components/PressingIdentificationDialog'
-import { Sparkle } from '@phosphor-icons/react'
+import { ConditionGradingDialog } from '@/components/ConditionGradingDialog'
+import { suggestGradingNotes } from '@/lib/condition-grading-ai'
+import { Sparkle, Eye } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
 interface AddItemDialogProps {
@@ -37,6 +39,7 @@ export function AddItemDialog({ open, onOpenChange, onAdd }: AddItemDialogProps)
   
   const [images, setImages] = useState<ItemImage[]>([])
   const [identificationDialogOpen, setIdentificationDialogOpen] = useState(false)
+  const [conditionGradingDialogOpen, setConditionGradingDialogOpen] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -112,6 +115,28 @@ export function AddItemDialog({ open, onOpenChange, onAdd }: AddItemDialogProps)
     toast.success('Pressing details filled from AI identification')
   }
 
+  const handleConditionGraded = async (result: any, gradedImages: ItemImage[]) => {
+    const newFormData: any = { ...formData }
+    
+    if (result.mediaGrade) {
+      newFormData.mediaGrade = result.mediaGrade
+    }
+    if (result.sleeveGrade) {
+      newFormData.sleeveGrade = result.sleeveGrade
+    }
+
+    if (result.defects.length > 0) {
+      const generatedNotes = await suggestGradingNotes(result.defects)
+      newFormData.notes = formData.notes 
+        ? `${formData.notes}\n\nAI Grading Notes: ${generatedNotes}`
+        : `AI Grading Notes: ${generatedNotes}`
+    }
+
+    setFormData(newFormData)
+    setImages(gradedImages)
+    toast.success('Condition grades applied from AI analysis')
+  }
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -124,7 +149,7 @@ export function AddItemDialog({ open, onOpenChange, onAdd }: AddItemDialogProps)
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="flex justify-center">
+            <div className="flex justify-center gap-3">
               <Button
                 type="button"
                 variant="outline"
@@ -132,7 +157,16 @@ export function AddItemDialog({ open, onOpenChange, onAdd }: AddItemDialogProps)
                 className="gap-2 border-accent text-accent hover:bg-accent hover:text-accent-foreground"
               >
                 <Sparkle size={20} weight="fill" />
-                Identify from Images with AI
+                Identify Pressing
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setConditionGradingDialogOpen(true)}
+                className="gap-2 border-accent text-accent hover:bg-accent hover:text-accent-foreground"
+              >
+                <Eye size={20} weight="fill" />
+                Grade Condition
               </Button>
             </div>
 
@@ -337,6 +371,13 @@ export function AddItemDialog({ open, onOpenChange, onAdd }: AddItemDialogProps)
       open={identificationDialogOpen}
       onOpenChange={setIdentificationDialogOpen}
       onSelect={handlePressingIdentified}
+    />
+
+    <ConditionGradingDialog
+      open={conditionGradingDialogOpen}
+      onOpenChange={setConditionGradingDialogOpen}
+      onApply={handleConditionGraded}
+      existingImages={images}
     />
   </>
   )

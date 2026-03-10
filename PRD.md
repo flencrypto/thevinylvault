@@ -43,9 +43,16 @@ This is a professional tool for managing valuable collections with multiple inte
 ### Image Upload & AI Pressing Identification
 - **Functionality**: Upload photos of vinyl records (covers, labels, runouts) and use AI vision to automatically identify pressing details including catalog numbers, matrix codes, and pressing variants
 - **Purpose**: Dramatically reduces manual data entry and improves accuracy by extracting metadata directly from images
-- **Trigger**: User clicks "Identify from Images with AI" in add item dialog or uploads images during item creation
+- **Trigger**: User clicks "Identify Pressing" in add item dialog or uploads images during item creation
 - **Progression**: Upload images (front/back cover, labels, runout) → Select image types → Add optional hints (artist, title, year) → AI analyzes all images → Extracts text, catalog numbers, matrix codes → Matches against pressing database → Returns ranked candidates with confidence scores → User selects best match → Form auto-fills with pressing details
 - **Success criteria**: Analysis completes in <10s for 3-6 images, correctly identifies pressing in 70%+ of cases with clear images, provides helpful confidence scores, gracefully handles unclear images
+
+### AI Condition Grading & Defect Detection
+- **Functionality**: Upload photos of vinyl media and sleeve to receive automated condition grading (Goldmine standard) with detailed defect detection including severity classification, location tracking, and professional grading notes
+- **Purpose**: Provides objective, consistent condition assessment while teaching users proper grading standards and accelerating the cataloging process
+- **Trigger**: User clicks "Grade Condition" button in add item dialog
+- **Progression**: Upload condition photos (media, labels, sleeve, spine) → AI analyzes images for defects → Detects scratches, wear, damage on both media and sleeve → Assigns separate Goldmine grades (M/NM/EX/VG+/VG/G/F/P) → Lists all defects with severity (minor/moderate/major) and location → Generates professional grading notes → Displays confidence score → User reviews and applies grades to form
+- **Success criteria**: Analysis completes in <8s for multiple images, suggests reasonable grades aligned with Goldmine standards, detects 80%+ of visible defects, categorizes severity accurately, generates marketplace-ready grading notes
 
 ### Inventory & Listing Workflow
 - **Functionality**: Manage items for sale, create marketplace listings with AI-generated descriptions, track listing status and sales
