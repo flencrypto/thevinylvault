@@ -15,6 +15,7 @@ import { MintNFTDialog } from '@/components/MintNFTDialog'
 import { NFTCard } from '@/components/NFTCard'
 import { AIChatDialog } from '@/components/AIChatDialog'
 import { ValuationDialog } from '@/components/ValuationDialog'
+import { BatchValuationDialog } from '@/components/BatchValuationDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -43,6 +44,7 @@ function App() {
   const [selectedItemForMinting, setSelectedItemForMinting] = useState<CollectionItem | null>(null)
   const [selectedItemForChat, setSelectedItemForChat] = useState<CollectionItem | null>(null)
   const [selectedItemForValuation, setSelectedItemForValuation] = useState<CollectionItem | null>(null)
+  const [batchValuationOpen, setBatchValuationOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [mainView, setMainView] = useState<MainView>('collection')
@@ -256,6 +258,16 @@ function App() {
                 <ChatCircleDots size={20} />
                 AI Assistant
               </Button>
+              {safeItems.length > 0 && (
+                <Button 
+                  variant="outline"
+                  onClick={() => setBatchValuationOpen(true)}
+                  className="gap-2"
+                >
+                  <ChartLine size={20} weight="bold" />
+                  Batch Valuation
+                </Button>
+              )}
               <Button onClick={() => setAddDialogOpen(true)} className="gap-2">
                 <Plus size={20} />
                 Add Item
@@ -729,6 +741,12 @@ function App() {
         open={!!selectedItemForValuation}
         onOpenChange={(open) => !open && setSelectedItemForValuation(null)}
         item={selectedItemForValuation}
+      />
+
+      <BatchValuationDialog
+        open={batchValuationOpen}
+        onOpenChange={setBatchValuationOpen}
+        items={safeItems}
       />
     </div>
   )
