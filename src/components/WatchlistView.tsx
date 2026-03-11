@@ -5,6 +5,7 @@ import { WatchlistCard } from './WatchlistCard'
 import { AddWatchlistDialog } from './AddWatchlistDialog'
 import { BulkImportWatchlistDialog } from './BulkImportWatchlistDialog'
 import { ScanScheduleDialog } from './ScanScheduleDialog'
+import { WatchlistTemplatesDialog } from './WatchlistTemplatesDialog'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -20,7 +21,8 @@ import {
   Warning,
   Info,
   FileArrowUp,
-  CalendarCheck
+  CalendarCheck,
+  Sparkle
 } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { scanMarketplaces, MarketplaceConfig, getDefaultMarketplaceConfig } from '@/lib/marketplace-scanner'
@@ -49,6 +51,7 @@ export default function WatchlistView() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false)
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false)
+  const [isTemplatesDialogOpen, setIsTemplatesDialogOpen] = useState(false)
   const [isScanning, setIsScanning] = useState(false)
   const [scanProgress, setScanProgress] = useState(0)
   const [scanStatus, setScanStatus] = useState('')
@@ -225,6 +228,16 @@ export default function WatchlistView() {
     setWatchlistItems(current => [...(current || []), ...items])
   }
 
+  const handleImportTemplate = (items: Omit<WatchlistItem, 'id' | 'collectionId' | 'createdAt'>[]) => {
+    const newItems: WatchlistItem[] = items.map(item => ({
+      ...item,
+      id: `watchlist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      collectionId: 'default',
+      createdAt: new Date().toISOString(),
+    }))
+    setWatchlistItems(current => [...(current || []), ...newItems])
+  }
+
   const getLastScanDisplay = () => {
     if (!lastScanTime) return 'Never'
     
@@ -254,6 +267,15 @@ export default function WatchlistView() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            onClick={() => setIsTemplatesDialogOpen(true)}
+            size="sm"
+            variant="outline"
+            className="gap-2"
+          >
+            <Sparkle size={16} weight="fill" />
+            Templates
+          </Button>
           <Button
             onClick={() => setIsScheduleDialogOpen(true)}
             size="sm"
@@ -476,6 +498,12 @@ export default function WatchlistView() {
       <ScanScheduleDialog
         open={isScheduleDialogOpen}
         onOpenChange={setIsScheduleDialogOpen}
+      />
+
+      <WatchlistTemplatesDialog
+        open={isTemplatesDialogOpen}
+        onOpenChange={setIsTemplatesDialogOpen}
+        onImport={handleImportTemplate}
       />
     </div>
   )
