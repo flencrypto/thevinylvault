@@ -1,0 +1,528 @@
+import { useState } from 'react'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { ImageUpload } from '@/components/ImageUpload'
+import { ItemImage, Format, MediaGrade, SleeveGrade } from '@/lib/types'
+import { 
+  Upload, 
+  Sparkle, 
+  CheckCircle, 
+  Warning, 
+  Info,
+  Image as ImageIcon,
+  CircleNotch,
+  Disc,
+  Plus
+} from '@phosphor-icons/react'
+import { analyzeVinylImage } from '@/lib/image-analysis-ai'
+import { identifyPressing } from '@/lib/pressing-identification-ai'
+import { analyzeConditionFromImages, suggestGradingNotes } from '@/lib/condition-grading-ai'
+import { generateListingCopy, generateSEOKeywords, suggestListingPrice } from '@/lib/listing-ai'
+import { generatePriceEstimate } from '@/lib/helpers'
+import { toast } from 'sonner'
+import { ListingPreviewDialog } from './ListingPreviewDialog'
+import { CollectionItem } from '@/lib/types'
+import { useKV } from '@github/spark/hooks'
+
+type AnalysisStep = 'idle' | 'analyzing_images' | 'identifying_pressing' | 'grading_condition' | 'generating_listing' | 'complete'
+
+interface AnalysisResult {
+  artistName: string
+  releaseTitle: string
+  year: number
+  country: string
+  format: Format
+  catalogNumber?: string
+  pressingSuggestions?: string[]
+  confidence: number
+}
+
+interface ConditionResult {
+  mediaGrade: MediaGrade
+  sleeveGrade: SleeveGrade
+  gradingNotes: string
+  aiConfidence: number
+}
+
+interface ListingContent {
+  title: string
+  description: string
+  highlights: string[]
+  conditionSummary: string
+  suggestedPrice: number
+}
+
+export default function NewListingView() {
+  const [items, setItems] = useKV<CollectionItem[]>('vinyl-vault-collection', [])
+  
+  const [images, setImages] = useState<ItemImage[]>([])
+  const [analysisStep, setAnalysisStep] = useState<AnalysisStep>('idle')
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
+  const [conditionResult, setConditionResult] = useState<ConditionResult | null>(null)
+  const [listingContent, setListingContent] = useState<ListingContent | null>(null)
+  const [showPreview, setShowPreview] = useState(false)
+  
+  const [manualOverride, setManualOverride] = useState(false)
+  const [manualData, setManualData] = useState({
+    artistName: '',
+    releaseTitle: '',
+    year: new Date().getFullYear(),
+    country: '',
+    format: 'LP' as Format,
+    catalogNumber: '',
+    mediaGrade: 'VG+' as MediaGrade,
+    sleeveGrade: 'VG+' as SleeveGrade,
+    notes: ''
+  })
+
+  const handleAnalyze = async () => {
+    if (images.length === 0) {
+      toast.error('Please upload at least one image')
+      return
+    }
+
+    try {
+      setAnalysisStep('analyzing_images')
+      const imageAnalysisResults = await Promise.all(
+        images.map(img => analyzeVinylImage(img.dataUrl, img.type))
+      )
+      
+      setAnalysisStep('identifying_pressing')
+      const pressingCandidates = await identifyPressing({
+        imageAnalysis: imageAnalysisResults,
+        discogsSearchEnabled: false
+      })
+      
+      const bestCandidate = pressingCandidates[0]
+      
+      if (!bestCandidate) {
+        throw new Error('No pressing candidates found')
+      }
+      
+      setAnalysisResult({
+        artistName: bestCandidate.artistName || 'Unknown Artist',
+        releaseTitle: bestCandidate.releaseTitle || 'Unknown Release',
+        year: bestCandidate.year || new Date().getFullYear(),
+        country: bestCandidate.country || 'Unknown',
+        format: bestCandidate.format || 'LP',
+        catalogNumber: bestCandidate.catalogNumber,
+        pressingSuggestions: bestCandidate.evidenceSnippets,
+        confidence: bestCandidate.confidence
+      })
+      
+      setAnalysisStep('grading_condition')
+      const conditionAnalysis = await analyzeConditionFromImages(images)
+      
+      const gradingNotes = await suggestGradingNotes(conditionAnalysis.defects)
+      
+      setConditionResult({
+        mediaGrade: conditionAnalysis.mediaGrade || 'VG+',
+        sleeveGrade: conditionAnalysis.sleeveGrade || 'VG',
+        gradingNotes: gradingNotes,
+        aiConfidence: conditionAnalysis.confidence
+      })
+      
+      setAnalysisStep('generating_listing')
+      
+      const tempItem: CollectionItem = {
+        id: `temp-${Date.now()}`,
+        collectionId: 'temp',
+        artistName: bestCandidate.artistName || 'Unknown Artist',
+        releaseTitle: bestCandidate.releaseTitle || 'Unknown Release',
+        format: bestCandidate.format || 'LP',
+        year: bestCandidate.year || new Date().getFullYear(),
+        country: bestCandidate.country || 'Unknown',
+        catalogNumber: bestCandidate.catalogNumber,
+        purchaseCurrency: 'USD',
+        sourceType: 'unknown',
+        quantity: 1,
+        status: 'owned',
+        condition: {
+          mediaGrade: conditionAnalysis.mediaGrade || 'VG+',
+          sleeveGrade: conditionAnalysis.sleeveGrade || 'VG',
+          gradingStandard: 'Goldmine',
+          gradingNotes: gradingNotes,
+          gradedAt: new Date().toISOString()
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+      
+      const keywords = await generateSEOKeywords(tempItem, 'ebay')
+      const listingCopy = await generateListingCopy(tempItem, 'ebay', keywords)
+      const priceEstimate = generatePriceEstimate(tempItem)
+      const suggestedPrice = suggestListingPrice(priceEstimate, tempItem.condition.mediaGrade)
+      
+      setListingContent({
+        title: listingCopy.title,
+        description: listingCopy.description,
+        highlights: keywords.slice(0, 5),
+        conditionSummary: gradingNotes,
+        suggestedPrice
+      })
+      
+      setAnalysisStep('complete')
+      
+      toast.success('Analysis complete! Review the results below.')
+    } catch (error) {
+      console.error('Analysis failed:', error)
+      toast.error('Analysis failed. Please try again or enter details manually.')
+      setAnalysisStep('idle')
+    }
+  }
+
+  const handleAddToCollection = () => {
+    if (!analysisResult || !conditionResult) {
+      toast.error('Complete analysis first')
+      return
+    }
+
+    const newItem: CollectionItem = {
+      id: `item-${Date.now()}`,
+      collectionId: 'default',
+      artistName: analysisResult.artistName,
+      releaseTitle: analysisResult.releaseTitle,
+      format: analysisResult.format,
+      year: analysisResult.year,
+      country: analysisResult.country,
+      catalogNumber: analysisResult.catalogNumber,
+      purchaseCurrency: 'USD',
+      sourceType: 'unknown',
+      quantity: 1,
+      status: 'owned',
+      condition: {
+        mediaGrade: conditionResult.mediaGrade,
+        sleeveGrade: conditionResult.sleeveGrade,
+        gradingStandard: 'Goldmine',
+        gradingNotes: conditionResult.gradingNotes,
+        gradedAt: new Date().toISOString()
+      },
+      images: images.map(img => img.dataUrl),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+
+    setItems((current) => [newItem, ...(current || [])])
+    
+    setShowPreview(true)
+  }
+
+  const handleReset = () => {
+    setImages([])
+    setAnalysisStep('idle')
+    setAnalysisResult(null)
+    setConditionResult(null)
+    setListingContent(null)
+    setManualOverride(false)
+    setShowPreview(false)
+    toast.success('Ready for new listing')
+  }
+
+  const isAnalyzing = !['idle', 'complete'].includes(analysisStep)
+  const hasResults = analysisStep === 'complete'
+
+  return (
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <Upload className="w-7 h-7" weight="bold" />
+            New Listing
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Upload photos for AI-powered record identification and listing creation
+          </p>
+        </div>
+        {hasResults && (
+          <Button variant="outline" onClick={handleReset} className="gap-2">
+            <Plus className="w-5 h-5" />
+            Start New
+          </Button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <ImageIcon className="w-5 h-5" />
+                Upload Photos
+              </h3>
+              {images.length > 0 && (
+                <Badge variant="secondary">{images.length} image{images.length !== 1 ? 's' : ''}</Badge>
+              )}
+            </div>
+            
+            <ImageUpload images={images} onImagesChange={setImages} maxImages={10} />
+
+            {images.length > 0 && !hasResults && (
+              <div className="mt-6">
+                <Button 
+                  onClick={handleAnalyze} 
+                  disabled={isAnalyzing}
+                  className="w-full gap-2"
+                  size="lg"
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <CircleNotch className="w-5 h-5 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkle className="w-5 h-5" weight="fill" />
+                      Analyze with AI
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+          </Card>
+
+          {isAnalyzing && (
+            <Card className="p-6 bg-gradient-to-br from-primary/5 to-accent/5 border-primary/20">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <CircleNotch className="w-5 h-5 animate-spin text-primary" />
+                AI Analysis in Progress
+              </h3>
+              <div className="space-y-3">
+                <AnalysisStepIndicator 
+                  label="Analyzing images"
+                  status={analysisStep === 'analyzing_images' ? 'active' : analysisStep !== 'idle' ? 'complete' : 'pending'}
+                />
+                <AnalysisStepIndicator 
+                  label="Identifying pressing"
+                  status={analysisStep === 'identifying_pressing' ? 'active' : ['grading_condition', 'generating_listing', 'complete'].includes(analysisStep) ? 'complete' : 'pending'}
+                />
+                <AnalysisStepIndicator 
+                  label="Grading condition"
+                  status={analysisStep === 'grading_condition' ? 'active' : ['generating_listing', 'complete'].includes(analysisStep) ? 'complete' : 'pending'}
+                />
+                <AnalysisStepIndicator 
+                  label="Generating listing"
+                  status={analysisStep === 'generating_listing' ? 'active' : analysisStep === 'complete' ? 'complete' : 'pending'}
+                />
+              </div>
+            </Card>
+          )}
+        </div>
+
+        <div className="space-y-6">
+          {hasResults && analysisResult && conditionResult && listingContent && (
+            <>
+              <Card className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Disc className="w-5 h-5" />
+                    Record Details
+                  </h3>
+                  <ConfidenceBadge confidence={analysisResult.confidence} />
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Artist</Label>
+                    <p className="font-semibold text-lg">{analysisResult.artistName}</p>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Release Title</Label>
+                    <p className="font-semibold text-lg">{analysisResult.releaseTitle}</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Year</Label>
+                      <p className="font-semibold">{analysisResult.year}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Country</Label>
+                      <p className="font-semibold">{analysisResult.country}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Format</Label>
+                      <p className="font-semibold">{analysisResult.format}</p>
+                    </div>
+                    {analysisResult.catalogNumber && (
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Catalog #</Label>
+                        <p className="font-semibold font-mono text-sm">{analysisResult.catalogNumber}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {analysisResult.pressingSuggestions && analysisResult.pressingSuggestions.length > 0 && (
+                    <div className="pt-2">
+                      <Label className="text-xs text-muted-foreground mb-2 block">Pressing Notes</Label>
+                      <div className="text-sm space-y-1">
+                        {analysisResult.pressingSuggestions.map((suggestion, idx) => (
+                          <p key={idx} className="text-muted-foreground">• {suggestion}</p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+              <Card className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Condition Grading</h3>
+                  <ConfidenceBadge confidence={conditionResult.aiConfidence} />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Media Grade</Label>
+                    <div className="mt-1">
+                      <Badge variant="outline" className="text-lg px-4 py-1">
+                        {conditionResult.mediaGrade}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Sleeve Grade</Label>
+                    <div className="mt-1">
+                      <Badge variant="outline" className="text-lg px-4 py-1">
+                        {conditionResult.sleeveGrade}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+
+                {conditionResult.gradingNotes && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-2 block">Grading Notes</Label>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {conditionResult.gradingNotes}
+                    </p>
+                  </div>
+                )}
+              </Card>
+
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold mb-4">Marketplace Listing</h3>
+
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Listing Title</Label>
+                    <p className="font-semibold">{listingContent.title}</p>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-2 block">Description Preview</Label>
+                    <div className="text-sm text-muted-foreground bg-muted/50 rounded-md p-4 max-h-40 overflow-y-auto">
+                      {listingContent.description.slice(0, 200)}...
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Suggested Price</Label>
+                    <p className="text-2xl font-bold text-accent">
+                      ${listingContent.suggestedPrice.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              </Card>
+
+              <div className="flex gap-3">
+                <Button 
+                  onClick={handleAddToCollection}
+                  className="flex-1 gap-2"
+                  size="lg"
+                >
+                  <CheckCircle className="w-5 h-5" weight="fill" />
+                  Add to Collection
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => setShowPreview(true)}
+                  className="flex-1 gap-2"
+                  size="lg"
+                >
+                  View Full Listing
+                </Button>
+              </div>
+            </>
+          )}
+
+          {!hasResults && !isAnalyzing && images.length === 0 && (
+            <Card className="p-12 text-center border-dashed">
+              <Disc size={64} className="mx-auto mb-4 text-muted-foreground opacity-50" weight="thin" />
+              <h3 className="text-xl font-semibold mb-2">Get Started</h3>
+              <p className="text-muted-foreground mb-4">
+                Upload photos of your vinyl record to begin AI analysis
+              </p>
+              <div className="text-sm text-muted-foreground space-y-1">
+                <p>📸 Front and back cover</p>
+                <p>🏷️ Record labels</p>
+                <p>🔍 Runout/matrix numbers</p>
+              </div>
+            </Card>
+          )}
+        </div>
+      </div>
+
+      {showPreview && analysisResult && conditionResult && listingContent && (
+        <ListingPreviewDialog
+          open={showPreview}
+          onOpenChange={setShowPreview}
+          listingContent={listingContent}
+          recordDetails={analysisResult}
+          conditionDetails={conditionResult}
+          images={images}
+          onReset={handleReset}
+        />
+      )}
+    </div>
+  )
+}
+
+function AnalysisStepIndicator({ label, status }: { label: string; status: 'pending' | 'active' | 'complete' }) {
+  return (
+    <div className="flex items-center gap-3">
+      {status === 'pending' && (
+        <div className="w-5 h-5 rounded-full border-2 border-muted-foreground/30" />
+      )}
+      {status === 'active' && (
+        <CircleNotch className="w-5 h-5 text-primary animate-spin" weight="bold" />
+      )}
+      {status === 'complete' && (
+        <CheckCircle className="w-5 h-5 text-accent" weight="fill" />
+      )}
+      <span className={status === 'active' ? 'font-semibold' : status === 'complete' ? 'text-muted-foreground' : 'text-muted-foreground/60'}>
+        {label}
+      </span>
+    </div>
+  )
+}
+
+function ConfidenceBadge({ confidence }: { confidence: number }) {
+  const getColor = () => {
+    if (confidence >= 0.8) return 'default'
+    if (confidence >= 0.6) return 'secondary'
+    return 'outline'
+  }
+
+  const getIcon = () => {
+    if (confidence >= 0.8) return <CheckCircle className="w-3 h-3" weight="fill" />
+    if (confidence >= 0.6) return <Info className="w-3 h-3" weight="fill" />
+    return <Warning className="w-3 h-3" weight="fill" />
+  }
+
+  return (
+    <Badge variant={getColor()} className="gap-1">
+      {getIcon()}
+      {Math.round(confidence * 100)}% confidence
+    </Badge>
+  )
+}

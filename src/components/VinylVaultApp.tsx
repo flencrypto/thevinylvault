@@ -7,17 +7,19 @@ import {
   Eye,
   Cube,
   Code,
+  Upload,
 } from '@phosphor-icons/react'
 import CollectionView from './CollectionView'
 import BargainsView from './BargainsView'
 import WatchlistView from './WatchlistView'
 import NFTView from './NFTView'
 import EbayDeletionChecklist from './ebay/EbayDeletionChecklist'
+import NewListingView from './NewListingView'
 
-type TabValue = 'collection' | 'bargains' | 'watchlist' | 'nfts' | 'ebay-dev'
+type TabValue = 'new-listing' | 'collection' | 'bargains' | 'watchlist' | 'nfts' | 'ebay-dev'
 
 export default function VinylVaultApp() {
-  const [activeTab, setActiveTab] = useKV<TabValue>('vinyl-vault-active-tab', 'collection')
+  const [activeTab, setActiveTab] = useKV<TabValue>('vinyl-vault-active-tab', 'new-listing')
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
@@ -37,7 +39,11 @@ export default function VinylVaultApp() {
             </div>
 
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)}>
-              <TabsList className="w-full grid grid-cols-5 bg-slate-900/50 border border-slate-800">
+              <TabsList className="w-full grid grid-cols-6 bg-slate-900/50 border border-slate-800">
+                <TabsTrigger value="new-listing" className="data-[state=active]:bg-slate-800">
+                  <Upload className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">New Listing</span>
+                </TabsTrigger>
                 <TabsTrigger value="collection" className="data-[state=active]:bg-slate-800">
                   <Disc className="w-4 h-4 mr-2" />
                   <span className="hidden sm:inline">Collection</span>
@@ -65,6 +71,9 @@ export default function VinylVaultApp() {
 
         <main>
           <Tabs value={activeTab} className="w-full">
+            <TabsContent value="new-listing" className="m-0">
+              <NewListingView />
+            </TabsContent>
             <TabsContent value="collection" className="m-0">
               <CollectionView />
             </TabsContent>
