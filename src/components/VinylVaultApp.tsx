@@ -8,6 +8,7 @@ import {
   Cube,
   Code,
   Upload,
+  Gear,
 } from '@phosphor-icons/react'
 import CollectionView from './CollectionView'
 import BargainsView from './BargainsView'
@@ -15,82 +16,111 @@ import WatchlistView from './WatchlistView'
 import NFTView from './NFTView'
 import EbayDeletionChecklist from './ebay/EbayDeletionChecklist'
 import NewListingView from './NewListingView'
+import SettingsView from './SettingsView'
 
-type TabValue = 'new-listing' | 'collection' | 'bargains' | 'watchlist' | 'nfts' | 'ebay-dev'
+type TabValue = 'new-listing' | 'collection' | 'bargains' | 'watchlist' | 'nfts' | 'ebay-dev' | 'settings'
 
 export default function VinylVaultApp() {
   const [activeTab, setActiveTab] = useKV<TabValue>('vinyl-vault-active-tab', 'new-listing')
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 pb-20">
       <div className="max-w-[1800px] mx-auto">
-        <header className="sticky top-0 z-50 backdrop-blur-lg bg-slate-950/80 border-b border-slate-800">
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-accent to-accent/60 rounded-lg flex items-center justify-center">
-                  <Disc className="w-6 h-6 text-accent-foreground" weight="bold" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-white">VinylVault</h1>
-                  <p className="text-sm text-slate-400">Professional Record Management</p>
-                </div>
+        <header className="sticky top-0 z-40 backdrop-blur-lg bg-slate-950/90 border-b border-slate-800">
+          <div className="px-4 py-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-accent to-accent/60 rounded-xl flex items-center justify-center">
+                <Disc className="w-6 h-6 text-accent-foreground" weight="bold" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-white">VinylVault</h1>
+                <p className="text-xs text-slate-400">Record Management</p>
               </div>
             </div>
-
-            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)}>
-              <TabsList className="w-full grid grid-cols-6 bg-slate-900/50 border border-slate-800">
-                <TabsTrigger value="new-listing" className="data-[state=active]:bg-slate-800">
-                  <Upload className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">New Listing</span>
-                </TabsTrigger>
-                <TabsTrigger value="collection" className="data-[state=active]:bg-slate-800">
-                  <Disc className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">Collection</span>
-                </TabsTrigger>
-                <TabsTrigger value="bargains" className="data-[state=active]:bg-slate-800">
-                  <Sparkle className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">Bargains</span>
-                </TabsTrigger>
-                <TabsTrigger value="watchlist" className="data-[state=active]:bg-slate-800">
-                  <Eye className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">Watchlist</span>
-                </TabsTrigger>
-                <TabsTrigger value="nfts" className="data-[state=active]:bg-slate-800">
-                  <Cube className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">NFTs</span>
-                </TabsTrigger>
-                <TabsTrigger value="ebay-dev" className="data-[state=active]:bg-slate-800">
-                  <Code className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">eBay Dev</span>
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
           </div>
         </header>
 
-        <main>
+        <main className="pb-4">
           <Tabs value={activeTab} className="w-full">
-            <TabsContent value="new-listing" className="m-0">
+            <TabsContent value="new-listing" className="m-0 mt-0">
               <NewListingView />
             </TabsContent>
-            <TabsContent value="collection" className="m-0">
+            <TabsContent value="collection" className="m-0 mt-0">
               <CollectionView />
             </TabsContent>
-            <TabsContent value="bargains" className="m-0">
+            <TabsContent value="bargains" className="m-0 mt-0">
               <BargainsView />
             </TabsContent>
-            <TabsContent value="watchlist" className="m-0">
+            <TabsContent value="watchlist" className="m-0 mt-0">
               <WatchlistView />
             </TabsContent>
-            <TabsContent value="nfts" className="m-0">
+            <TabsContent value="nfts" className="m-0 mt-0">
               <NFTView />
             </TabsContent>
-            <TabsContent value="ebay-dev" className="m-0">
+            <TabsContent value="ebay-dev" className="m-0 mt-0">
               <EbayDeletionChecklist />
+            </TabsContent>
+            <TabsContent value="settings" className="m-0 mt-0">
+              <SettingsView />
             </TabsContent>
           </Tabs>
         </main>
+
+        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800 safe-area-inset-bottom">
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)}>
+            <TabsList className="w-full h-16 grid grid-cols-7 bg-transparent border-0 p-0 gap-0">
+              <TabsTrigger 
+                value="new-listing" 
+                className="flex-col gap-1 h-full rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-1"
+              >
+                <Upload className="w-5 h-5" weight="fill" />
+                <span className="text-[10px] leading-tight">New</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="collection" 
+                className="flex-col gap-1 h-full rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-1"
+              >
+                <Disc className="w-5 h-5" weight="fill" />
+                <span className="text-[10px] leading-tight">Collection</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="bargains" 
+                className="flex-col gap-1 h-full rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-1"
+              >
+                <Sparkle className="w-5 h-5" weight="fill" />
+                <span className="text-[10px] leading-tight">Bargains</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="watchlist" 
+                className="flex-col gap-1 h-full rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-1"
+              >
+                <Eye className="w-5 h-5" weight="fill" />
+                <span className="text-[10px] leading-tight">Watch</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="nfts" 
+                className="flex-col gap-1 h-full rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-1"
+              >
+                <Cube className="w-5 h-5" weight="fill" />
+                <span className="text-[10px] leading-tight">NFTs</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="ebay-dev" 
+                className="flex-col gap-1 h-full rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-1"
+              >
+                <Code className="w-5 h-5" weight="fill" />
+                <span className="text-[10px] leading-tight">eBay</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="settings" 
+                className="flex-col gap-1 h-full rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-1"
+              >
+                <Gear className="w-5 h-5" weight="fill" />
+                <span className="text-[10px] leading-tight">Settings</span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </nav>
       </div>
     </div>
   )
