@@ -88,39 +88,34 @@ Unlike mock data or scrapers, VinylVault uses **official marketplace APIs**:
 
 ## 🔑 Getting Discogs API Credentials
 
-### Option 1: Personal Access Token (Recommended)
+### Personal Access Token (Simple & Recommended)
 
-This is the easiest method for personal use:
+VinylVault uses **Personal Access Tokens** for Discogs integration - no OAuth setup needed!
+
+**Step-by-step guide:**
 
 1. Visit [https://www.discogs.com/settings/developers](https://www.discogs.com/settings/developers)
 2. Log in to your Discogs account
-3. Scroll to "Personal Access Tokens"
+3. Scroll to the "Personal Access Tokens" section
 4. Click "Generate new token"
-5. Enter a token name: "VinylVault"
-6. Copy the generated token immediately (you won't see it again!)
-
-### Option 2: OAuth Application (Advanced)
-
-For production apps or if you need user-specific data:
-
-1. Visit [https://www.discogs.com/settings/developers](https://www.discogs.com/settings/developers)
-2. Click "Create an Application"
-3. Fill in the details:
-   - Application Name: "VinylVault"
-   - Description: "Vinyl collection management"
-   - Application URL: Your app URL
-4. Copy your Consumer Key and Consumer Secret
+5. Enter a token name: `VinylVault`
+6. Click "Generate"
+7. **Copy the token immediately** - you won't see it again!
 
 ### Configure in VinylVault
-1. Open VinylVault
-2. Navigate to the "Bargains" tab
-3. Click the ⚙️ Settings icon
-4. Enable "Discogs marketplace scanning"
-5. Enter EITHER:
-   - Your Personal Access Token, OR
-   - Consumer Key + Consumer Secret
-6. Click "Test Discogs Connection" to verify
-7. Save settings
+
+1. Open VinylVault app
+2. Navigate to the **Settings** tab (gear icon in bottom nav)
+3. Find the "Discogs API" section
+4. Paste your Personal Access Token
+5. Click "Test" to verify the connection
+6. You should see "Discogs API connected!" 🎉
+
+**Troubleshooting:**
+- ❌ **Don't use OAuth** - VinylVault doesn't need Consumer Key/Secret
+- ✅ **Only use Personal Access Token** - paste it in the single token field
+- 🔒 Token is stored locally in your browser only
+- 🔄 If test fails, regenerate a new token and try again
 
 ## 🎯 How It Works
 

@@ -114,8 +114,20 @@ export async function searchDiscogsMarketplace(
     })
 
     if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`Discogs API error: ${response.status} ${response.statusText} - ${errorText}`)
+      let errorText = ''
+      try {
+        errorText = await response.text()
+      } catch {
+        errorText = 'Unable to read error response'
+      }
+
+      if (response.status === 401) {
+        throw new Error(`Discogs authentication failed (401). Please check that your Personal Access Token is correct. Go to Settings and verify your token.`)
+      } else if (response.status === 404) {
+        throw new Error(`Discogs API endpoint not found (404). This usually means your token is invalid or the API endpoint has changed. Please regenerate your Personal Access Token in Discogs Developer Settings.`)
+      } else {
+        throw new Error(`Discogs API error: ${response.status} ${response.statusText}${errorText ? ` - ${errorText}` : ''}`)
+      }
     }
 
     const data: DiscogsMarketplaceResponse = await response.json()

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { Slider } from '@/components/ui/slider'
-import { Key, Check, Eye, EyeSlash, Info, Brain, Detective, Image, GraduationCap, Lightning, Database, CloudArrowUp, TestTube } from '@phosphor-icons/react'
+import { Key, Check, Eye, EyeSlash, Info, Brain, Detective, Image, GraduationCap, Lightning, Database, CloudArrowUp, TestTube, Question } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { testDiscogsConnection } from '@/lib/marketplace-discogs'
 import { uploadImageToImgBB } from '@/lib/imgbb-service'
@@ -244,11 +244,22 @@ export default function SettingsView() {
             <Separator className="bg-slate-800" />
 
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold text-white">Discogs API</h4>
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-white">Discogs API</h4>
+                <a 
+                  href="/DISCOGS_TROUBLESHOOTING.md" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-xs text-accent hover:text-accent-foreground flex items-center gap-1 hover:underline"
+                >
+                  <Question className="w-3 h-3" />
+                  Troubleshooting Guide
+                </a>
+              </div>
               
               <div className="space-y-2">
                 <Label htmlFor="discogs-user-token" className="text-slate-200 flex items-center gap-2">
-                  User Token (Recommended)
+                  Personal Access Token (Required)
                   {apiKeys?.discogsUserToken && (
                     <Database className="w-4 h-4 text-green-500" weight="fill" />
                   )}
@@ -260,7 +271,7 @@ export default function SettingsView() {
                       type={showKeys.discogsUserToken ? 'text' : 'password'}
                       value={apiKeys?.discogsUserToken || ''}
                       onChange={(e) => handleKeyChange('discogsUserToken', e.target.value)}
-                      placeholder="Enter your Discogs user token"
+                      placeholder="Paste your Discogs personal access token here"
                       className="bg-slate-950/50 border-slate-700 text-white pr-10"
                     />
                     <button
@@ -293,80 +304,38 @@ export default function SettingsView() {
                     )}
                   </Button>
                 </div>
-                <div className="flex items-center gap-2">
-                  <p className="text-xs text-slate-500 flex items-start gap-1 flex-1">
-                    <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                    Generate a personal access token from <a href="https://www.discogs.com/settings/developers" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Discogs Developer Settings</a>. This enables real pressing identification with the Discogs database.
-                  </p>
-                  <Button
-                    onClick={() => setShowDiscogsTestDialog(true)}
-                    disabled={!apiKeys?.discogsUserToken}
-                    variant="ghost"
-                    size="sm"
-                    className="text-accent hover:text-accent-foreground hover:bg-accent/20 gap-2 shrink-0"
-                  >
-                    <TestTube className="w-4 h-4" />
-                    Advanced Test
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="discogs-key" className="text-slate-200">Consumer Key (Optional)</Label>
-                <div className="flex gap-2">
-                  <div className="flex-1 relative">
-                    <Input
-                      id="discogs-key"
-                      type={showKeys.discogsKey ? 'text' : 'password'}
-                      value={apiKeys?.discogsKey || ''}
-                      onChange={(e) => handleKeyChange('discogsKey', e.target.value)}
-                      placeholder="Enter your Discogs consumer key"
-                      className="bg-slate-950/50 border-slate-700 text-white pr-10"
-                    />
-                    <button
-                      onClick={() => toggleShowKey('discogsKey')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                <div className="flex flex-col gap-2">
+                  <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-3 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <Info className="w-4 h-4 mt-0.5 text-accent flex-shrink-0" />
+                      <div className="text-xs text-slate-300 space-y-1">
+                        <p className="font-semibold text-accent">How to get your token:</p>
+                        <ol className="list-decimal list-inside space-y-1 text-slate-400">
+                          <li>Visit <a href="https://www.discogs.com/settings/developers" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Discogs Developer Settings</a></li>
+                          <li>Scroll to "Personal Access Tokens" section</li>
+                          <li>Click "Generate new token"</li>
+                          <li>Name it "VinylVault" and click Generate</li>
+                          <li>Copy the token immediately (shown only once!)</li>
+                          <li>Paste it above and click Test</li>
+                        </ol>
+                        <p className="text-amber-400 font-semibold mt-2">⚠️ Don't use OAuth - just the Personal Access Token above!</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={() => setShowDiscogsTestDialog(true)}
+                      disabled={!apiKeys?.discogsUserToken}
+                      variant="ghost"
+                      size="sm"
+                      className="text-accent hover:text-accent-foreground hover:bg-accent/20 gap-2"
                     >
-                      {showKeys.discogsKey ? (
-                        <EyeSlash className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </button>
+                      <TestTube className="w-4 h-4" />
+                      Advanced Test & Database Search
+                    </Button>
                   </div>
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="discogs-secret" className="text-slate-200">Consumer Secret (Optional)</Label>
-                <div className="flex gap-2">
-                  <div className="flex-1 relative">
-                    <Input
-                      id="discogs-secret"
-                      type={showKeys.discogsSecret ? 'text' : 'password'}
-                      value={apiKeys?.discogsSecret || ''}
-                      onChange={(e) => handleKeyChange('discogsSecret', e.target.value)}
-                      placeholder="Enter your Discogs consumer secret"
-                      className="bg-slate-950/50 border-slate-700 text-white pr-10"
-                    />
-                    <button
-                      onClick={() => toggleShowKey('discogsSecret')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
-                    >
-                      {showKeys.discogsSecret ? (
-                        <EyeSlash className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-              
-              <p className="text-xs text-slate-500 flex items-start gap-1">
-                <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                Used for pressing identification, market data, pricing trends, and bargain detection. <strong>Real Discogs database integration</strong> - identifies pressings from their actual database when user token is configured.
-              </p>
             </div>
 
             <Separator className="bg-slate-800" />
