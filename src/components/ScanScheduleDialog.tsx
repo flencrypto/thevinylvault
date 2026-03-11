@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Clock, Calendar, Plus, Trash, Play, Pause, Info, CheckCircle, Warning } from '@phosphor-icons/react'
+import { Clock, Calendar, Plus, Trash, Play, Pause, Info, CheckCircle, Warning, Sparkle, Lightning, MagnifyingGlass, Eye } from '@phosphor-icons/react'
 import { useKV } from '@github/spark/hooks'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -90,6 +90,59 @@ export function ScanScheduleDialog({ open, onOpenChange }: ScanScheduleDialogPro
     setMaxResults(50)
     setEditingSchedule(null)
     setShowCreateForm(false)
+  }
+
+  const applyPreset = (preset: 'morning-rare' | 'morning-bargains' | 'lunchtime-new-listings' | 'evening-watchlist') => {
+    switch (preset) {
+      case 'morning-rare':
+        setName('Morning Rare Pressings')
+        setTime('08:00')
+        setFrequency('daily')
+        setSearchQuery('first pressing rare original')
+        setIncludeEbay(true)
+        setIncludeDiscogs(true)
+        setMaxPrice('500')
+        setMinScore(75)
+        setMaxResults(30)
+        toast.success('Applied Morning Rare Pressings preset')
+        break
+      case 'morning-bargains':
+        setName('Morning Bargain Hunt')
+        setTime('07:00')
+        setFrequency('weekdays')
+        setSearchQuery('vinyl record lot collection')
+        setIncludeEbay(true)
+        setIncludeDiscogs(true)
+        setMaxPrice('50')
+        setMinScore(65)
+        setMaxResults(50)
+        toast.success('Applied Morning Bargain Hunt preset')
+        break
+      case 'lunchtime-new-listings':
+        setName('Lunchtime New Listings')
+        setTime('12:00')
+        setFrequency('daily')
+        setSearchQuery('vinyl LP')
+        setIncludeEbay(true)
+        setIncludeDiscogs(true)
+        setMaxPrice('')
+        setMinScore(60)
+        setMaxResults(40)
+        toast.success('Applied Lunchtime New Listings preset')
+        break
+      case 'evening-watchlist':
+        setName('Evening Watchlist Check')
+        setTime('18:00')
+        setFrequency('daily')
+        setSearchQuery('rare collectible')
+        setIncludeEbay(true)
+        setIncludeDiscogs(true)
+        setMaxPrice('')
+        setMinScore(70)
+        setMaxResults(50)
+        toast.success('Applied Evening Watchlist Check preset')
+        break
+    }
   }
 
   const calculateNextRun = (schedule: ScheduledScan): string => {
@@ -360,6 +413,54 @@ export function ScanScheduleDialog({ open, onOpenChange }: ScanScheduleDialogPro
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <Label className="text-slate-200">Quick Presets</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => applyPreset('morning-rare')}
+                      className="bg-gradient-to-br from-accent/20 to-transparent border-accent/40 hover:bg-accent/30 text-accent-foreground"
+                    >
+                      <Sparkle className="w-4 h-4 mr-2" weight="fill" />
+                      Morning Rare Pressings
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => applyPreset('morning-bargains')}
+                      className="bg-gradient-to-br from-green-500/20 to-transparent border-green-500/40 hover:bg-green-500/30 text-green-400"
+                    >
+                      <Lightning className="w-4 h-4 mr-2" weight="fill" />
+                      Morning Bargains
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => applyPreset('lunchtime-new-listings')}
+                      className="bg-gradient-to-br from-blue-500/20 to-transparent border-blue-500/40 hover:bg-blue-500/30 text-blue-400"
+                    >
+                      <MagnifyingGlass className="w-4 h-4 mr-2" weight="fill" />
+                      Lunchtime New Listings
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => applyPreset('evening-watchlist')}
+                      className="bg-gradient-to-br from-purple-500/20 to-transparent border-purple-500/40 hover:bg-purple-500/30 text-purple-400"
+                    >
+                      <Eye className="w-4 h-4 mr-2" weight="fill" />
+                      Evening Watchlist
+                    </Button>
+                  </div>
+                </div>
+
+                <Separator className="bg-slate-800" />
+
                 <div className="space-y-2">
                   <Label htmlFor="schedule-name" className="text-slate-200">Schedule Name</Label>
                   <Input

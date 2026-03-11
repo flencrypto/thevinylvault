@@ -4,6 +4,7 @@ import { WatchlistItem, BargainCard as BargainCardType } from '@/lib/types'
 import { WatchlistCard } from './WatchlistCard'
 import { AddWatchlistDialog } from './AddWatchlistDialog'
 import { BulkImportWatchlistDialog } from './BulkImportWatchlistDialog'
+import { ScanScheduleDialog } from './ScanScheduleDialog'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -18,7 +19,8 @@ import {
   Lightning,
   Warning,
   Info,
-  FileArrowUp
+  FileArrowUp,
+  CalendarCheck
 } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { scanMarketplaces, MarketplaceConfig, getDefaultMarketplaceConfig } from '@/lib/marketplace-scanner'
@@ -46,6 +48,7 @@ export default function WatchlistView() {
   
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false)
+  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false)
   const [isScanning, setIsScanning] = useState(false)
   const [scanProgress, setScanProgress] = useState(0)
   const [scanStatus, setScanStatus] = useState('')
@@ -251,6 +254,15 @@ export default function WatchlistView() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            onClick={() => setIsScheduleDialogOpen(true)}
+            size="sm"
+            variant="outline"
+            className="gap-2"
+          >
+            <CalendarCheck size={16} weight="bold" />
+            Schedule
+          </Button>
           <Button
             onClick={() => setIsBulkImportOpen(true)}
             size="sm"
@@ -459,6 +471,11 @@ export default function WatchlistView() {
         open={isBulkImportOpen}
         onOpenChange={setIsBulkImportOpen}
         onImport={handleBulkImport}
+      />
+
+      <ScanScheduleDialog
+        open={isScheduleDialogOpen}
+        onOpenChange={setIsScheduleDialogOpen}
       />
     </div>
   )
