@@ -4,12 +4,13 @@ import { CollectionItem, ItemStatus, Format, MediaGrade } from '@/lib/types'
 import { ItemCard } from '@/components/ItemCard'
 import { AddItemDialog } from '@/components/AddItemDialog'
 import { ItemDetailDialog } from '@/components/ItemDetailDialog'
+import { ExportGradedItemsDialog } from '@/components/ExportGradedItemsDialog'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Plus, MagnifyingGlass, FunnelSimple, SortAscending, Disc } from '@phosphor-icons/react'
+import { Plus, MagnifyingGlass, FunnelSimple, SortAscending, Disc, Export } from '@phosphor-icons/react'
 import { calculateCollectionValue, formatCurrency } from '@/lib/helpers'
 
 type SortOption = 'recent' | 'artist' | 'year' | 'value' | 'grade'
@@ -18,6 +19,7 @@ export default function CollectionView() {
   const [items, setItems] = useKV<CollectionItem[]>('vinyl-vault-collection', [])
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
+  const [exportDialogOpen, setExportDialogOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<CollectionItem | null>(null)
   
   const [searchQuery, setSearchQuery] = useState('')
@@ -169,6 +171,16 @@ export default function CollectionView() {
           </SelectContent>
         </Select>
 
+        <Button 
+          variant="outline" 
+          onClick={() => setExportDialogOpen(true)} 
+          className="gap-2"
+          disabled={(items || []).filter(item => item.condition?.mediaGrade && item.condition?.sleeveGrade).length === 0}
+        >
+          <Export size={20} />
+          <span className="hidden sm:inline">Export</span>
+        </Button>
+
         <Button onClick={() => setAddDialogOpen(true)} className="gap-2">
           <Plus size={20} weight="bold" />
           Add Item
@@ -294,6 +306,12 @@ export default function CollectionView() {
           onDelete={handleDeleteItem}
         />
       )}
+
+      <ExportGradedItemsDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        items={items || []}
+      />
     </div>
   )
 }
