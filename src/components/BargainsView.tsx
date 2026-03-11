@@ -4,11 +4,12 @@ import { BargainCard as BargainCardType } from '@/lib/types'
 import { BargainCard } from './BargainCard'
 import { MarketplaceScanDialog } from './MarketplaceScanDialog'
 import { ScanScheduleDialog } from './ScanScheduleDialog'
+import { AgentConfigDialog } from './AgentConfigDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Sparkle, MagnifyingGlass, SortAscending, Funnel, Plus, Eye, EyeSlash, Clock } from '@phosphor-icons/react'
+import { Sparkle, MagnifyingGlass, SortAscending, Funnel, Plus, Eye, EyeSlash, Clock, Robot } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -24,6 +25,7 @@ export default function BargainsView() {
   const [minScore, setMinScore] = useState<number>(0)
   const [isScanDialogOpen, setIsScanDialogOpen] = useState(false)
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false)
+  const [isAgentConfigOpen, setIsAgentConfigOpen] = useState(false)
 
   const filteredAndSortedBargains = useMemo(() => {
     if (!bargains) return []
@@ -104,6 +106,15 @@ export default function BargainsView() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsAgentConfigOpen(true)}
+            className="gap-2 border-slate-700"
+          >
+            <Robot size={16} />
+            AI Agent
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -268,6 +279,10 @@ export default function BargainsView() {
       <ScanScheduleDialog
         open={isScheduleDialogOpen}
         onOpenChange={setIsScheduleDialogOpen}
+      />
+      <AgentConfigDialog
+        open={isAgentConfigOpen}
+        onOpenChange={setIsAgentConfigOpen}
       />
     </div>
   )

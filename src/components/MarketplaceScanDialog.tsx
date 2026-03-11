@@ -12,6 +12,7 @@ import { MagnifyingGlass, Sparkle, Warning, Info, CircleNotch } from '@phosphor-
 import { useKV } from '@github/spark/hooks'
 import { MarketplaceConfig, getDefaultMarketplaceConfig, searchAllMarketplaces } from '@/lib/marketplace-scanner'
 import { analyzeBargain } from '@/lib/bargain-detection-ai'
+import type { AgentConfig } from '@/components/AgentConfigDialog'
 import { BargainCard as BargainCardType } from '@/lib/types'
 import { toast } from 'sonner'
 
@@ -37,6 +38,7 @@ export function MarketplaceScanDialog({ open, onOpenChange }: MarketplaceScanDia
   const [discogsToken = ''] = useKV<string>('discogs-user-token', '')
   const [bargains = [], setBargains] = useKV<BargainCardType[]>('bargains', [])
   const [marketplaceConfig = getDefaultMarketplaceConfig()] = useKV<MarketplaceConfig>('marketplace-config', getDefaultMarketplaceConfig())
+  const [agentConfig] = useKV<AgentConfig>('agent-config')
 
   const canScan = searchQuery.trim().length > 0 && (
     (includeEbay && ebayAppId) || (includeDiscogs && discogsToken)
@@ -94,6 +96,7 @@ export function MarketplaceScanDialog({ open, onOpenChange }: MarketplaceScanDia
             listing,
             discogsConfig,
             useDiscogsPricing: !!discogsToken,
+            agentConfig,
           })
 
           if (analysis.bargainScore >= minScore) {

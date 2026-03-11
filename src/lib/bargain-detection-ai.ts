@@ -1,11 +1,13 @@
 import { BargainCard, BargainSignal, MarketListing, WatchlistItem } from './types'
 import { searchDiscogsMarketplace, DiscogsApiConfig, getDiscogsReleaseInfo } from './marketplace-discogs'
+import type { AgentConfig } from '@/components/AgentConfigDialog'
 
 export interface BargainAnalysisInput {
   listing: MarketListing
   watchlistItems?: WatchlistItem[]
   discogsConfig?: DiscogsApiConfig
   useDiscogsPricing?: boolean
+  agentConfig?: AgentConfig
 }
 
 export interface BargainAnalysisResult {
@@ -30,7 +32,15 @@ export interface BargainAnalysisResult {
 export async function analyzeBargainPotential(
   input: BargainAnalysisInput
 ): Promise<BargainAnalysisResult> {
-  const { listing, discogsConfig, useDiscogsPricing = false } = input
+  const { listing, discogsConfig, useDiscogsPricing = false, agentConfig } = input
+  
+  if (agentConfig && !agentConfig.enabled) {
+    return {
+      bargainScore: 0,
+      signals: [],
+      matchedRelease: undefined,
+    }
+  }
 
   let discogsPriceData: BargainAnalysisResult['discogsPriceData'] | undefined
   let discogsContext = ''
@@ -77,6 +87,58 @@ Discogs Market Data (${prices.length} comparable listings found):
     }
   }
 
+  const enabledSignals = agentConfig?.bargainDetection.enabled !== false
+    ? (agentConfig?.bargainDetection.signals || {
+        titleMismatch: true,
+        lowPrice: true,
+        wrongCategory: true,
+        jobLot: true,
+        promoKeywords: true,
+        poorMetadata: true,
+      })
+    : {};
+
+  const activeSignals = Object.entries(enabledSignals)
+    .filter(([_, enabled]) => enabled)
+    .map(([key]) => {
+      const signalMap: Record<string, { name: string; description: string }> = {
+        titleMismatch: {
+          name: 'title_mismatch',
+          description: "Title doesn't match known release format (misspellings, missing info, poor metadata)"
+        },
+        lowPrice: {
+          name: 'low_price',
+          description: `Price appears unusually low compared to typical vinyl prices${discogsPriceData ? ' (IMPORTANT: Use the Discogs market data above to determine this!)' : ''}`
+        },
+        wrongCategory: {
+          name: 'wrong_category',
+          description: 'May be miscategorized or listed as something else'
+        },
+        jobLot: {
+          name: 'job_lot',
+          description: 'Appears to be a bundle/lot with potentially high-value items visible'
+        },
+        promoKeywords: {
+          name: 'promo_keywords',
+          description: 'Contains promo, test pressing, white label, acetate, or rare variant keywords'
+        },
+        poorMetadata: {
+          name: 'poor_metadata',
+          description: "Seller clearly doesn't know what they have (generic descriptions, no catalog numbers)"
+        },
+      };
+      return signalMap[key];
+    })
+    .filter(Boolean);
+
+  const signalsList = activeSignals.map((signal, idx) => 
+    `${idx + 1}. **${signal.name}**: ${signal.description}`
+  ).join('\n');
+
+  const customInstructions = agentConfig?.bargainDetection.customPromptAdditions 
+    ? `\n\nAdditional Instructions:\n${agentConfig.bargainDetection.customPromptAdditions}`
+    : '';
+
   const analysisPrompt = spark.llmPrompt`You are a vinyl record bargain detection expert. Analyze this marketplace listing and identify signals that it might be undervalued or misdescribed.
 
 Listing Details:
@@ -87,17 +149,12 @@ Listing Details:
 - Source: ${listing.source}${discogsContext}
 
 Analyze for these bargain signals:
-1. **title_mismatch**: Title doesn't match known release format (misspellings, missing info, poor metadata)
-2. **low_price**: Price appears unusually low compared to typical vinyl prices${discogsPriceData ? ' (IMPORTANT: Use the Discogs market data above to determine this!)' : ''}
-3. **wrong_category**: May be miscategorized or listed as something else
-4. **job_lot**: Appears to be a bundle/lot with potentially high-value items visible
-5. **promo_keywords**: Contains promo, test pressing, white label, acetate, or rare variant keywords
-6. **poor_metadata**: Seller clearly doesn't know what they have (generic descriptions, no catalog numbers)
+${signalsList}
 
 For each signal detected:
 - Assign a score from 0-100 (higher = stronger signal)
 - Provide a brief description of what you detected
-- Include evidence from the listing
+- Include evidence from the listing${customInstructions}
 
 Also estimate:
 - Likely actual market value if identifiable${discogsPriceData ? ' (Use Discogs median price as strong guidance)' : ''}
@@ -127,8 +184,24 @@ Return ONLY valid JSON with this structure:
   } or null
 }`
 
-  const result = await spark.llm(analysisPrompt, 'gpt-4o', true)
+  const modelName = agentConfig?.aiPlatform === 'openai' || agentConfig?.aiPlatform === 'custom'
+    ? 'gpt-4o'
+    : 'gpt-4o';
+
+  const result = await spark.llm(analysisPrompt, modelName, true)
   const analysis = JSON.parse(result)
+  
+  const minScore = agentConfig?.bargainDetection.minScore ?? 0
+  if (analysis.bargainScore < minScore) {
+    return {
+      bargainScore: analysis.bargainScore || 0,
+      estimatedValue: analysis.estimatedValue || discogsPriceData?.medianPrice || undefined,
+      estimatedUpside: analysis.estimatedUpside || (discogsPriceData?.medianPrice ? Math.max(0, discogsPriceData.medianPrice - listing.price) : undefined),
+      signals: analysis.signals || [],
+      matchedRelease: analysis.matchedRelease || undefined,
+      discogsPriceData,
+    }
+  }
 
   return {
     bargainScore: analysis.bargainScore || 0,
