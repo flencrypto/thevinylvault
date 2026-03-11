@@ -3,6 +3,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { getGradeColor, getStatusColor, formatCurrency, generatePriceEstimate } from '@/lib/helpers'
 import { FORMAT_LABELS, STATUS_LABELS } from '@/lib/types'
+import { TrendBadge } from './TrendIndicator'
+import { useMemo } from 'react'
 
 interface ItemCardProps {
   item: CollectionItem
@@ -11,6 +13,26 @@ interface ItemCardProps {
 
 export function ItemCard({ item, onClick }: ItemCardProps) {
   const estimate = generatePriceEstimate(item)
+
+  const trendData = useMemo(() => {
+    if (!item.priceHistory || item.priceHistory.length < 2) {
+      return null
+    }
+
+    const sortedHistory = [...item.priceHistory].sort((a, b) => 
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    )
+
+    const oldest = sortedHistory[0].estimatedValue
+    const newest = sortedHistory[sortedHistory.length - 1].estimatedValue
+    const change = newest - oldest
+    const changePercent = (change / oldest) * 100
+
+    return {
+      changePercent,
+      direction: change > 0 ? 'up' : change < 0 ? 'down' : 'flat'
+    }
+  }, [item.priceHistory])
 
   return (
     <Card 
@@ -69,8 +91,13 @@ export function ItemCard({ item, onClick }: ItemCardProps) {
               </div>
               
               <div className="text-right">
-                <div className="text-lg font-bold text-accent">
-                  {formatCurrency(estimate.estimateMid, item.purchaseCurrency)}
+                <div className="flex items-center gap-2 justify-end mb-1">
+                  <div className="text-lg font-bold text-accent">
+                    {formatCurrency(estimate.estimateMid, item.purchaseCurrency)}
+                  </div>
+                  {trendData && (
+                    <TrendBadge value={trendData.changePercent} size="sm" />
+                  )}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   est. value

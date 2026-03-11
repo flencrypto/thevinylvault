@@ -5,6 +5,7 @@ import { ItemCard } from '@/components/ItemCard'
 import { AddItemDialog } from '@/components/AddItemDialog'
 import { ItemDetailDialog } from '@/components/ItemDetailDialog'
 import { ExportGradedItemsDialog } from '@/components/ExportGradedItemsDialog'
+import { MarketTrendsWidget } from '@/components/MarketTrendsWidget'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -12,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Plus, MagnifyingGlass, FunnelSimple, SortAscending, Disc, Export } from '@phosphor-icons/react'
 import { calculateCollectionValue, formatCurrency } from '@/lib/helpers'
+import { TrendIndicator } from './TrendIndicator'
 
 type SortOption = 'recent' | 'artist' | 'year' | 'value' | 'grade'
 
@@ -106,11 +108,40 @@ export default function CollectionView() {
     const totalValue = calculateCollectionValue(itemsArray)
     const ownedItems = itemsArray.filter((item) => item.status === 'owned')
     
+    let risingCount = 0
+    let fallingCount = 0
+    let totalTrendPercent = 0
+    let itemsWithTrends = 0
+
+    itemsArray.forEach(item => {
+      if (item.priceHistory && item.priceHistory.length >= 2) {
+        const sortedHistory = [...item.priceHistory].sort((a, b) => 
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        )
+        const oldest = sortedHistory[0].estimatedValue
+        const newest = sortedHistory[sortedHistory.length - 1].estimatedValue
+        const change = newest - oldest
+        const changePercent = (change / oldest) * 100
+
+        if (change > 0) risingCount++
+        else if (change < 0) fallingCount++
+
+        totalTrendPercent += changePercent
+        itemsWithTrends++
+      }
+    })
+
+    const avgTrend = itemsWithTrends > 0 ? totalTrendPercent / itemsWithTrends : 0
+    
     return {
       totalItems: itemsArray.length,
       ownedItems: ownedItems.length,
       totalValue,
       averageValue: itemsArray.length > 0 ? totalValue / itemsArray.length : 0,
+      risingCount,
+      fallingCount,
+      avgTrend,
+      itemsWithTrends,
     }
   }, [items])
 
@@ -124,7 +155,7 @@ export default function CollectionView() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-4 bg-gradient-to-br from-card to-card/50 border-border">
           <div className="text-sm text-muted-foreground mb-1">Total Items</div>
           <div className="text-3xl font-bold">{stats.totalItems}</div>
@@ -138,11 +169,30 @@ export default function CollectionView() {
         <Card className="p-4 bg-gradient-to-br from-card to-card/50 border-border">
           <div className="text-sm text-muted-foreground mb-1">Total Value</div>
           <div className="text-3xl font-bold">{formatCurrency(stats.totalValue)}</div>
+          {stats.avgTrend !== 0 && stats.itemsWithTrends > 0 && (
+            <div className="flex items-center gap-2 mt-2">
+              <TrendIndicator value={stats.avgTrend} showIcon showValue size="sm" />
+              <span className="text-xs text-muted-foreground">avg. trend</span>
+            </div>
+          )}
         </Card>
         
         <Card className="p-4 bg-gradient-to-br from-card to-card/50 border-border">
-          <div className="text-sm text-muted-foreground mb-1">Avg. Value</div>
-          <div className="text-3xl font-bold">{formatCurrency(stats.averageValue)}</div>
+          <div className="text-sm text-muted-foreground mb-1">Market Trends</div>
+          <div className="flex items-center gap-4 mt-2">
+            <div className="flex items-center gap-1">
+              <TrendIndicator value={10} showIcon={false} className="text-green-500" />
+              <span className="text-2xl font-bold text-green-500">{stats.risingCount}</span>
+            </div>
+            <div className="text-muted-foreground">|</div>
+            <div className="flex items-center gap-1">
+              <TrendIndicator value={-10} showIcon={false} className="text-red-500" />
+              <span className="text-2xl font-bold text-red-500">{stats.fallingCount}</span>
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">
+            rising / falling values
+          </div>
         </Card>
       </div>
 
@@ -251,6 +301,10 @@ export default function CollectionView() {
           </Button>
         )}
       </div>
+
+      {(items || []).length > 0 && stats.itemsWithTrends > 0 && (
+        <MarketTrendsWidget items={items || []} />
+      )}
 
       {filteredAndSortedItems.length > 0 ? (
         <div className="grid grid-cols-1 gap-4">
