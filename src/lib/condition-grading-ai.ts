@@ -26,12 +26,21 @@ export async function analyzeConditionFromImages(
   )
 
   const imageTypesSummary = images.map(img => img.type).join(', ')
+  
+  const imageDescriptions = images.map((img, index) => {
+    return `Image ${index + 1}: ${img.type} (${img.mimeType})`
+  }).join('\n')
 
   const prompt = spark.llmPrompt`You are an expert vinyl record grader specializing in condition assessment using the Goldmine grading standard.
 
+I have uploaded ${images.length} image(s) of a vinyl record for condition analysis.
+
 **Images Provided:**
-${imageTypesSummary}
+${imageDescriptions}
 (${images.length} total images: ${mediaImages.length} media images, ${sleeveImages.length} sleeve images)
+
+**Uploaded Image Data:**
+${images.map((img, idx) => `[Image ${idx + 1} - ${img.type}]: ${img.dataUrl}`).join('\n\n')}
 
 **Goldmine Grading Scale:**
 - **M (Mint)**: Perfect, unplayed condition. No marks, scratches, or defects. Still sealed or appears factory fresh.

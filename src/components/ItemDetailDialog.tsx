@@ -10,9 +10,11 @@ import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
-import { CollectionItem, Format, MediaGrade, SleeveGrade, SourceType, ItemStatus, STATUS_LABELS, FORMAT_LABELS, GRADE_DESCRIPTIONS } from '@/lib/types'
+import { CollectionItem, Format, MediaGrade, SleeveGrade, SourceType, ItemStatus, STATUS_LABELS, FORMAT_LABELS, GRADE_DESCRIPTIONS, ItemImage } from '@/lib/types'
 import { formatCurrency, formatDate, getGradeColor, generatePriceEstimate } from '@/lib/helpers'
-import { Pencil, Trash, Info, ChartBar, Calendar, MapPin, Package, CurrencyDollar, Record, Eye } from '@phosphor-icons/react'
+import { Pencil, Trash, Info, ChartBar, Calendar, MapPin, Package, CurrencyDollar, Record, Eye, Sparkle } from '@phosphor-icons/react'
+import { ConditionGradingDialog } from '@/components/ConditionGradingDialog'
+import { suggestGradingNotes } from '@/lib/condition-grading-ai'
 import { toast } from 'sonner'
 
 interface ItemDetailDialogProps {
@@ -26,9 +28,21 @@ interface ItemDetailDialogProps {
 export function ItemDetailDialog({ open, onOpenChange, item, onUpdate, onDelete }: ItemDetailDialogProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [conditionGradingDialogOpen, setConditionGradingDialogOpen] = useState(false)
   const [formData, setFormData] = useState(item)
 
   const estimate = generatePriceEstimate(item)
+  
+  const existingImages: ItemImage[] = item.images 
+    ? item.images.map((dataUrl, idx) => ({
+        id: `existing-${idx}`,
+        itemId: item.id,
+        type: 'front_cover' as const,
+        dataUrl,
+        mimeType: 'image/jpeg',
+        uploadedAt: item.createdAt
+      }))
+    : []
 
   const handleSave = () => {
     const updatedItem: CollectionItem = {
@@ -50,6 +64,39 @@ export function ItemDetailDialog({ open, onOpenChange, item, onUpdate, onDelete 
     setDeleteDialogOpen(false)
     onOpenChange(false)
     toast.success('Item deleted from collection')
+  }
+  
+  const handleConditionGraded = async (result: any, gradedImages: ItemImage[]) => {
+    const newFormData: any = { ...formData }
+    
+    if (result.mediaGrade) {
+      newFormData.condition = {
+        ...newFormData.condition,
+        mediaGrade: result.mediaGrade,
+        gradedAt: new Date().toISOString()
+      }
+    }
+    if (result.sleeveGrade) {
+      newFormData.condition = {
+        ...newFormData.condition,
+        sleeveGrade: result.sleeveGrade,
+        gradedAt: new Date().toISOString()
+      }
+    }
+
+    if (result.defects.length > 0) {
+      const generatedNotes = await suggestGradingNotes(result.defects)
+      newFormData.condition.gradingNotes = formData.condition.gradingNotes 
+        ? `${formData.condition.gradingNotes}\n\nAI Grading Update: ${generatedNotes}`
+        : generatedNotes
+    }
+    
+    if (gradedImages.length > 0) {
+      newFormData.images = gradedImages.map(img => img.dataUrl)
+    }
+
+    setFormData(newFormData)
+    toast.success('Condition grades applied from AI analysis')
   }
 
   const handleDialogOpenChange = (newOpen: boolean) => {
@@ -397,6 +444,18 @@ export function ItemDetailDialog({ open, onOpenChange, item, onUpdate, onDelete 
                 </div>
               ) : (
                 <div className="space-y-4">
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setConditionGradingDialogOpen(true)}
+                      className="gap-2"
+                    >
+                      <Sparkle size={18} />
+                      AI Grade Condition
+                    </Button>
+                  </div>
+                  
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="mediaGrade">Media Grade</Label>
@@ -562,6 +621,13 @@ export function ItemDetailDialog({ open, onOpenChange, item, onUpdate, onDelete 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      <ConditionGradingDialog
+        open={conditionGradingDialogOpen}
+        onOpenChange={setConditionGradingDialogOpen}
+        onApply={handleConditionGraded}
+        existingImages={existingImages}
+      />
     </>
   )
 }
