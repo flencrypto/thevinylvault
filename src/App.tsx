@@ -18,6 +18,7 @@ import { ValuationDialog } from '@/components/ValuationDialog'
 import { BatchValuationDialog } from '@/components/BatchValuationDialog'
 import { BatchListingDialog } from '@/components/BatchListingDialog'
 import { BatchNFTMintDialog } from '@/components/BatchNFTMintDialog'
+import { NFTTransactionHistoryDialog } from '@/components/NFTTransactionHistoryDialog'
 import { WalletConnect } from '@/components/WalletConnect'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -52,6 +53,7 @@ function App() {
   const [batchValuationOpen, setBatchValuationOpen] = useState(false)
   const [batchListingOpen, setBatchListingOpen] = useState(false)
   const [batchNFTMintOpen, setBatchNFTMintOpen] = useState(false)
+  const [selectedNFTForHistory, setSelectedNFTForHistory] = useState<MintedNFT | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [mainView, setMainView] = useState<MainView>('collection')
@@ -675,6 +677,7 @@ function App() {
                       itemTitle={item ? `${item.artistName} - ${item.releaseTitle}` : undefined}
                       itemImage={item?.images?.[0]}
                       onDelete={handleDeleteNFT}
+                      onViewHistory={setSelectedNFTForHistory}
                     />
                   )
                 })}
@@ -795,6 +798,20 @@ function App() {
         onOpenChange={setBatchNFTMintOpen}
         items={safeItems}
         onMintComplete={handleBatchNFTMintComplete}
+      />
+
+      <NFTTransactionHistoryDialog
+        open={!!selectedNFTForHistory}
+        onOpenChange={(open) => !open && setSelectedNFTForHistory(null)}
+        nft={selectedNFTForHistory}
+        itemTitle={
+          selectedNFTForHistory
+            ? (() => {
+                const item = safeItems.find(i => i.id === selectedNFTForHistory.itemId)
+                return item ? `${item.artistName} - ${item.releaseTitle}` : undefined
+              })()
+            : undefined
+        }
       />
     </div>
   )

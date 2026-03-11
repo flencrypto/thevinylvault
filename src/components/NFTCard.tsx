@@ -4,16 +4,17 @@ import { formatRoyaltyBadge } from '@/lib/solana-service'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Coins, ArrowSquareOut, Trash, CurrencyDollar, CheckCircle } from '@phosphor-icons/react'
+import { Coins, ArrowSquareOut, Trash, CurrencyDollar, CheckCircle, ArrowsLeftRight } from '@phosphor-icons/react'
 
 interface NFTCardProps {
   nft: MintedNFT
   itemTitle?: string
   itemImage?: string
   onDelete?: (nftId: string) => void
+  onViewHistory?: (nft: MintedNFT) => void
 }
 
-export function NFTCard({ nft, itemTitle, itemImage, onDelete }: NFTCardProps) {
+export function NFTCard({ nft, itemTitle, itemImage, onDelete, onViewHistory }: NFTCardProps) {
   const mintedDate = new Date(nft.mintedAt).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
@@ -98,13 +99,24 @@ export function NFTCard({ nft, itemTitle, itemImage, onDelete }: NFTCardProps) {
         </div>
 
         <div className="pt-2 flex gap-2">
+          {onViewHistory && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 gap-2"
+              onClick={() => onViewHistory(nft)}
+            >
+              <ArrowsLeftRight size={14} />
+              View History
+            </Button>
+          )}
           <Button
             size="sm"
             variant="outline"
             className="flex-1 gap-2"
             onClick={() => window.open(`https://magiceden.io/item-details/${nft.mintAddress}`, '_blank')}
           >
-            View on Magic Eden
+            Magic Eden
             <ArrowSquareOut size={14} />
           </Button>
         </div>

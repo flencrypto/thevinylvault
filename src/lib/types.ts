@@ -271,4 +271,30 @@ export interface NFTTransfer {
   currency?: string
 }
 
+export type NFTTransactionType = 
+  | 'mint' 
+  | 'transfer' 
+  | 'sale' 
+  | 'list' 
+  | 'delist' 
+  | 'burn'
+  | 'update_metadata'
+
+export interface NFTTransaction {
+  id: string
+  nftId: string
+  type: NFTTransactionType
+  fromAddress?: string
+  toAddress?: string
+  transactionSignature: string
+  blockTime: string
+  salePrice?: number
+  saleCurrency?: string
+  marketplace?: string
+  fee?: number
+  feePayer?: string
+  status: 'confirmed' | 'pending' | 'failed'
+  metadata?: Record<string, any>
+}
+
 export type SolanaNetwork = 'mainnet-beta' | 'devnet' | 'testnet'
