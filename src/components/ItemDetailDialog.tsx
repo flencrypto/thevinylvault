@@ -10,10 +10,11 @@ import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
-import { CollectionItem, Format, MediaGrade, SleeveGrade, SourceType, ItemStatus, STATUS_LABELS, FORMAT_LABELS, GRADE_DESCRIPTIONS, ItemImage } from '@/lib/types'
+import { CollectionItem, Format, MediaGrade, SleeveGrade, SourceType, ItemStatus, STATUS_LABELS, FORMAT_LABELS, GRADE_DESCRIPTIONS, ItemImage, PriceHistoryEntry } from '@/lib/types'
 import { formatCurrency, formatDate, getGradeColor, generatePriceEstimate } from '@/lib/helpers'
-import { Pencil, Trash, Info, ChartBar, Calendar, MapPin, Package, CurrencyDollar, Record, Eye, Sparkle } from '@phosphor-icons/react'
+import { Pencil, Trash, Info, ChartBar, Calendar, MapPin, Package, CurrencyDollar, Record, Eye, Sparkle, ClockCounterClockwise } from '@phosphor-icons/react'
 import { ConditionGradingDialog } from '@/components/ConditionGradingDialog'
+import { PriceHistoryChart } from '@/components/PriceHistoryChart'
 import { suggestGradingNotes } from '@/lib/condition-grading-ai'
 import { toast } from 'sonner'
 
@@ -45,8 +46,35 @@ export function ItemDetailDialog({ open, onOpenChange, item, onUpdate, onDelete 
     : []
 
   const handleSave = () => {
+    const currentEstimate = generatePriceEstimate(formData)
+    const previousEstimate = generatePriceEstimate(item)
+    
+    const conditionChanged = 
+      formData.condition.mediaGrade !== item.condition.mediaGrade ||
+      formData.condition.sleeveGrade !== item.condition.sleeveGrade
+    
+    const valueChanged = Math.abs(currentEstimate.estimateMid - previousEstimate.estimateMid) > 0.50
+    
+    let updatedPriceHistory = formData.priceHistory || []
+    
+    if (conditionChanged || valueChanged) {
+      const newHistoryEntry: PriceHistoryEntry = {
+        id: `price-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        estimatedValue: currentEstimate.estimateMid,
+        currency: formData.purchaseCurrency,
+        mediaGrade: formData.condition.mediaGrade,
+        sleeveGrade: formData.condition.sleeveGrade,
+        source: conditionChanged ? 'manual' : 'auto',
+        notes: conditionChanged ? 'Condition updated' : undefined
+      }
+      
+      updatedPriceHistory = [...updatedPriceHistory, newHistoryEntry]
+    }
+
     const updatedItem: CollectionItem = {
       ...formData,
+      priceHistory: updatedPriceHistory,
       updatedAt: new Date().toISOString(),
     }
     onUpdate(updatedItem)
@@ -151,7 +179,7 @@ export function ItemDetailDialog({ open, onOpenChange, item, onUpdate, onDelete 
           </DialogHeader>
 
           <Tabs defaultValue="details" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="details">
                 <Info size={16} className="mr-2" />
                 Details
@@ -163,6 +191,10 @@ export function ItemDetailDialog({ open, onOpenChange, item, onUpdate, onDelete 
               <TabsTrigger value="valuation">
                 <ChartBar size={16} className="mr-2" />
                 Valuation
+              </TabsTrigger>
+              <TabsTrigger value="history">
+                <ClockCounterClockwise size={16} className="mr-2" />
+                Price History
               </TabsTrigger>
             </TabsList>
 
@@ -596,6 +628,14 @@ export function ItemDetailDialog({ open, onOpenChange, item, onUpdate, onDelete 
                   </div>
                 </Card>
               )}
+            </TabsContent>
+
+            <TabsContent value="history" className="space-y-6 mt-6">
+              <PriceHistoryChart
+                priceHistory={item.priceHistory || []}
+                currency={item.purchaseCurrency}
+                currentValue={estimate.estimateMid}
+              />
             </TabsContent>
           </Tabs>
 

@@ -72,6 +72,7 @@ export interface CollectionItem {
   notes?: string
   condition: ItemCondition
   images?: string[]
+  priceHistory?: PriceHistoryEntry[]
   createdAt: string
   updatedAt: string
 }
@@ -84,6 +85,17 @@ export interface PriceEstimate {
   confidenceScore: number
   drivers?: Array<{ name: string; impact: number }>
   comparableSales?: number
+}
+
+export interface PriceHistoryEntry {
+  id: string
+  timestamp: string
+  estimatedValue: number
+  currency: string
+  mediaGrade: MediaGrade
+  sleeveGrade: SleeveGrade
+  source: 'manual' | 'auto' | 'market_update'
+  notes?: string
 }
 
 export interface CollectionStats {

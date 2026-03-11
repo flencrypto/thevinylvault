@@ -6,13 +6,14 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
-import { CollectionItem, Format, MediaGrade, SleeveGrade, SourceType, PressingCandidate, ItemImage } from '@/lib/types'
+import { CollectionItem, Format, MediaGrade, SleeveGrade, SourceType, PressingCandidate, ItemImage, PriceHistoryEntry } from '@/lib/types'
 import { ImageUpload } from '@/components/ImageUpload'
 import { PressingIdentificationDialog } from '@/components/PressingIdentificationDialog'
 import { ConditionGradingDialog } from '@/components/ConditionGradingDialog'
 import { ImageAnalysisDialog } from '@/components/ImageAnalysisDialog'
 import { suggestGradingNotes } from '@/lib/condition-grading-ai'
 import { generateListingNotes, ImageAnalysisOutput } from '@/lib/openai-vision-service'
+import { generatePriceEstimate } from '@/lib/helpers'
 import { Sparkle, Eye, ScanSmiley } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
@@ -81,6 +82,20 @@ export function AddItemDialog({ open, onOpenChange, onAdd }: AddItemDialogProps)
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
+
+    const initialEstimate = generatePriceEstimate(newItem)
+    const initialPriceHistory: PriceHistoryEntry = {
+      id: `price-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      estimatedValue: initialEstimate.estimateMid,
+      currency: newItem.purchaseCurrency,
+      mediaGrade: formData.mediaGrade,
+      sleeveGrade: formData.sleeveGrade,
+      source: 'manual',
+      notes: 'Initial valuation'
+    }
+
+    newItem.priceHistory = [initialPriceHistory]
 
     onAdd(newItem)
     toast.success(`Added ${formData.artistName} - ${formData.releaseTitle}`)
