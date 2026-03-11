@@ -422,7 +422,7 @@ export default function SettingsView() {
                 className="w-full"
               />
               <p className="text-xs text-slate-500">
-                Auto-match records to releases/pressings when identification confidence exceeds this threshold
+                Auto-match records to releases/pressings when identification confidence exceeds this threshold. Higher values require more certain matches, reducing false positives but potentially missing good matches. Lower values accept more uncertain matches for convenience.
               </p>
             </div>
 

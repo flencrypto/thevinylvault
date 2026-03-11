@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
+import { useConfidenceThresholds } from '@/hooks/use-confidence-thresholds'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,11 +11,12 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Progress } from '@/components/ui/progress'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ImageUpload } from '@/components/ImageUpload'
 import { ItemImage, Format, FORMAT_LABELS } from '@/lib/types'
 import { analyzeVinylImage } from '@/lib/image-analysis-ai'
 import { identifyPressing, ScoredPressingCandidate } from '@/lib/pressing-identification-ai'
-import { Sparkle, CheckCircle, Warning, Info, X, Database } from '@phosphor-icons/react'
+import { Sparkle, CheckCircle, Warning, Info, X, Database, Lightning } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import type { DiscogsApiConfig } from '@/lib/marketplace-discogs'
 
@@ -44,8 +46,26 @@ export function PressingIdentificationDialog({
   const [analysisProgress, setAnalysisProgress] = useState(0)
   const [candidates, setCandidates] = useState<ScoredPressingCandidate[]>([])
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null)
+  const [autoMatchedCandidate, setAutoMatchedCandidate] = useState<ScoredPressingCandidate | null>(null)
   const [discogsEnabled, setDiscogsEnabled] = useState(true)
   const [discogsConfig] = useKV<DiscogsApiConfig>('discogs-config', {})
+  const { getThreshold, shouldAutoMatch } = useConfidenceThresholds()
+
+  useEffect(() => {
+    if (candidates.length > 0) {
+      const topCandidate = candidates[0]
+      if (shouldAutoMatch('pressingIdentification', topCandidate.confidence)) {
+        setAutoMatchedCandidate(topCandidate)
+        setSelectedCandidate(topCandidate.id)
+        toast.success('Auto-matched pressing!', {
+          description: `${topCandidate.artistName} - ${topCandidate.releaseTitle} (${Math.round(topCandidate.confidence * 100)}% confidence)`,
+          duration: 5000,
+        })
+      } else {
+        setAutoMatchedCandidate(null)
+      }
+    }
+  }, [candidates, shouldAutoMatch])
 
   const handleAddImage = (image: ItemImage) => {
     setImages(prev => [...prev, image])
@@ -147,6 +167,7 @@ export function PressingIdentificationDialog({
     setOcrRunoutValues('')
     setCandidates([])
     setSelectedCandidate(null)
+    setAutoMatchedCandidate(null)
   }
 
   const handleNoneOfThese = () => {
@@ -197,6 +218,15 @@ export function PressingIdentificationDialog({
             Upload images, provide OCR runout values, and add manual hints to identify the specific pressing
           </DialogDescription>
         </DialogHeader>
+
+        {autoMatchedCandidate && (
+          <Alert className="bg-accent/10 border-accent">
+            <Lightning size={20} weight="fill" className="text-accent" />
+            <AlertDescription>
+              <span className="font-semibold">Auto-matched!</span> Top candidate meets the {getThreshold('pressingIdentification')}% confidence threshold and has been pre-selected. You can review other candidates or adjust the threshold in Settings.
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
           <div className="space-y-6">
@@ -355,11 +385,17 @@ export function PressingIdentificationDialog({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold">Ranked Candidates</h3>
-              {candidates.length > 0 && (
-                <Button variant="ghost" size="sm" onClick={handleNoneOfThese}>
-                  None of these
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="gap-1 text-xs">
+                  <Lightning size={14} />
+                  Auto-match: {getThreshold('pressingIdentification')}%+
+                </Badge>
+                {candidates.length > 0 && (
+                  <Button variant="ghost" size="sm" onClick={handleNoneOfThese}>
+                    None of these
+                  </Button>
+                )}
+              </div>
             </div>
 
             {candidates.length === 0 ? (
