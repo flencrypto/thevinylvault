@@ -16,6 +16,8 @@ import { NFTCard } from '@/components/NFTCard'
 import { AIChatDialog } from '@/components/AIChatDialog'
 import { ValuationDialog } from '@/components/ValuationDialog'
 import { BatchValuationDialog } from '@/components/BatchValuationDialog'
+import { BatchListingDialog } from '@/components/BatchListingDialog'
+import { BatchNFTMintDialog } from '@/components/BatchNFTMintDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -45,6 +47,8 @@ function App() {
   const [selectedItemForChat, setSelectedItemForChat] = useState<CollectionItem | null>(null)
   const [selectedItemForValuation, setSelectedItemForValuation] = useState<CollectionItem | null>(null)
   const [batchValuationOpen, setBatchValuationOpen] = useState(false)
+  const [batchListingOpen, setBatchListingOpen] = useState(false)
+  const [batchNFTMintOpen, setBatchNFTMintOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [mainView, setMainView] = useState<MainView>('collection')
@@ -112,6 +116,14 @@ function App() {
 
   const handleSaveListingDraft = (draft: ListingDraft) => {
     setListingDrafts(currentDrafts => [...(currentDrafts || []), draft])
+  }
+
+  const handleSaveBatchListings = (drafts: ListingDraft[]) => {
+    setListingDrafts(currentDrafts => [...(currentDrafts || []), ...drafts])
+  }
+
+  const handleBatchNFTMintComplete = (nfts: MintedNFT[]) => {
+    setMintedNFTs(currentNFTs => [...(currentNFTs || []), ...nfts])
   }
 
   const handleDeleteDraft = (draftId: string) => {
@@ -259,14 +271,32 @@ function App() {
                 AI Assistant
               </Button>
               {safeItems.length > 0 && (
-                <Button 
-                  variant="outline"
-                  onClick={() => setBatchValuationOpen(true)}
-                  className="gap-2"
-                >
-                  <ChartLine size={20} weight="bold" />
-                  Batch Valuation
-                </Button>
+                <>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setBatchValuationOpen(true)}
+                    className="gap-2"
+                  >
+                    <ChartLine size={20} weight="bold" />
+                    Batch Valuation
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setBatchListingOpen(true)}
+                    className="gap-2"
+                  >
+                    <Sparkle size={20} weight="fill" />
+                    Bulk Listings
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setBatchNFTMintOpen(true)}
+                    className="gap-2"
+                  >
+                    <Coins size={20} weight="fill" />
+                    Bulk Mint NFTs
+                  </Button>
+                </>
               )}
               <Button onClick={() => setAddDialogOpen(true)} className="gap-2">
                 <Plus size={20} />
@@ -747,6 +777,20 @@ function App() {
         open={batchValuationOpen}
         onOpenChange={setBatchValuationOpen}
         items={safeItems}
+      />
+
+      <BatchListingDialog
+        open={batchListingOpen}
+        onOpenChange={setBatchListingOpen}
+        items={safeItems}
+        onSave={handleSaveBatchListings}
+      />
+
+      <BatchNFTMintDialog
+        open={batchNFTMintOpen}
+        onOpenChange={setBatchNFTMintOpen}
+        items={safeItems}
+        onMintComplete={handleBatchNFTMintComplete}
       />
     </div>
   )

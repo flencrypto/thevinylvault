@@ -107,6 +107,8 @@ export interface ListingDraft {
   conditionSummary: string
   generatedByAi: boolean
   createdAt: string
+  updatedAt?: string
+  seoKeywords?: string[]
 }
 
 export type ImageType = 'front_cover' | 'back_cover' | 'label' | 'runout' | 'insert' | 'spine'
