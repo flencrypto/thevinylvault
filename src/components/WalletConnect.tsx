@@ -1,58 +1,23 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Wallet, CheckCircle, Warning, Copy, ArrowSquareOut, SignOut } from '@phosphor-icons/react'
 import { toast } from 'sonner'
-
-interface WalletConnection {
-  publicKey: string
-  walletType: 'phantom' | 'solflare' | 'backpack' | 'unknown'
-  connected: boolean
-}
+import { useWallet } from '@/hooks/use-wallet'
+import type { WalletConnection } from '@/hooks/use-wallet'
 
 interface WalletConnectProps {
-  onConnect?: (connection: WalletConnection) => void
-  onDisconnect?: () => void
   className?: string
 }
 
-declare global {
-  interface Window {
-    solana?: {
-      isPhantom?: boolean
-      connect: () => Promise<{ publicKey: { toString: () => string } }>
-      disconnect: () => Promise<void>
-      on: (event: string, callback: () => void) => void
-      off: (event: string, callback: () => void) => void
-      publicKey?: { toString: () => string }
-    }
-    solflare?: {
-      isSolflare?: boolean
-      connect: () => Promise<{ publicKey: { toString: () => string } }>
-      disconnect: () => Promise<void>
-      on: (event: string, callback: () => void) => void
-      off: (event: string, callback: () => void) => void
-      publicKey?: { toString: () => string }
-    }
-    backpack?: {
-      isBackpack?: boolean
-      connect: () => Promise<{ publicKey: { toString: () => string } }>
-      disconnect: () => Promise<void>
-      on: (event: string, callback: () => void) => void
-      off: (event: string, callback: () => void) => void
-      publicKey?: { toString: () => string }
-    }
-  }
-}
-
-export function WalletConnect({ onConnect, onDisconnect, className }: WalletConnectProps) {
-  const [connection, setConnection] = useState<WalletConnection | null>(null)
+export function WalletConnect({ className }: WalletConnectProps) {
+  const { wallet, isConnected, connect, disconnect } = useWallet()
   const [showWalletDialog, setShowWalletDialog] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
 
-  const detectWallets = () => {
+  const detectWallets = useCallback(() => {
     const wallets: Array<{ type: WalletConnection['walletType']; name: string; available: boolean }> = []
 
     if (window.solana?.isPhantom) {
@@ -66,13 +31,13 @@ export function WalletConnect({ onConnect, onDisconnect, className }: WalletConn
     }
 
     return wallets
-  }
+  }, [])
 
-  const connectWallet = async (walletType: WalletConnection['walletType']) => {
+  const connectWallet = useCallback(async (walletType: WalletConnection['walletType']) => {
     setIsConnecting(true)
     
     try {
-      let wallet: any
+      let walletProvider: any
       let walletName = 'Wallet'
 
       switch (walletType) {
@@ -84,7 +49,7 @@ export function WalletConnect({ onConnect, onDisconnect, className }: WalletConn
             setIsConnecting(false)
             return
           }
-          wallet = window.solana
+          walletProvider = window.solana
           walletName = 'Phantom'
           break
 
@@ -96,7 +61,7 @@ export function WalletConnect({ onConnect, onDisconnect, className }: WalletConn
             setIsConnecting(false)
             return
           }
-          wallet = window.solflare
+          walletProvider = window.solflare
           walletName = 'Solflare'
           break
 
@@ -108,7 +73,7 @@ export function WalletConnect({ onConnect, onDisconnect, className }: WalletConn
             setIsConnecting(false)
             return
           }
-          wallet = window.backpack
+          walletProvider = window.backpack
           walletName = 'Backpack'
           break
 
@@ -118,7 +83,7 @@ export function WalletConnect({ onConnect, onDisconnect, className }: WalletConn
           return
       }
 
-      const response = await wallet.connect()
+      const response = await walletProvider.connect()
       const publicKey = response.publicKey.toString()
 
       const newConnection: WalletConnection = {
@@ -127,18 +92,12 @@ export function WalletConnect({ onConnect, onDisconnect, className }: WalletConn
         connected: true,
       }
 
-      setConnection(newConnection)
+      connect(newConnection)
       setShowWalletDialog(false)
-      
-      localStorage.setItem('vinylvault_wallet', JSON.stringify(newConnection))
       
       toast.success(`${walletName} connected`, {
         description: `Address: ${publicKey.slice(0, 4)}...${publicKey.slice(-4)}`,
       })
-
-      if (onConnect) {
-        onConnect(newConnection)
-      }
     } catch (error) {
       console.error('Wallet connection error:', error)
       toast.error('Failed to connect wallet', {
@@ -147,109 +106,106 @@ export function WalletConnect({ onConnect, onDisconnect, className }: WalletConn
     } finally {
       setIsConnecting(false)
     }
-  }
+  }, [connect])
 
-  const disconnectWallet = async () => {
-    if (!connection) return
+  const disconnectWallet = useCallback(async () => {
+    if (!wallet) return
 
     try {
-      let wallet: any
+      let walletProvider: any
 
-      switch (connection.walletType) {
+      switch (wallet.walletType) {
         case 'phantom':
-          wallet = window.solana
+          walletProvider = window.solana
           break
         case 'solflare':
-          wallet = window.solflare
+          walletProvider = window.solflare
           break
         case 'backpack':
-          wallet = window.backpack
+          walletProvider = window.backpack
           break
       }
 
-      if (wallet?.disconnect) {
-        await wallet.disconnect()
+      if (walletProvider?.disconnect) {
+        await walletProvider.disconnect()
       }
 
-      setConnection(null)
-      localStorage.removeItem('vinylvault_wallet')
-      
+      disconnect()
       toast.success('Wallet disconnected')
-
-      if (onDisconnect) {
-        onDisconnect()
-      }
     } catch (error) {
       console.error('Disconnect error:', error)
       toast.error('Failed to disconnect wallet')
     }
-  }
+  }, [wallet, disconnect])
 
-  const copyAddress = () => {
-    if (connection?.publicKey) {
-      navigator.clipboard.writeText(connection.publicKey)
+  const copyAddress = useCallback(() => {
+    if (wallet?.publicKey) {
+      navigator.clipboard.writeText(wallet.publicKey)
       toast.success('Address copied to clipboard')
     }
-  }
+  }, [wallet])
 
-  const viewOnExplorer = () => {
-    if (connection?.publicKey) {
-      window.open(`https://explorer.solana.com/address/${connection.publicKey}?cluster=devnet`, '_blank')
+  const viewOnExplorer = useCallback(() => {
+    if (wallet?.publicKey) {
+      window.open(`https://explorer.solana.com/address/${wallet.publicKey}?cluster=devnet`, '_blank')
     }
-  }
+  }, [wallet])
 
-  const shortenAddress = (address: string) => {
+  const shortenAddress = useCallback((address: string) => {
     return `${address.slice(0, 4)}...${address.slice(-4)}`
-  }
-
-  useEffect(() => {
-    const savedConnection = localStorage.getItem('vinylvault_wallet')
-    if (savedConnection) {
-      try {
-        const parsed = JSON.parse(savedConnection) as WalletConnection
-        
-        let wallet: any
-        switch (parsed.walletType) {
-          case 'phantom':
-            wallet = window.solana
-            break
-          case 'solflare':
-            wallet = window.solflare
-            break
-          case 'backpack':
-            wallet = window.backpack
-            break
-        }
-
-        if (wallet?.publicKey) {
-          setConnection({
-            ...parsed,
-            publicKey: wallet.publicKey.toString(),
-          })
-          
-          if (onConnect) {
-            onConnect({
-              ...parsed,
-              publicKey: wallet.publicKey.toString(),
-            })
-          }
-        } else {
-          localStorage.removeItem('vinylvault_wallet')
-        }
-      } catch (error) {
-        console.error('Failed to restore wallet connection:', error)
-        localStorage.removeItem('vinylvault_wallet')
-      }
-    }
   }, [])
 
-  if (connection?.connected) {
+  useEffect(() => {
+    if (!wallet) return
+
+    let walletProvider: any
+    switch (wallet.walletType) {
+      case 'phantom':
+        walletProvider = window.solana
+        break
+      case 'solflare':
+        walletProvider = window.solflare
+        break
+      case 'backpack':
+        walletProvider = window.backpack
+        break
+    }
+
+    if (!walletProvider) return
+
+    const handleDisconnect = () => {
+      disconnect()
+      toast.info('Wallet disconnected')
+    }
+
+    const handleAccountChanged = () => {
+      if (walletProvider.publicKey) {
+        const updatedConnection: WalletConnection = {
+          ...wallet,
+          publicKey: walletProvider.publicKey.toString(),
+        }
+        connect(updatedConnection)
+      } else {
+        disconnect()
+      }
+    }
+
+    walletProvider.on('disconnect', handleDisconnect)
+    walletProvider.on('accountChanged', handleAccountChanged)
+
+    return () => {
+      walletProvider.off('disconnect', handleDisconnect)
+      walletProvider.off('accountChanged', handleAccountChanged)
+    }
+  }, [wallet, connect, disconnect])
+
+  if (isConnected && wallet) {
     return (
       <div className={className}>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="gap-2 px-3 py-1.5 bg-accent/10 border-accent/30">
             <CheckCircle size={16} weight="fill" className="text-accent" />
-            <span className="font-mono text-sm">{shortenAddress(connection.publicKey)}</span>
+            <span className="font-mono text-sm">{shortenAddress(wallet.publicKey)}</span>
           </Badge>
           <Button
             variant="ghost"
