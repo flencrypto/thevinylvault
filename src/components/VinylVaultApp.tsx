@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
@@ -19,11 +19,20 @@ import EbayDeletionChecklist from './ebay/EbayDeletionChecklist'
 import NewListingView from './NewListingView'
 import SettingsView from './SettingsView'
 import MarketplaceComparisonView from './MarketplaceComparisonView'
+import { scanSchedulerService } from '@/lib/scan-scheduler-service'
 
 type TabValue = 'new-listing' | 'collection' | 'bargains' | 'watchlist' | 'comparison' | 'nfts' | 'ebay-dev' | 'settings'
 
 export default function VinylVaultApp() {
   const [activeTab, setActiveTab] = useKV<TabValue>('vinyl-vault-active-tab', 'new-listing')
+
+  useEffect(() => {
+    scanSchedulerService.startScheduler()
+    
+    return () => {
+      scanSchedulerService.stopScheduler()
+    }
+  }, [])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 pb-20">
