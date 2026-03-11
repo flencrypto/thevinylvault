@@ -1,8 +1,11 @@
 import { BargainCard, BargainSignal, MarketListing, WatchlistItem } from './types'
+import { searchDiscogsMarketplace, DiscogsApiConfig, getDiscogsReleaseInfo } from './marketplace-discogs'
 
 export interface BargainAnalysisInput {
   listing: MarketListing
   watchlistItems?: WatchlistItem[]
+  discogsConfig?: DiscogsApiConfig
+  useDiscogsPricing?: boolean
 }
 
 export interface BargainAnalysisResult {
@@ -16,12 +19,63 @@ export interface BargainAnalysisResult {
     year: number
     catalogNumber?: string
   }
+  discogsPriceData?: {
+    lowestPrice?: number
+    medianPrice?: number
+    highestPrice?: number
+    sampleSize: number
+  }
 }
 
 export async function analyzeBargainPotential(
   input: BargainAnalysisInput
 ): Promise<BargainAnalysisResult> {
-  const { listing } = input
+  const { listing, discogsConfig, useDiscogsPricing = false } = input
+
+  let discogsPriceData: BargainAnalysisResult['discogsPriceData'] | undefined
+  let discogsContext = ''
+
+  if (useDiscogsPricing && discogsConfig && discogsConfig.userToken) {
+    try {
+      const titleParts = listing.title.split(/[-–—]/)
+      const searchQuery = titleParts.slice(0, 2).join(' ').trim()
+      
+      const discogsListings = await searchDiscogsMarketplace(
+        {
+          query: searchQuery,
+          per_page: 50,
+          sort: 'price',
+          sort_order: 'asc',
+        },
+        discogsConfig
+      )
+
+      if (discogsListings.length > 0) {
+        const prices = discogsListings.map(l => l.price).sort((a, b) => a - b)
+        const lowestPrice = prices[0]
+        const highestPrice = prices[prices.length - 1]
+        const medianPrice = prices[Math.floor(prices.length / 2)]
+
+        discogsPriceData = {
+          lowestPrice,
+          medianPrice,
+          highestPrice,
+          sampleSize: prices.length,
+        }
+
+        discogsContext = `
+
+Discogs Market Data (${prices.length} comparable listings found):
+- Lowest Price: ${listing.currency} ${lowestPrice.toFixed(2)}
+- Median Price: ${listing.currency} ${medianPrice.toFixed(2)}
+- Highest Price: ${listing.currency} ${highestPrice.toFixed(2)}
+- Current Listing Price: ${listing.currency} ${listing.price}
+- Price vs Median: ${listing.price < medianPrice ? `${((1 - listing.price / medianPrice) * 100).toFixed(0)}% BELOW median` : `${((listing.price / medianPrice - 1) * 100).toFixed(0)}% above median`}`
+      }
+    } catch (error) {
+      console.error('Failed to fetch Discogs pricing data:', error)
+    }
+  }
 
   const analysisPrompt = spark.llmPrompt`You are a vinyl record bargain detection expert. Analyze this marketplace listing and identify signals that it might be undervalued or misdescribed.
 
@@ -30,11 +84,11 @@ Listing Details:
 - Description: ${listing.description || 'No description provided'}
 - Price: ${listing.currency} ${listing.price}
 - Condition: ${listing.condition || 'Not specified'}
-- Source: ${listing.source}
+- Source: ${listing.source}${discogsContext}
 
 Analyze for these bargain signals:
 1. **title_mismatch**: Title doesn't match known release format (misspellings, missing info, poor metadata)
-2. **low_price**: Price appears unusually low compared to typical vinyl prices
+2. **low_price**: Price appears unusually low compared to typical vinyl prices${discogsPriceData ? ' (IMPORTANT: Use the Discogs market data above to determine this!)' : ''}
 3. **wrong_category**: May be miscategorized or listed as something else
 4. **job_lot**: Appears to be a bundle/lot with potentially high-value items visible
 5. **promo_keywords**: Contains promo, test pressing, white label, acetate, or rare variant keywords
@@ -46,9 +100,11 @@ For each signal detected:
 - Include evidence from the listing
 
 Also estimate:
-- Likely actual market value if identifiable
+- Likely actual market value if identifiable${discogsPriceData ? ' (Use Discogs median price as strong guidance)' : ''}
 - Potential upside (estimated value - listing price)
 - Matched release details if you can identify the record
+
+${discogsPriceData ? `CRITICAL: If the listing price is significantly below the Discogs median price, this is a STRONG bargain signal. Increase the bargain score accordingly.` : ''}
 
 Return ONLY valid JSON with this structure:
 {
@@ -76,10 +132,11 @@ Return ONLY valid JSON with this structure:
 
   return {
     bargainScore: analysis.bargainScore || 0,
-    estimatedValue: analysis.estimatedValue || undefined,
-    estimatedUpside: analysis.estimatedUpside || undefined,
+    estimatedValue: analysis.estimatedValue || discogsPriceData?.medianPrice || undefined,
+    estimatedUpside: analysis.estimatedUpside || (discogsPriceData?.medianPrice ? Math.max(0, discogsPriceData.medianPrice - listing.price) : undefined),
     signals: analysis.signals || [],
     matchedRelease: analysis.matchedRelease || undefined,
+    discogsPriceData,
   }
 }
 

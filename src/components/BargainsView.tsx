@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { BargainCard as BargainCardType } from '@/lib/types'
 import { BargainCard } from './BargainCard'
+import { MarketplaceScanDialog } from './MarketplaceScanDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -20,6 +21,7 @@ export default function BargainsView() {
   const [sortBy, setSortBy] = useState<SortOption>('score')
   const [filterView, setFilterView] = useState<FilterView>('all')
   const [minScore, setMinScore] = useState<number>(0)
+  const [isScanDialogOpen, setIsScanDialogOpen] = useState(false)
 
   const filteredAndSortedBargains = useMemo(() => {
     if (!bargains) return []
@@ -99,17 +101,28 @@ export default function BargainsView() {
             {(bargains || []).length} total • {unviewedCount} unviewed
           </p>
         </div>
-        {unviewedCount > 0 && (
+        <div className="flex gap-2">
           <Button
-            variant="outline"
+            variant="default"
             size="sm"
-            onClick={handleMarkAllViewed}
+            onClick={() => setIsScanDialogOpen(true)}
             className="gap-2"
           >
-            <Eye size={16} />
-            Mark All Viewed
+            <MagnifyingGlass size={16} weight="bold" />
+            Scan Markets
           </Button>
-        )}
+          {unviewedCount > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleMarkAllViewed}
+              className="gap-2"
+            >
+              <Eye size={16} />
+              Mark All Viewed
+            </Button>
+          )}
+        </div>
       </div>
 
       {highScoreCount > 0 && (
@@ -236,6 +249,11 @@ export default function BargainsView() {
           ))}
         </div>
       </AnimatePresence>
+
+      <MarketplaceScanDialog
+        open={isScanDialogOpen}
+        onOpenChange={setIsScanDialogOpen}
+      />
     </div>
   )
 }

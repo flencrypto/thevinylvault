@@ -95,6 +95,8 @@ export default function WatchlistView() {
       const totalItems = watchlistItems.length
       let processedItems = 0
       let newBargainsFound = 0
+
+      const discogsConfig = discogsToken ? { userToken: discogsToken } : undefined
       
       for (const watchItem of watchlistItems) {
         setScanStatus(`Scanning: ${watchItem.artistName || watchItem.searchQuery || 'Item'}...`)
@@ -110,7 +112,11 @@ export default function WatchlistView() {
           )
           
           for (const listing of listings) {
-            const analysis = await analyzeBargain({ listing })
+            const analysis = await analyzeBargain({ 
+              listing,
+              discogsConfig,
+              useDiscogsPricing: !!discogsToken,
+            })
             
             if (analysis.bargainScore >= scanSettings.minBargainScore) {
               const existingBargain = bargains.find(b => b.listing.externalId === listing.externalId)
