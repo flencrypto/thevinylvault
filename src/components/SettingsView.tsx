@@ -12,8 +12,9 @@ import { toast } from 'sonner'
 
 interface APIKeys {
   openaiKey: string
-  discorgsKey: string
-  discorgsSecret: string
+  discogsKey: string
+  discogsSecret: string
+  discogsUserToken: string
   ebayClientId: string
   ebayClientSecret: string
   ebayDevId: string
@@ -30,8 +31,9 @@ interface ConfidenceThresholds {
 export default function SettingsView() {
   const [apiKeys, setApiKeys] = useKV<APIKeys>('vinyl-vault-api-keys', {
     openaiKey: '',
-    discorgsKey: '',
-    discorgsSecret: '',
+    discogsKey: '',
+    discogsSecret: '',
+    discogsUserToken: '',
     ebayClientId: '',
     ebayClientSecret: '',
     ebayDevId: '',
@@ -40,8 +42,9 @@ export default function SettingsView() {
 
   const [showKeys, setShowKeys] = useState({
     openaiKey: false,
-    discorgsKey: false,
-    discorgsSecret: false,
+    discogsKey: false,
+    discogsSecret: false,
+    discogsUserToken: false,
     ebayClientId: false,
     ebayClientSecret: false,
     ebayDevId: false,
@@ -61,8 +64,9 @@ export default function SettingsView() {
   const handleKeyChange = (key: keyof APIKeys, value: string) => {
     setApiKeys((current = {
       openaiKey: '',
-      discorgsKey: '',
-      discorgsSecret: '',
+      discogsKey: '',
+      discogsSecret: '',
+      discogsUserToken: '',
       ebayClientId: '',
       ebayClientSecret: '',
       ebayDevId: '',
@@ -111,8 +115,9 @@ export default function SettingsView() {
   const clearAllKeys = () => {
     setApiKeys({
       openaiKey: '',
-      discorgsKey: '',
-      discorgsSecret: '',
+      discogsKey: '',
+      discogsSecret: '',
+      discogsUserToken: '',
       ebayClientId: '',
       ebayClientSecret: '',
       ebayDevId: '',
@@ -181,22 +186,52 @@ export default function SettingsView() {
               <h4 className="text-sm font-semibold text-white">Discogs API</h4>
               
               <div className="space-y-2">
-                <Label htmlFor="discogs-key" className="text-slate-200">Consumer Key</Label>
+                <Label htmlFor="discogs-user-token" className="text-slate-200">User Token (Recommended)</Label>
+                <div className="flex gap-2">
+                  <div className="flex-1 relative">
+                    <Input
+                      id="discogs-user-token"
+                      type={showKeys.discogsUserToken ? 'text' : 'password'}
+                      value={apiKeys?.discogsUserToken || ''}
+                      onChange={(e) => handleKeyChange('discogsUserToken', e.target.value)}
+                      placeholder="Enter your Discogs user token"
+                      className="bg-slate-950/50 border-slate-700 text-white pr-10"
+                    />
+                    <button
+                      onClick={() => toggleShowKey('discogsUserToken')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                    >
+                      {showKeys.discogsUserToken ? (
+                        <EyeSlash className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500 flex items-start gap-1">
+                  <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                  Generate a personal access token from <a href="https://www.discogs.com/settings/developers" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Discogs Developer Settings</a>
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="discogs-key" className="text-slate-200">Consumer Key (Optional)</Label>
                 <div className="flex gap-2">
                   <div className="flex-1 relative">
                     <Input
                       id="discogs-key"
-                      type={showKeys.discorgsKey ? 'text' : 'password'}
-                      value={apiKeys?.discorgsKey || ''}
-                      onChange={(e) => handleKeyChange('discorgsKey', e.target.value)}
+                      type={showKeys.discogsKey ? 'text' : 'password'}
+                      value={apiKeys?.discogsKey || ''}
+                      onChange={(e) => handleKeyChange('discogsKey', e.target.value)}
                       placeholder="Enter your Discogs consumer key"
                       className="bg-slate-950/50 border-slate-700 text-white pr-10"
                     />
                     <button
-                      onClick={() => toggleShowKey('discorgsKey')}
+                      onClick={() => toggleShowKey('discogsKey')}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
                     >
-                      {showKeys.discorgsKey ? (
+                      {showKeys.discogsKey ? (
                         <EyeSlash className="w-4 h-4" />
                       ) : (
                         <Eye className="w-4 h-4" />
@@ -207,22 +242,22 @@ export default function SettingsView() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="discogs-secret" className="text-slate-200">Consumer Secret</Label>
+                <Label htmlFor="discogs-secret" className="text-slate-200">Consumer Secret (Optional)</Label>
                 <div className="flex gap-2">
                   <div className="flex-1 relative">
                     <Input
                       id="discogs-secret"
-                      type={showKeys.discorgsSecret ? 'text' : 'password'}
-                      value={apiKeys?.discorgsSecret || ''}
-                      onChange={(e) => handleKeyChange('discorgsSecret', e.target.value)}
+                      type={showKeys.discogsSecret ? 'text' : 'password'}
+                      value={apiKeys?.discogsSecret || ''}
+                      onChange={(e) => handleKeyChange('discogsSecret', e.target.value)}
                       placeholder="Enter your Discogs consumer secret"
                       className="bg-slate-950/50 border-slate-700 text-white pr-10"
                     />
                     <button
-                      onClick={() => toggleShowKey('discorgsSecret')}
+                      onClick={() => toggleShowKey('discogsSecret')}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
                     >
-                      {showKeys.discorgsSecret ? (
+                      {showKeys.discogsSecret ? (
                         <EyeSlash className="w-4 h-4" />
                       ) : (
                         <Eye className="w-4 h-4" />
@@ -234,7 +269,7 @@ export default function SettingsView() {
               
               <p className="text-xs text-slate-500 flex items-start gap-1">
                 <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                Used for market data, pricing trends, and collection management
+                Used for pressing identification, market data, pricing trends, and bargain detection. User token is sufficient for most features.
               </p>
             </div>
 

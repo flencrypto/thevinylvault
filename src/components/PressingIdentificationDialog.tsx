@@ -48,7 +48,7 @@ export function PressingIdentificationDialog({
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null)
   const [autoMatchedCandidate, setAutoMatchedCandidate] = useState<ScoredPressingCandidate | null>(null)
   const [discogsEnabled, setDiscogsEnabled] = useState(true)
-  const [discogsConfig] = useKV<DiscogsApiConfig>('discogs-config', {})
+  const [apiKeys] = useKV<{ discogsUserToken?: string }>('vinyl-vault-api-keys', {})
   const { getThreshold, shouldAutoMatch } = useConfidenceThresholds()
 
   useEffect(() => {
@@ -122,7 +122,7 @@ export function PressingIdentificationDialog({
         ocrRunoutValues: runoutValues.length > 0 ? runoutValues : undefined,
         manualHints: hints,
         discogsSearchEnabled: discogsEnabled,
-        discogsApiToken: discogsConfig?.userToken,
+        discogsApiToken: apiKeys?.discogsUserToken,
       })
 
       setAnalysisProgress(100)
@@ -262,7 +262,7 @@ export function PressingIdentificationDialog({
                     Search Discogs database for accurate pressing data
                   </Label>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {discogsConfig?.userToken 
+                    {apiKeys?.discogsUserToken 
                       ? 'Discogs API configured - real database searches enabled' 
                       : 'No API token configured - using AI-generated suggestions'}
                   </p>
@@ -271,7 +271,7 @@ export function PressingIdentificationDialog({
                   id="discogs-toggle"
                   checked={discogsEnabled}
                   onCheckedChange={setDiscogsEnabled}
-                  disabled={!discogsConfig?.userToken}
+                  disabled={!apiKeys?.discogsUserToken}
                 />
               </div>
             </div>
