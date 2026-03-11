@@ -226,8 +226,8 @@ export default function CollectionView() {
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card className="p-3 sm:p-4 bg-gradient-to-br from-card to-card/50 border-border">
             <div className="text-xs sm:text-sm text-muted-foreground mb-1">Total Items</div>
-          <div className="text-2xl sm:text-3xl font-bold">{stats.totalItems}</div>
-        </Card>
+            <div className="text-2xl sm:text-3xl font-bold">{stats.totalItems}</div>
+          </Card>
         
         <Card className="p-3 sm:p-4 bg-gradient-to-br from-card to-card/50 border-border">
           <div className="text-xs sm:text-sm text-muted-foreground mb-1">In Collection</div>
@@ -399,17 +399,17 @@ export default function CollectionView() {
           <Select value={gradeFilter} onValueChange={(value: MediaGrade | 'all') => setGradeFilter(value)}>
             <SelectTrigger className="w-full sm:w-[140px] h-9 text-xs">
               <SelectValue placeholder="Grade" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Grades</SelectItem>
-            <SelectItem value="M">Mint</SelectItem>
-            <SelectItem value="NM">Near Mint</SelectItem>
-            <SelectItem value="EX">Excellent</SelectItem>
-            <SelectItem value="VG+">Very Good+</SelectItem>
-            <SelectItem value="VG">Very Good</SelectItem>
-            <SelectItem value="G">Good</SelectItem>
-          </SelectContent>
-        </Select>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Grades</SelectItem>
+              <SelectItem value="M">Mint</SelectItem>
+              <SelectItem value="NM">Near Mint</SelectItem>
+              <SelectItem value="EX">Excellent</SelectItem>
+              <SelectItem value="VG+">Very Good+</SelectItem>
+              <SelectItem value="VG">Very Good</SelectItem>
+              <SelectItem value="G">Good</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {activeFiltersCount > 0 && (
@@ -502,7 +502,8 @@ export default function CollectionView() {
         onDismissAll={handleDismissAllAlerts}
         onViewItem={handleViewItemFromAlert}
       />
-      </div>
+    </div>
+    </div>
     </div>
   )
 }
