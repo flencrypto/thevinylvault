@@ -35,17 +35,17 @@ export default function VinylVaultApp() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 pb-20 md:pb-24">
       <div className="max-w-[1800px] mx-auto">
-        <header className="sticky top-0 z-40 backdrop-blur-lg bg-slate-950/90 border-b border-slate-800">
-          <div className="px-4 py-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-accent to-accent/60 rounded-xl flex items-center justify-center">
-                <Disc className="w-6 h-6 text-accent-foreground" weight="bold" />
+        <header className="sticky top-0 z-40 backdrop-blur-lg bg-slate-950/90 border-b border-slate-800 safe-area-inset-top">
+          <div className="px-3 sm:px-4 py-3 sm:py-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-accent to-accent/60 rounded-xl flex items-center justify-center flex-shrink-0">
+                <Disc className="w-5 h-5 sm:w-6 sm:h-6 text-accent-foreground" weight="bold" />
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-white">VinylVault</h1>
-                <p className="text-xs text-slate-400">Record Management</p>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-lg sm:text-xl font-bold text-white truncate">VinylVault</h1>
+                <p className="text-[10px] sm:text-xs text-slate-400 truncate">Record Management</p>
               </div>
             </div>
           </div>
@@ -80,64 +80,64 @@ export default function VinylVaultApp() {
           </Tabs>
         </main>
 
-        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800 safe-area-inset-bottom">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800 pb-safe-area-inset-bottom">
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)}>
-            <TabsList className="w-full h-16 grid grid-cols-8 bg-transparent border-0 p-0 gap-0">
+            <TabsList className="w-full min-h-[64px] md:h-20 grid grid-cols-8 bg-transparent border-0 p-0 gap-0">
               <TabsTrigger 
                 value="new-listing" 
-                className="flex-col gap-1 h-full rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-1"
+                className="flex-col gap-0.5 sm:gap-1 h-full min-h-[64px] md:min-h-[80px] rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-0.5 sm:px-1 touch-manipulation active:scale-95 transition-transform"
               >
-                <Upload className="w-5 h-5" weight="fill" />
-                <span className="text-[10px] leading-tight">New</span>
+                <Upload className="w-5 h-5 sm:w-6 sm:h-6" weight="fill" />
+                <span className="text-[9px] sm:text-[10px] leading-tight">New</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="collection" 
-                className="flex-col gap-1 h-full rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-1"
+                className="flex-col gap-0.5 sm:gap-1 h-full min-h-[64px] md:min-h-[80px] rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-0.5 sm:px-1 touch-manipulation active:scale-95 transition-transform"
               >
-                <Disc className="w-5 h-5" weight="fill" />
-                <span className="text-[10px] leading-tight">Collection</span>
+                <Disc className="w-5 h-5 sm:w-6 sm:h-6" weight="fill" />
+                <span className="text-[9px] sm:text-[10px] leading-tight">Collection</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="bargains" 
-                className="flex-col gap-1 h-full rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-1"
+                className="flex-col gap-0.5 sm:gap-1 h-full min-h-[64px] md:min-h-[80px] rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-0.5 sm:px-1 touch-manipulation active:scale-95 transition-transform"
               >
-                <Sparkle className="w-5 h-5" weight="fill" />
-                <span className="text-[10px] leading-tight">Bargains</span>
+                <Sparkle className="w-5 h-5 sm:w-6 sm:h-6" weight="fill" />
+                <span className="text-[9px] sm:text-[10px] leading-tight">Bargains</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="watchlist" 
-                className="flex-col gap-1 h-full rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-1"
+                className="flex-col gap-0.5 sm:gap-1 h-full min-h-[64px] md:min-h-[80px] rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-0.5 sm:px-1 touch-manipulation active:scale-95 transition-transform"
               >
-                <Eye className="w-5 h-5" weight="fill" />
-                <span className="text-[10px] leading-tight">Watch</span>
+                <Eye className="w-5 h-5 sm:w-6 sm:h-6" weight="fill" />
+                <span className="text-[9px] sm:text-[10px] leading-tight">Watch</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="comparison" 
-                className="flex-col gap-1 h-full rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-1"
+                className="flex-col gap-0.5 sm:gap-1 h-full min-h-[64px] md:min-h-[80px] rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-0.5 sm:px-1 touch-manipulation active:scale-95 transition-transform"
               >
-                <ArrowsLeftRight className="w-5 h-5" weight="fill" />
-                <span className="text-[10px] leading-tight">Compare</span>
+                <ArrowsLeftRight className="w-5 h-5 sm:w-6 sm:h-6" weight="fill" />
+                <span className="text-[9px] sm:text-[10px] leading-tight">Compare</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="nfts" 
-                className="flex-col gap-1 h-full rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-1"
+                className="flex-col gap-0.5 sm:gap-1 h-full min-h-[64px] md:min-h-[80px] rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-0.5 sm:px-1 touch-manipulation active:scale-95 transition-transform"
               >
-                <Cube className="w-5 h-5" weight="fill" />
-                <span className="text-[10px] leading-tight">NFTs</span>
+                <Cube className="w-5 h-5 sm:w-6 sm:h-6" weight="fill" />
+                <span className="text-[9px] sm:text-[10px] leading-tight">NFTs</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="ebay-dev" 
-                className="flex-col gap-1 h-full rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-1"
+                className="flex-col gap-0.5 sm:gap-1 h-full min-h-[64px] md:min-h-[80px] rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-0.5 sm:px-1 touch-manipulation active:scale-95 transition-transform"
               >
-                <Code className="w-5 h-5" weight="fill" />
-                <span className="text-[10px] leading-tight">eBay</span>
+                <Code className="w-5 h-5 sm:w-6 sm:h-6" weight="fill" />
+                <span className="text-[9px] sm:text-[10px] leading-tight">eBay</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="settings" 
-                className="flex-col gap-1 h-full rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-1"
+                className="flex-col gap-0.5 sm:gap-1 h-full min-h-[64px] md:min-h-[80px] rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-0.5 sm:px-1 touch-manipulation active:scale-95 transition-transform"
               >
-                <Gear className="w-5 h-5" weight="fill" />
-                <span className="text-[10px] leading-tight">Settings</span>
+                <Gear className="w-5 h-5 sm:w-6 sm:h-6" weight="fill" />
+                <span className="text-[9px] sm:text-[10px] leading-tight">Settings</span>
               </TabsTrigger>
             </TabsList>
           </Tabs>
