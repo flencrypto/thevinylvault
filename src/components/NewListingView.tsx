@@ -10,11 +10,12 @@ import { Separator } from '@/components/ui/separator'
 import { ImageUpload } from '@/components/ImageUpload'
 import BarcodeScannerWidget, { BarcodeScanResult } from '@/components/BarcodeScannerWidget'
 import { ItemImage, Format, MediaGrade, SleeveGrade } from '@/lib/types'
-import { 
-  Upload, 
-  Sparkle, 
-  CheckCircle, 
-  Warning, 
+import {
+  Upload,
+  Sparkle,
+  Trophy,
+  CheckCircle,
+  Warning,
   Info,
   Image as ImageIcon,
   CircleNotch,
@@ -32,6 +33,7 @@ import { ListingPreviewDialog } from './ListingPreviewDialog'
 import DynamicPricingDialog from './DynamicPricingDialog'
 import ABTestingDialog from './ABTestingDialog'
 import { CollectionItem } from '@/lib/types'
+import { ABTest } from '@/lib/ab-testing-types'
 import { useKV } from '@github/spark/hooks'
 import { AutoPricingRecommendation } from '@/lib/dynamic-pricing-ai'
 
@@ -65,6 +67,8 @@ interface ListingContent {
 
 export default function NewListingView() {
   const [items, setItems] = useKV<CollectionItem[]>('vinyl-vault-collection', [])
+  const [abTests] = useKV<ABTest[]>('vinyl-vault-ab-tests', [])
+  const [autoOptimize] = useKV<boolean>('vinyl-vault-auto-optimize-titles', false)
   
   const [images, setImages] = useState<ItemImage[]>([])
   const [analysisStep, setAnalysisStep] = useState<AnalysisStep>('idle')
@@ -75,6 +79,7 @@ export default function NewListingView() {
   const [showPricingDialog, setShowPricingDialog] = useState(false)
   const [showABTestDialog, setShowABTestDialog] = useState(false)
   const [pricingRecommendation, setPricingRecommendation] = useState<AutoPricingRecommendation | null>(null)
+  const [usedPatternOptimization, setUsedPatternOptimization] = useState(false)
   
   const [manualOverride, setManualOverride] = useState(false)
   const [manualData, setManualData] = useState({
@@ -163,7 +168,10 @@ export default function NewListingView() {
       }
       
       const keywords = await generateSEOKeywords(tempItem, 'ebay')
-      const listingCopy = await generateListingCopy(tempItem, 'ebay', keywords)
+      const listingCopy = await generateListingCopy(tempItem, 'ebay', keywords, {
+        autoOptimizeEnabled: autoOptimize,
+        completedABTests: (abTests || []).filter(t => t.status === 'completed')
+      })
       const priceEstimate = generatePriceEstimate(tempItem)
       const suggestedPrice = suggestListingPrice(priceEstimate, tempItem.condition.mediaGrade)
       
@@ -174,6 +182,14 @@ export default function NewListingView() {
         conditionSummary: gradingNotes,
         suggestedPrice
       })
+      
+      setUsedPatternOptimization(listingCopy.usedPatternOptimization || false)
+      
+      if (listingCopy.usedPatternOptimization && autoOptimize) {
+        toast.success('Title optimized using winning A/B test patterns!', {
+          description: 'This title follows your best-performing patterns'
+        })
+      }
       
       setAnalysisStep('complete')
       
@@ -455,15 +471,23 @@ export default function NewListingView() {
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <Label className="text-xs text-muted-foreground">Listing Title</Label>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => setShowABTestDialog(true)}
-                        className="gap-1 h-7 text-xs"
-                      >
-                        <Sparkle className="w-3 h-3" weight="fill" />
-                        A/B Test
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        {usedPatternOptimization && (
+                          <Badge variant="secondary" className="gap-1 bg-accent/10 text-accent border-accent/20">
+                            <Trophy size={12} weight="fill" />
+                            Pattern Optimized
+                          </Badge>
+                        )}
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => setShowABTestDialog(true)}
+                          className="gap-1 h-7 text-xs"
+                        >
+                          <Sparkle className="w-3 h-3" weight="fill" />
+                          A/B Test
+                        </Button>
+                      </div>
                     </div>
                     <p className="font-semibold">{listingContent.title}</p>
                   </div>

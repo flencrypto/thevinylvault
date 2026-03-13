@@ -122,15 +122,20 @@ export async function generateListingCopy(
   options?: {
     usePatternOptimization?: boolean
     completedABTests?: ABTest[]
+    autoOptimizeEnabled?: boolean
   }
-): Promise<{ title: string; subtitle?: string; description: string }> {
+): Promise<{ title: string; subtitle?: string; description: string; usedPatternOptimization?: boolean }> {
   let optimizedTitle: string | null = null
+  let usedPatternOptimization = false
 
-  if (options?.usePatternOptimization && options?.completedABTests && options.completedABTests.length > 0) {
+  const shouldOptimize = options?.usePatternOptimization || options?.autoOptimizeEnabled
+
+  if (shouldOptimize && options?.completedABTests && options.completedABTests.length > 0) {
     try {
       const analysis = await analyzeWinningPatterns(options.completedABTests)
       if (analysis.topPatterns.length > 0) {
         optimizedTitle = await generateOptimizedTitleFromPatterns(item, channel, analysis.topPatterns)
+        usedPatternOptimization = true
       }
     } catch (error) {
       console.error('Failed to use pattern optimization, falling back to standard generation:', error)
@@ -226,6 +231,7 @@ CRITICAL: Ensure title is exactly 80 characters or less. Ensure subtitle is 55 c
       title: optimizedTitle || parsed.title || generateFallbackTitle(item),
       subtitle: parsed.subtitle,
       description: parsed.description || generateFallbackDescription(item),
+      usedPatternOptimization,
     }
   } catch (error) {
     console.error('LLM generation failed, using fallback:', error)
@@ -233,6 +239,7 @@ CRITICAL: Ensure title is exactly 80 characters or less. Ensure subtitle is 55 c
       title: optimizedTitle || generateFallbackTitle(item),
       subtitle: channel === 'ebay' ? `${item.condition.mediaGrade}/${item.condition.sleeveGrade} ${item.format} ${item.year}` : undefined,
       description: generateFallbackDescription(item),
+      usedPatternOptimization,
     }
   }
 }
