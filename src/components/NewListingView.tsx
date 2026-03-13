@@ -30,6 +30,7 @@ import { generatePriceEstimate } from '@/lib/helpers'
 import { toast } from 'sonner'
 import { ListingPreviewDialog } from './ListingPreviewDialog'
 import DynamicPricingDialog from './DynamicPricingDialog'
+import ABTestingDialog from './ABTestingDialog'
 import { CollectionItem } from '@/lib/types'
 import { useKV } from '@github/spark/hooks'
 import { AutoPricingRecommendation } from '@/lib/dynamic-pricing-ai'
@@ -72,6 +73,7 @@ export default function NewListingView() {
   const [listingContent, setListingContent] = useState<ListingContent | null>(null)
   const [showPreview, setShowPreview] = useState(false)
   const [showPricingDialog, setShowPricingDialog] = useState(false)
+  const [showABTestDialog, setShowABTestDialog] = useState(false)
   const [pricingRecommendation, setPricingRecommendation] = useState<AutoPricingRecommendation | null>(null)
   
   const [manualOverride, setManualOverride] = useState(false)
@@ -451,7 +453,18 @@ export default function NewListingView() {
 
                 <div className="space-y-4">
                   <div>
-                    <Label className="text-xs text-muted-foreground">Listing Title</Label>
+                    <div className="flex items-center justify-between mb-1">
+                      <Label className="text-xs text-muted-foreground">Listing Title</Label>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => setShowABTestDialog(true)}
+                        className="gap-1 h-7 text-xs"
+                      >
+                        <Sparkle className="w-3 h-3" weight="fill" />
+                        A/B Test
+                      </Button>
+                    </div>
                     <p className="font-semibold">{listingContent.title}</p>
                   </div>
 
@@ -566,6 +579,40 @@ export default function NewListingView() {
             updatedAt: new Date().toISOString()
           }}
           onPriceAccept={handlePriceAccept}
+        />
+      )}
+
+      {showABTestDialog && analysisResult && conditionResult && (
+        <ABTestingDialog
+          open={showABTestDialog}
+          onOpenChange={setShowABTestDialog}
+          item={{
+            id: `temp-${Date.now()}`,
+            collectionId: 'temp',
+            artistName: analysisResult.artistName,
+            releaseTitle: analysisResult.releaseTitle,
+            format: analysisResult.format,
+            year: analysisResult.year,
+            country: analysisResult.country,
+            catalogNumber: analysisResult.catalogNumber,
+            purchaseCurrency: 'USD',
+            sourceType: 'unknown',
+            quantity: 1,
+            status: 'owned',
+            condition: {
+              mediaGrade: conditionResult.mediaGrade,
+              sleeveGrade: conditionResult.sleeveGrade,
+              gradingStandard: 'Goldmine',
+              gradingNotes: conditionResult.gradingNotes,
+              gradedAt: new Date().toISOString()
+            },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }}
+          channel="ebay"
+          onSelectTitle={(title) => {
+            setListingContent(prev => prev ? { ...prev, title } : null)
+          }}
         />
       )}
     </div>
