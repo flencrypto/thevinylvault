@@ -1,4 +1,6 @@
 import { CollectionItem, MediaGrade, PriceEstimate, ItemImage } from './types'
+import { ABTest } from './ab-testing-types'
+import { analyzeWinningPatterns, generateOptimizedTitleFromPatterns } from './title-pattern-optimizer'
 
 declare const spark: Window['spark']
 
@@ -116,8 +118,28 @@ function inferGenreKeywords(artistName: string): string[] {
 export async function generateListingCopy(
   item: CollectionItem,
   channel: 'ebay' | 'discogs' | 'shopify',
-  keywords: string[]
+  keywords: string[],
+  options?: {
+    usePatternOptimization?: boolean
+    completedABTests?: ABTest[]
+  }
 ): Promise<{ title: string; subtitle?: string; description: string }> {
+  let optimizedTitle: string | null = null
+
+  if (options?.usePatternOptimization && options?.completedABTests && options.completedABTests.length > 0) {
+    try {
+      const analysis = await analyzeWinningPatterns(options.completedABTests)
+      if (analysis.topPatterns.length > 0) {
+        optimizedTitle = await generateOptimizedTitleFromPatterns(item, channel, analysis.topPatterns)
+      }
+    } catch (error) {
+      console.error('Failed to use pattern optimization, falling back to standard generation:', error)
+    }
+  }
+  const titleInstruction = optimizedTitle 
+    ? `USE THIS EXACT TITLE (already optimized from winning patterns): "${optimizedTitle}"`
+    : `Generate a title following the requirements below`
+
   const prompt = spark.llmPrompt`You are an expert vinyl record dealer with 20+ years of experience creating high-converting marketplace listings that balance SEO optimization with authentic expertise.
 
 ITEM DETAILS:
@@ -135,6 +157,7 @@ MARKETPLACE: ${channel.toUpperCase()}
 TARGET KEYWORDS: ${keywords.join(', ')}
 
 LISTING TITLE REQUIREMENTS:
+${titleInstruction}
 - Maximum 80 characters for eBay (critical for mobile visibility)
 - Include: Artist, Title, Format, Year OR Catalog Number (not both - space is limited)
 - Include condition grade if space allows (e.g., "VG+/VG")
@@ -200,14 +223,14 @@ CRITICAL: Ensure title is exactly 80 characters or less. Ensure subtitle is 55 c
     const parsed = JSON.parse(response)
     
     return {
-      title: parsed.title || generateFallbackTitle(item),
+      title: optimizedTitle || parsed.title || generateFallbackTitle(item),
       subtitle: parsed.subtitle,
       description: parsed.description || generateFallbackDescription(item),
     }
   } catch (error) {
     console.error('LLM generation failed, using fallback:', error)
     return {
-      title: generateFallbackTitle(item),
+      title: optimizedTitle || generateFallbackTitle(item),
       subtitle: channel === 'ebay' ? `${item.condition.mediaGrade}/${item.condition.sleeveGrade} ${item.format} ${item.year}` : undefined,
       description: generateFallbackDescription(item),
     }

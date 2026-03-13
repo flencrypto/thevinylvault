@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { CollectionItem, ListingDraft } from '@/lib/types'
+import { ABTest } from '@/lib/ab-testing-types'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,10 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Sparkle, Copy, Check, MagicWand, ArrowsClockwise } from '@phosphor-icons/react'
+import { Sparkle, Copy, Check, MagicWand, ArrowsClockwise, Trophy } from '@phosphor-icons/react'
 import { formatCurrency, generatePriceEstimate } from '@/lib/helpers'
 import { generateListingCopy, generateSEOKeywords, suggestListingPrice } from '@/lib/listing-ai'
+import TitlePatternOptimizerDialog from './TitlePatternOptimizerDialog'
 import { toast } from 'sonner'
+import { useKV } from '@github/spark/hooks'
 
 interface ListingGeneratorProps {
   open: boolean
@@ -22,11 +25,14 @@ interface ListingGeneratorProps {
 }
 
 export function ListingGenerator({ open, onOpenChange, item, onSave }: ListingGeneratorProps) {
+  const [abTests] = useKV<ABTest[]>('vinyl-vault-ab-tests', [])
+  const [autoOptimize] = useKV<boolean>('vinyl-vault-auto-optimize-titles', false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [generationProgress, setGenerationProgress] = useState(0)
   const [draft, setDraft] = useState<Partial<ListingDraft>>({})
   const [channel, setChannel] = useState<'ebay' | 'discogs' | 'shopify'>('ebay')
   const [copiedField, setCopiedField] = useState<string | null>(null)
+  const [showPatternOptimizer, setShowPatternOptimizer] = useState(false)
 
   if (!item) return null
 
@@ -44,7 +50,11 @@ export function ListingGenerator({ open, onOpenChange, item, onSave }: ListingGe
       setGenerationProgress(40)
       await new Promise(resolve => setTimeout(resolve, 300))
 
-      const { title, subtitle, description } = await generateListingCopy(item, channel, keywords)
+      const completedTests = (abTests || []).filter(t => t.status === 'completed')
+      const { title, subtitle, description } = await generateListingCopy(item, channel, keywords, {
+        usePatternOptimization: autoOptimize,
+        completedABTests: completedTests,
+      })
       setGenerationProgress(70)
       await new Promise(resolve => setTimeout(resolve, 300))
 
@@ -134,7 +144,7 @@ export function ListingGenerator({ open, onOpenChange, item, onSave }: ListingGe
         </DialogHeader>
 
         <div className="space-y-6">
-          <div className="flex gap-4">
+          <div className="flex gap-3">
             <div className="flex-1">
               <Label>Marketplace Channel</Label>
               <Select value={channel} onValueChange={(v) => setChannel(v as typeof channel)}>
@@ -148,17 +158,32 @@ export function ListingGenerator({ open, onOpenChange, item, onSave }: ListingGe
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex-1 flex items-end">
+            <div className="flex-1 flex items-end gap-2">
               <Button 
                 onClick={handleGenerate} 
                 disabled={isGenerating}
-                className="w-full gap-2"
+                className="flex-1 gap-2"
               >
                 <MagicWand size={20} />
                 {isGenerating ? 'Generating...' : 'Generate Listing Copy'}
               </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowPatternOptimizer(true)}
+                className="gap-2"
+                title="View winning title patterns"
+              >
+                <Trophy size={20} weight="fill" />
+              </Button>
             </div>
           </div>
+
+          {autoOptimize && (abTests || []).filter(t => t.status === 'completed').length > 0 && (
+            <Badge variant="secondary" className="gap-1.5">
+              <Trophy size={14} weight="fill" />
+              Auto-Optimization Enabled
+            </Badge>
+          )}
 
           {isGenerating && (
             <div className="space-y-2">
@@ -337,6 +362,17 @@ export function ListingGenerator({ open, onOpenChange, item, onSave }: ListingGe
           </div>
         </div>
       </DialogContent>
+      
+      <TitlePatternOptimizerDialog
+        open={showPatternOptimizer}
+        onOpenChange={setShowPatternOptimizer}
+        item={item}
+        channel={channel}
+        onApplyTitle={(title) => {
+          setDraft({ ...draft, title })
+          toast.success('Optimized title applied')
+        }}
+      />
     </Dialog>
   )
 }
