@@ -422,7 +422,7 @@ export function generateEbayHTMLDescription(
       
       <div style="margin: 40px 0; padding: 30px; background: #f8f9fa; border-left: 5px solid #3498db; border-radius: 8px;">
         <h3 style="margin: 0 0 20px 0; color: #2c3e50; font-size: 20px; font-weight: 600;">📝 Description</h3>
-        ${description.split('\n\n').map(para => para.trim() ? `<p style="margin: 15px 0; font-size: 15px; line-height: 1.8; color: #34495e;">${para}</p>` : '').join('')}
+        ${(description || '').split('\n\n').map(para => para.trim() ? `<p style="margin: 15px 0; font-size: 15px; line-height: 1.8; color: #34495e;">${para}</p>` : '').join('')}
       </div>
       
       ${recordDetailsHTML}
