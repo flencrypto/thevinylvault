@@ -173,17 +173,32 @@ class TelegramService {
   // Message formatting
   // ---------------------------------------------------------------------------
 
+  private _escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+  }
+
   private _formatMessage(deal: DealInfo, tier: DealTier): string {
-    const artist = deal.artist || 'Unknown Artist'
-    const title = deal.title || 'Unknown Title'
-    const condition = deal.condition || '—'
+    const rawArtist = deal.artist || 'Unknown Artist'
+    const rawTitle = deal.title || 'Unknown Title'
+    const rawCondition = deal.condition || '—'
     const buyPrice = parseFloat(String(deal.price || deal.buyPrice || 0)).toFixed(2)
     const marketValue = parseFloat(String(deal.adjustedValue || deal.marketValue || 0)).toFixed(2)
     const netProfit = parseFloat(String(deal.netProfit || 0)).toFixed(2)
     const roi = parseFloat(String(deal.roi || 0)).toFixed(0)
     const fees = parseFloat(String(deal.fees || deal.totalFees || 0)).toFixed(2)
-    const source = deal.source || (deal.ebayItemId ? 'eBay' : 'Discogs')
-    const url = deal.url || deal.itemWebUrl || deal.listingUrl || deal.discogsUrl || ''
+    const rawSource = deal.source || (deal.ebayItemId ? 'eBay' : 'Discogs')
+    const rawUrl = deal.url || deal.itemWebUrl || deal.listingUrl || deal.discogsUrl || ''
+
+    const artist = this._escapeHtml(rawArtist)
+    const title = this._escapeHtml(rawTitle)
+    const condition = this._escapeHtml(rawCondition)
+    const source = this._escapeHtml(rawSource)
+    const url = rawUrl ? this._escapeHtml(rawUrl) : ''
 
     const linkHtml = url
       ? `\n🔗 <a href="${url}">View Listing</a>`
