@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { Slider } from '@/components/ui/slider'
 import { Badge } from '@/components/ui/badge'
-import { Key, Check, Eye, EyeSlash, Info, Brain, Detective, Image, GraduationCap, Lightning, Database, CloudArrowUp, TestTube, Question } from '@phosphor-icons/react'
+import { Key, Check, Eye, EyeSlash, Info, Brain, Detective, Image, GraduationCap, Lightning, Database, CloudArrowUp, TestTube, Question, Robot, PaperPlaneTilt } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { testDiscogsConnection } from '@/lib/marketplace-discogs'
 import { uploadImageToImgBB } from '@/lib/imgbb-service'
@@ -24,6 +24,10 @@ interface APIKeys {
   ebayClientSecret: string
   ebayDevId: string
   imgbbKey: string
+  xaiApiKey: string
+  deepseekApiKey: string
+  telegramBotToken: string
+  telegramChatId: string
 }
 
 interface ConfidenceThresholds {
@@ -43,6 +47,10 @@ export default function SettingsView() {
     ebayClientSecret: '',
     ebayDevId: '',
     imgbbKey: '',
+    xaiApiKey: '',
+    deepseekApiKey: '',
+    telegramBotToken: '',
+    telegramChatId: '',
   })
 
   const [showKeys, setShowKeys] = useState({
@@ -54,9 +62,50 @@ export default function SettingsView() {
     ebayClientSecret: false,
     ebayDevId: false,
     imgbbKey: false,
+    xaiApiKey: false,
+    deepseekApiKey: false,
+    telegramBotToken: false,
+    telegramChatId: false,
   })
 
   const [notificationsEnabled, setNotificationsEnabled] = useKV<boolean>('vinyl-vault-notifications', true)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const { xaiApiKey, deepseekApiKey, telegramBotToken, telegramChatId } = apiKeys
+
+    if (xaiApiKey) {
+      window.localStorage.setItem('xai_api_key', xaiApiKey)
+    } else {
+      window.localStorage.removeItem('xai_api_key')
+    }
+
+    if (deepseekApiKey) {
+      window.localStorage.setItem('deepseek_api_key', deepseekApiKey)
+    } else {
+      window.localStorage.removeItem('deepseek_api_key')
+    }
+
+    if (telegramBotToken) {
+      window.localStorage.setItem('telegram_bot_token', telegramBotToken)
+    } else {
+      window.localStorage.removeItem('telegram_bot_token')
+    }
+
+    if (telegramChatId) {
+      window.localStorage.setItem('telegram_chat_id', telegramChatId)
+    } else {
+      window.localStorage.removeItem('telegram_chat_id')
+    }
+  }, [
+    apiKeys.xaiApiKey,
+    apiKeys.deepseekApiKey,
+    apiKeys.telegramBotToken,
+    apiKeys.telegramChatId,
+  ])
   const [autoSync, setAutoSync] = useKV<boolean>('vinyl-vault-auto-sync', true)
   
   const [confidenceThresholds, setConfidenceThresholds] = useKV<ConfidenceThresholds>('vinyl-vault-confidence-thresholds', {
@@ -80,6 +129,10 @@ export default function SettingsView() {
       ebayClientSecret: '',
       ebayDevId: '',
       imgbbKey: '',
+      xaiApiKey: '',
+      deepseekApiKey: '',
+      telegramBotToken: '',
+      telegramChatId: '',
     }) => ({
       ...current,
       [key]: value,
@@ -185,6 +238,10 @@ export default function SettingsView() {
       ebayClientSecret: '',
       ebayDevId: '',
       imgbbKey: '',
+      xaiApiKey: '',
+      deepseekApiKey: '',
+      telegramBotToken: '',
+      telegramChatId: '',
     })
     toast.success('All API keys cleared')
   }
@@ -500,6 +557,155 @@ export default function SettingsView() {
               <p className="text-xs text-slate-500 flex items-start gap-1">
                 <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
                 Used for marketplace listings, pricing data, and sales analytics
+              </p>
+            </div>
+
+            <Separator className="bg-slate-800" />
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-semibold text-white">Alternative AI Providers</h4>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="xai-api-key" className="text-slate-200 flex items-center gap-2">
+                  xAI (Grok) API Key
+                  {apiKeys?.xaiApiKey && (
+                    <Robot className="w-4 h-4 text-green-500" weight="fill" />
+                  )}
+                </Label>
+                <div className="flex gap-2">
+                  <div className="flex-1 relative">
+                    <Input
+                      id="xai-api-key"
+                      type={showKeys.xaiApiKey ? 'text' : 'password'}
+                      value={apiKeys?.xaiApiKey || ''}
+                      onChange={(e) => handleKeyChange('xaiApiKey', e.target.value)}
+                      placeholder="Enter your xAI API key"
+                      className="bg-slate-950/50 border-slate-700 text-white pr-10"
+                    />
+                    <button
+                      onClick={() => toggleShowKey('xaiApiKey')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                    >
+                      {showKeys.xaiApiKey ? (
+                        <EyeSlash className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500 flex items-start gap-1">
+                  <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                  Used for Grok vision-based record analysis and pressing identification. Get your key at <a href="https://console.x.ai" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">console.x.ai</a>
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="deepseek-api-key" className="text-slate-200 flex items-center gap-2">
+                  DeepSeek API Key
+                  {apiKeys?.deepseekApiKey && (
+                    <Robot className="w-4 h-4 text-green-500" weight="fill" />
+                  )}
+                </Label>
+                <div className="flex gap-2">
+                  <div className="flex-1 relative">
+                    <Input
+                      id="deepseek-api-key"
+                      type={showKeys.deepseekApiKey ? 'text' : 'password'}
+                      value={apiKeys?.deepseekApiKey || ''}
+                      onChange={(e) => handleKeyChange('deepseekApiKey', e.target.value)}
+                      placeholder="Enter your DeepSeek API key"
+                      className="bg-slate-950/50 border-slate-700 text-white pr-10"
+                    />
+                    <button
+                      onClick={() => toggleShowKey('deepseekApiKey')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                    >
+                      {showKeys.deepseekApiKey ? (
+                        <EyeSlash className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500 flex items-start gap-1">
+                  <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                  Alternative AI provider for vision-based record analysis. Get your key at <a href="https://platform.deepseek.com" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">platform.deepseek.com</a>
+                </p>
+              </div>
+            </div>
+
+            <Separator className="bg-slate-800" />
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-semibold text-white">Telegram Notifications</h4>
+                {apiKeys?.telegramBotToken && apiKeys?.telegramChatId && (
+                  <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/30 text-xs">
+                    <PaperPlaneTilt className="w-3 h-3 mr-1" weight="fill" />
+                    Connected
+                  </Badge>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="telegram-bot-token" className="text-slate-200">Bot Token</Label>
+                <div className="flex gap-2">
+                  <div className="flex-1 relative">
+                    <Input
+                      id="telegram-bot-token"
+                      type={showKeys.telegramBotToken ? 'text' : 'password'}
+                      value={apiKeys?.telegramBotToken || ''}
+                      onChange={(e) => handleKeyChange('telegramBotToken', e.target.value)}
+                      placeholder="Enter your Telegram bot token"
+                      className="bg-slate-950/50 border-slate-700 text-white pr-10"
+                    />
+                    <button
+                      onClick={() => toggleShowKey('telegramBotToken')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                    >
+                      {showKeys.telegramBotToken ? (
+                        <EyeSlash className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="telegram-chat-id" className="text-slate-200">Chat ID</Label>
+                <div className="flex gap-2">
+                  <div className="flex-1 relative">
+                    <Input
+                      id="telegram-chat-id"
+                      type={showKeys.telegramChatId ? 'text' : 'password'}
+                      value={apiKeys?.telegramChatId || ''}
+                      onChange={(e) => handleKeyChange('telegramChatId', e.target.value)}
+                      placeholder="Enter your Telegram chat ID"
+                      className="bg-slate-950/50 border-slate-700 text-white pr-10"
+                    />
+                    <button
+                      onClick={() => toggleShowKey('telegramChatId')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                    >
+                      {showKeys.telegramChatId ? (
+                        <EyeSlash className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-500 flex items-start gap-1">
+                <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                Receive deal alerts and notifications via Telegram. Create a bot with <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">@BotFather</a> and get your Chat ID from <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">@userinfobot</a>
               </p>
             </div>
 
