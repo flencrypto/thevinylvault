@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { Slider } from '@/components/ui/slider'
+import { Badge } from '@/components/ui/badge'
 import { Key, Check, Eye, EyeSlash, Info, Brain, Detective, Image, GraduationCap, Lightning, Database, CloudArrowUp, TestTube, Question } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { testDiscogsConnection } from '@/lib/marketplace-discogs'
@@ -246,16 +247,35 @@ export default function SettingsView() {
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-white">Discogs API</h4>
-                <a 
-                  href="/DISCOGS_TROUBLESHOOTING.md" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-xs text-accent hover:text-accent-foreground flex items-center gap-1 hover:underline"
-                >
-                  <Question className="w-3 h-3" />
-                  Troubleshooting Guide
-                </a>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-semibold text-white">Discogs API</h4>
+                  {apiKeys?.discogsUserToken && (
+                    <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/30 text-xs">
+                      <Database className="w-3 h-3 mr-1" weight="fill" />
+                      Connected
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <a 
+                    href="/DISCOGS_API_SETUP.md" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-xs text-accent hover:text-accent-foreground flex items-center gap-1 hover:underline"
+                  >
+                    <Info className="w-3 h-3" />
+                    Setup Guide
+                  </a>
+                  <a 
+                    href="/DISCOGS_TROUBLESHOOTING.md" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-xs text-accent hover:text-accent-foreground flex items-center gap-1 hover:underline"
+                  >
+                    <Question className="w-3 h-3" />
+                    Troubleshooting
+                  </a>
+                </div>
               </div>
               
               <div className="space-y-2">
