@@ -20,11 +20,15 @@ import {
   Lightning, 
   ArrowSquareOut,
   Stack,
-  Info
+  Info,
+  CurrencyBtc,
+  Crown
 } from '@phosphor-icons/react'
 import { getExplorerUrl } from '@/lib/solana-nft'
 import { generateEbayListingPackage } from '@/lib/listing-ai'
 import { toast } from 'sonner'
+import BitcoinNFTSection from './BitcoinNFTSection'
+import MultiversXNFTSection from './MultiversXNFTSection'
 
 export default function NFTView() {
   const { wallet, isConnected } = useWallet()
@@ -230,7 +234,7 @@ export default function NFTView() {
       </div>
 
       <Tabs defaultValue="gallery" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 bg-slate-800/50">
+        <TabsList className="grid w-full grid-cols-4 bg-slate-800/50">
           <TabsTrigger value="gallery" className="gap-2">
             <Coins size={18} />
             Gallery
@@ -238,6 +242,14 @@ export default function NFTView() {
           <TabsTrigger value="history" className="gap-2">
             <Clock size={18} />
             History
+          </TabsTrigger>
+          <TabsTrigger value="ordinals" className="gap-2">
+            <CurrencyBtc size={18} />
+            Ordinals
+          </TabsTrigger>
+          <TabsTrigger value="multiversx" className="gap-2">
+            <Crown size={18} />
+            MultiversX
           </TabsTrigger>
         </TabsList>
 
@@ -338,6 +350,14 @@ export default function NFTView() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="ordinals" className="space-y-4 mt-6">
+          <BitcoinNFTSection />
+        </TabsContent>
+
+        <TabsContent value="multiversx" className="space-y-4 mt-6">
+          <MultiversXNFTSection />
         </TabsContent>
       </Tabs>
 

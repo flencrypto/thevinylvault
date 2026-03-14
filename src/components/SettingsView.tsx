@@ -24,6 +24,10 @@ interface APIKeys {
   ebayClientSecret: string
   ebayDevId: string
   imgbbKey: string
+  xaiApiKey: string
+  deepseekApiKey: string
+  telegramBotToken: string
+  telegramChatId: string
 }
 
 interface ConfidenceThresholds {
@@ -43,6 +47,10 @@ export default function SettingsView() {
     ebayClientSecret: '',
     ebayDevId: '',
     imgbbKey: '',
+    xaiApiKey: '',
+    deepseekApiKey: '',
+    telegramBotToken: '',
+    telegramChatId: '',
   })
 
   const [showKeys, setShowKeys] = useState({
@@ -54,6 +62,10 @@ export default function SettingsView() {
     ebayClientSecret: false,
     ebayDevId: false,
     imgbbKey: false,
+    xaiApiKey: false,
+    deepseekApiKey: false,
+    telegramBotToken: false,
+    telegramChatId: false,
   })
 
   const [notificationsEnabled, setNotificationsEnabled] = useKV<boolean>('vinyl-vault-notifications', true)
