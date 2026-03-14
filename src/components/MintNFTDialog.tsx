@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { CollectionItem, MintedNFT, SolanaNetwork } from '@/lib/types'
 import { prepareNFTMetadataFromItem, simulateMintNFT, buildMintedNFTRecord, formatRoyaltyBadge } from '@/lib/solana-service'
+import { mintNFTWithMetaplex, type MetaplexMintResult } from '@/lib/solana-metaplex'
 import { getExplorerUrl, getAddressExplorerUrl } from '@/lib/solana-nft'
 import { useWallet } from '@/hooks/use-wallet'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -9,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
+import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Coins, Sparkle, CheckCircle, Warning, CurrencyDollar, ArrowSquareOut, Wallet } from '@phosphor-icons/react'
@@ -24,6 +26,7 @@ export function MintNFTDialog({ open, onOpenChange, item, onMintComplete }: Mint
   const { wallet, isConnected } = useWallet()
   const [network, setNetwork] = useState<SolanaNetwork>('devnet')
   const [royaltyBasisPoints, setRoyaltyBasisPoints] = useState(1000)
+  const [useRealMinting, setUseRealMinting] = useState(false)
   const [isMinting, setIsMinting] = useState(false)
   const [mintSuccess, setMintSuccess] = useState(false)
   const [mintError, setMintError] = useState<string | null>(null)
@@ -42,12 +45,36 @@ export function MintNFTDialog({ open, onOpenChange, item, onMintComplete }: Mint
       const nftConfig = await prepareNFTMetadataFromItem(item, walletAddress)
       nftConfig.sellerFeeBasisPoints = royaltyBasisPoints
 
-      const mintResult = await simulateMintNFT(nftConfig, walletAddress, network)
+      let mintResult
 
-      if (!mintResult.success) {
-        setMintError(mintResult.error || 'Minting failed')
-        setIsMinting(false)
-        return
+      if (useRealMinting && wallet?.walletType) {
+        const metaplexResult = await mintNFTWithMetaplex(
+          nftConfig,
+          walletAddress,
+          wallet.walletType,
+          network
+        )
+        
+        if (!metaplexResult.success) {
+          setMintError(metaplexResult.error || 'Minting failed')
+          setIsMinting(false)
+          return
+        }
+
+        mintResult = {
+          success: true,
+          mintAddress: metaplexResult.mintAddress,
+          transactionSignature: metaplexResult.transactionSignature,
+          metadataUri: metaplexResult.metadataUri,
+        }
+      } else {
+        mintResult = await simulateMintNFT(nftConfig, walletAddress, network)
+
+        if (!mintResult.success) {
+          setMintError(mintResult.error || 'Minting failed')
+          setIsMinting(false)
+          return
+        }
       }
 
       const nftRecord = buildMintedNFTRecord(mintResult, nftConfig, walletAddress, network)
@@ -164,6 +191,32 @@ export function MintNFTDialog({ open, onOpenChange, item, onMintComplete }: Mint
                     ? '⚠️ Production network - requires real SOL for fees' 
                     : 'Free test network - perfect for testing'}
                 </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="real-mint">Real On-Chain Minting (Metaplex Core)</Label>
+                    <p className="text-xs text-muted-foreground">
+                      {useRealMinting 
+                        ? 'NFT will be minted on Solana blockchain using Metaplex' 
+                        : 'Simulation mode for testing (no blockchain transaction)'}
+                    </p>
+                  </div>
+                  <Switch
+                    id="real-mint"
+                    checked={useRealMinting}
+                    onCheckedChange={setUseRealMinting}
+                  />
+                </div>
+                {useRealMinting && (
+                  <Alert>
+                    <Sparkle size={18} className="text-accent" />
+                    <AlertDescription>
+                      <strong>Blockchain Minting Enabled:</strong> This will create a real NFT on-chain with Metaplex Core. Transaction fees apply (~0.001-0.01 SOL).
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
 
               <div className="space-y-2">

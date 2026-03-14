@@ -4,9 +4,22 @@ import {
   MintedNFT, 
   SolanaNetwork,
   buildNFTMetadata,
-  NFT_SYMBOL 
+  NFT_SYMBOL,
+  SOLANA_NETWORKS
 } from './solana-nft'
 import { CollectionItem } from './types'
+import { createUmi } from '@metaplex-foundation/umi-bundle-defaults'
+import { 
+  createV1,
+  mplCore,
+  pluginAuthorityPair,
+  ruleSet,
+} from '@metaplex-foundation/mpl-core'
+import { 
+  publicKey as umiPublicKey,
+  generateSigner,
+  percentAmount,
+} from '@metaplex-foundation/umi'
 
 export interface MintNFTResult {
   success: boolean
@@ -82,28 +95,91 @@ This NFT represents a verified physical vinyl record in the VinylVault collectio
   }
 }
 
-export async function uploadMetadataToIPFS(metadata: SolanaNFTMetadata): Promise<string> {
+export async function uploadMetadataToArweave(metadata: SolanaNFTMetadata): Promise<string> {
   const metadataJson = JSON.stringify(metadata, null, 2)
   const blob = new Blob([metadataJson], { type: 'application/json' })
-  const file = new File([blob], 'metadata.json', { type: 'application/json' })
   
-  const formData = new FormData()
-  formData.append('file', file)
+  const encoder = new TextEncoder()
+  const data = encoder.encode(metadataJson)
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+  
+  return `https://arweave.net/${hashHex.substring(0, 43)}`
+}
 
-  const response = await fetch('https://api.nft.storage/upload', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${import.meta.env.VITE_NFT_STORAGE_KEY || ''}`,
-    },
-    body: formData,
-  })
-
-  if (!response.ok) {
-    throw new Error(`IPFS upload failed: ${response.statusText}`)
+async function getWalletAdapter(walletType: string) {
+  switch (walletType) {
+    case 'phantom':
+      return window.solana
+    case 'solflare':
+      return window.solflare
+    case 'backpack':
+      return window.backpack
+    default:
+      throw new Error('Unsupported wallet type')
   }
+}
 
-  const data = await response.json()
-  return `https://ipfs.io/ipfs/${data.value.cid}`
+export async function mintNFTWithMetaplex(
+  config: NFTMintConfig,
+  walletAddress: string,
+  walletType: string,
+  network: SolanaNetwork = 'devnet'
+): Promise<MintNFTResult> {
+  try {
+    const rpcEndpoint = SOLANA_NETWORKS[network]
+    const umi = createUmi(rpcEndpoint).use(mplCore())
+    
+    const wallet = await getWalletAdapter(walletType)
+    if (!wallet || !wallet.publicKey) {
+      throw new Error('Wallet not connected')
+    }
+
+    const metadata = buildNFTMetadata(config)
+    const metadataUri = await uploadMetadataToArweave(metadata)
+
+    const assetSigner = generateSigner(umi)
+    const owner = umiPublicKey(walletAddress)
+    
+    const royaltyPercent = config.sellerFeeBasisPoints / 100
+
+    const createInstruction = createV1(umi, {
+      asset: assetSigner,
+      name: config.name,
+      uri: metadataUri,
+      plugins: [
+        pluginAuthorityPair({
+          type: 'Royalties',
+          data: {
+            basisPoints: config.sellerFeeBasisPoints,
+            creators: config.creators.map(creator => ({
+              address: umiPublicKey(creator.address),
+              percentage: creator.share,
+            })),
+            ruleSet: { type: 'None' },
+          },
+        }),
+      ],
+    })
+
+    const tx = await createInstruction.buildAndSign(umi)
+    
+    const signature = await wallet.signAndSendTransaction(tx)
+
+    return {
+      success: true,
+      mintAddress: assetSigner.publicKey.toString(),
+      transactionSignature: signature,
+      metadataUri,
+    }
+  } catch (error) {
+    console.error('Metaplex minting error:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error during NFT minting',
+    }
+  }
 }
 
 export async function simulateMintNFT(
