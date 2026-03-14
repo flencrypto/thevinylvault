@@ -23,19 +23,81 @@ export class XAIService {
   private baseUrl: string
 
   constructor() {
-    this.apiKey = localStorage.getItem('xai_api_key')
-    this.model = localStorage.getItem('xai_model') || 'grok-4-1-fast-reasoning'
+    this.apiKey = null
+    this.model = 'grok-4-1-fast-reasoning'
     this.baseUrl = 'https://api.x.ai/v1'
+    this.loadCredentialsFromStorage()
+  }
+
+  /**
+   * Load xAI credentials from localStorage.
+   *
+   * Priority:
+   *  1. Direct keys: 'xai_api_key' and 'xai_model'
+   *  2. Fallback KV blob: 'vinyl-vault-api-keys' (if it contains xAI entries)
+   */
+  private loadCredentialsFromStorage() {
+    try {
+      // Primary: direct keys, as originally implemented
+      const directApiKey = localStorage.getItem('xai_api_key')
+      const directModel = localStorage.getItem('xai_model')
+
+      if (directApiKey) {
+        this.apiKey = directApiKey
+      }
+      if (directModel) {
+        this.model = directModel
+      }
+
+      // Fallback: keys stored in the Spark KV-style blob
+      if (!this.apiKey || !this.model) {
+        const kvRaw = localStorage.getItem('vinyl-vault-api-keys')
+        if (kvRaw) {
+          const parsed = JSON.parse(kvRaw)
+
+          if (!this.apiKey && typeof parsed.xai_api_key === 'string') {
+            this.apiKey = parsed.xai_api_key
+          }
+          if (!directModel && typeof parsed.xai_model === 'string') {
+            this.model = parsed.xai_model
+          }
+        }
+      }
+    } catch {
+      // If anything goes wrong (e.g. malformed JSON), fall back to defaults
+    }
   }
 
   updateApiKey(key: string) {
     this.apiKey = key
+    // Keep direct key for backwards compatibility
     localStorage.setItem('xai_api_key', key)
+
+    // Also update the shared KV-style blob if present/needed
+    try {
+      const kvRaw = localStorage.getItem('vinyl-vault-api-keys')
+      const kvObj = kvRaw ? JSON.parse(kvRaw) : {}
+      kvObj.xai_api_key = key
+      localStorage.setItem('vinyl-vault-api-keys', JSON.stringify(kvObj))
+    } catch {
+      // Ignore KV sync errors; direct localStorage key still works
+    }
   }
 
   updateModel(model: string) {
     this.model = model
+    // Keep direct key for backwards compatibility
     localStorage.setItem('xai_model', model)
+
+    // Also update the shared KV-style blob if present/needed
+    try {
+      const kvRaw = localStorage.getItem('vinyl-vault-api-keys')
+      const kvObj = kvRaw ? JSON.parse(kvRaw) : {}
+      kvObj.xai_model = model
+      localStorage.setItem('vinyl-vault-api-keys', JSON.stringify(kvObj))
+    } catch {
+      // Ignore KV sync errors; direct localStorage key still works
+    }
   }
 
   get isConfigured(): boolean {
