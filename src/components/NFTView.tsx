@@ -242,7 +242,7 @@ export default function NFTView() {
         </TabsList>
 
         <TabsContent value="gallery" className="space-y-4 mt-6">
-          {mintedNFTs.length === 0 ? (
+          {(mintedNFTs || []).length === 0 ? (
             <Card className="bg-card/50 border-border">
               <CardContent className="py-12 text-center">
                 <Coins size={48} className="mx-auto text-slate-600 mb-4" />
@@ -277,7 +277,7 @@ export default function NFTView() {
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4 mt-6">
-          {mintedNFTs.length === 0 ? (
+          {(mintedNFTs || []).length === 0 ? (
             <Card className="bg-card/50 border-border">
               <CardContent className="py-12 text-center">
                 <Clock size={48} className="mx-auto text-slate-600 mb-4" />

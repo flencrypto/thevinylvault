@@ -270,7 +270,7 @@ export async function mintNFTWithMetaplex(
               address: umiPublicKey(creator.address),
               percentage: creator.share,
             })),
-            ruleSet: { type: 'None' },
+            ruleSet: { type: 'None' } as any,
           },
         }),
       ],
@@ -278,7 +278,7 @@ export async function mintNFTWithMetaplex(
 
     const tx = await createInstruction.buildAndSign(umi)
     
-    const signature = await wallet.signAndSendTransaction(tx)
+    const signature = await (wallet as any).signAndSendTransaction(tx)
 
     return {
       success: true,
