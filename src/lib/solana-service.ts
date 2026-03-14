@@ -50,6 +50,32 @@ export async function prepareNFTMetadataFromItem(
     attributes.push({ trait_type: 'Catalog Number', value: item.catalogNumber })
   }
 
+  if (item.labelName) {
+    attributes.push({ trait_type: 'Label', value: item.labelName })
+  }
+
+  if (item.matrixNumbers && item.matrixNumbers.length > 0) {
+    attributes.push({ 
+      trait_type: 'Matrix/Runout', 
+      value: item.matrixNumbers.join(' / ') 
+    })
+  }
+
+  if (item.barcodes && item.barcodes.length > 0) {
+    attributes.push({ 
+      trait_type: 'Barcode', 
+      value: item.barcodes.join(', ') 
+    })
+  }
+
+  if (item.vinylColor) {
+    attributes.push({ trait_type: 'Vinyl Color', value: item.vinylColor })
+  }
+
+  if (item.storageLocation) {
+    attributes.push({ trait_type: 'Storage Location', value: item.storageLocation })
+  }
+
   if (item.purchasePrice && item.purchaseCurrency) {
     attributes.push({ 
       trait_type: 'Purchase Price', 
@@ -61,22 +87,109 @@ export async function prepareNFTMetadataFromItem(
     attributes.push({ trait_type: 'Acquisition Date', value: item.acquisitionDate })
   }
 
+  if (item.sourceType) {
+    attributes.push({ trait_type: 'Source', value: item.sourceType })
+  }
+
+  if (item.estimatedValue) {
+    attributes.push({ 
+      trait_type: 'Estimated Value', 
+      value: `${item.estimatedValue.estimateMid} ${item.estimatedValue.currency}` 
+    })
+    attributes.push({ 
+      trait_type: 'Value Confidence', 
+      value: `${(item.estimatedValue.confidenceScore * 100).toFixed(0)}%` 
+    })
+  }
+
+  if (item.discogsId) {
+    attributes.push({ trait_type: 'Discogs Release ID', value: item.discogsId })
+  }
+
+  if (item.discogsReleaseId) {
+    attributes.push({ trait_type: 'Discogs Master ID', value: item.discogsReleaseId })
+  }
+
+  if (item.pressingId) {
+    attributes.push({ trait_type: 'Pressing ID', value: item.pressingId })
+  }
+
+  if (item.condition.gradingNotes) {
+    attributes.push({ 
+      trait_type: 'Condition Notes', 
+      value: item.condition.gradingNotes.substring(0, 100) 
+    })
+  }
+
   const name = `${item.artistName} - ${item.releaseTitle} (${item.year})`
-  const description = `
-${name}
-
-Format: ${item.format}
-Country: ${item.country}
-${item.catalogNumber ? `Catalog Number: ${item.catalogNumber}` : ''}
-
-Condition:
-Media: ${item.condition.mediaGrade} (${item.condition.gradingStandard})
-Sleeve: ${item.condition.sleeveGrade} (${item.condition.gradingStandard})
-
-${item.notes ? `Notes: ${item.notes}` : ''}
-
-This NFT represents a verified physical vinyl record in the VinylVault collection, providing on-chain provenance and authenticity tracking.
-  `.trim()
+  
+  let description = `${name}\n\n`
+  description += `Format: ${item.format}\n`
+  description += `Country: ${item.country}\n`
+  
+  if (item.catalogNumber) {
+    description += `Catalog Number: ${item.catalogNumber}\n`
+  }
+  
+  if (item.labelName) {
+    description += `Label: ${item.labelName}\n`
+  }
+  
+  if (item.matrixNumbers && item.matrixNumbers.length > 0) {
+    description += `Matrix/Runout: ${item.matrixNumbers.join(' / ')}\n`
+  }
+  
+  if (item.vinylColor) {
+    description += `Vinyl: ${item.vinylColor}\n`
+  }
+  
+  description += `\nCondition:\n`
+  description += `Media: ${item.condition.mediaGrade} (${item.condition.gradingStandard})\n`
+  description += `Sleeve: ${item.condition.sleeveGrade} (${item.condition.gradingStandard})\n`
+  
+  if (item.condition.gradingNotes) {
+    description += `\nGrading Notes:\n${item.condition.gradingNotes}\n`
+  }
+  
+  if (item.acquisitionDate) {
+    description += `\nAcquired: ${item.acquisitionDate}`
+    if (item.sourceType) {
+      description += ` (${item.sourceType})`
+    }
+    description += `\n`
+  }
+  
+  if (item.purchasePrice && item.purchaseCurrency) {
+    description += `Purchase Price: ${item.purchasePrice} ${item.purchaseCurrency}\n`
+  }
+  
+  if (item.estimatedValue) {
+    description += `\nCurrent Estimated Value: ${item.estimatedValue.estimateMid} ${item.estimatedValue.currency}`
+    if (item.estimatedValue.confidenceScore) {
+      description += ` (${(item.estimatedValue.confidenceScore * 100).toFixed(0)}% confidence)`
+    }
+    description += `\n`
+  }
+  
+  if (item.priceHistory && item.priceHistory.length > 1) {
+    const firstPrice = item.priceHistory[0].estimatedValue
+    const latestPrice = item.priceHistory[item.priceHistory.length - 1].estimatedValue
+    const change = ((latestPrice - firstPrice) / firstPrice) * 100
+    description += `Value Change: ${change > 0 ? '+' : ''}${change.toFixed(1)}% since acquisition\n`
+  }
+  
+  if (item.notes) {
+    description += `\nCollector Notes:\n${item.notes}\n`
+  }
+  
+  if (item.discogsId) {
+    description += `\nDiscogs Release: https://www.discogs.com/release/${item.discogsId}\n`
+  }
+  
+  description += `\n━━━━━━━━━━━━━━━━━━━━\n`
+  description += `This NFT represents a verified physical vinyl record in the VinylVault collection.\n`
+  description += `It provides immutable on-chain provenance, authenticity tracking, and ownership history.\n`
+  description += `The physical record is stored at: ${item.storageLocation || 'Secure location'}\n`
 
   return {
     itemId: item.id,
