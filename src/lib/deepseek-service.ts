@@ -6,21 +6,30 @@ export class DeepSeekService {
   private apiKey: string | null
   private model: string
   private baseUrl: string
+  private readonly KV_STORAGE_KEY = 'vinyl-vault-api-keys'
 
   constructor() {
     this.apiKey = localStorage.getItem('deepseek_api_key')
     this.model = localStorage.getItem('deepseek_model') || 'deepseek-chat'
     this.baseUrl = 'https://api.deepseek.com/v1'
+
+    // Best-effort sync of DeepSeek credentials from Spark KV into this service and localStorage.
+    // This allows credentials entered in the Settings UI (which uses Spark KV) to be picked up here.
+    void this.syncFromKv()
   }
 
   updateApiKey(key: string) {
     this.apiKey = key
     localStorage.setItem('deepseek_api_key', key)
+    // Mirror changes into Spark KV so that Settings and this service stay in sync.
+    void this.writeDeepSeekConfigToKv({ apiKey: key })
   }
 
   updateModel(model: string) {
     this.model = model
     localStorage.setItem('deepseek_model', model)
+    // Mirror changes into Spark KV so that Settings and this service stay in sync.
+    void this.writeDeepSeekConfigToKv({ model })
   }
 
   get isConfigured(): boolean {
@@ -31,6 +40,72 @@ export class DeepSeekService {
     if (!modelName) return false
     const normalized = modelName.toLowerCase()
     return normalized.includes('vl') || normalized.includes('vision')
+  }
+
+  private async syncFromKv(): Promise<void> {
+    // Access Spark KV via globalThis to avoid relying on ambient type declarations.
+    const sparkKv = (globalThis as any)?.spark?.kv
+    if (!sparkKv || typeof sparkKv.get !== 'function') {
+      return
+    }
+
+    try {
+      const raw = await sparkKv.get(this.KV_STORAGE_KEY)
+      if (!raw) return
+
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+      const deepseekConfig = parsed?.deepseek
+      if (!deepseekConfig || typeof deepseekConfig !== 'object') return
+
+      const kvApiKey = typeof deepseekConfig.apiKey === 'string' ? deepseekConfig.apiKey : null
+      const kvModel = typeof deepseekConfig.model === 'string' ? deepseekConfig.model : null
+
+      if (kvApiKey) {
+        this.apiKey = kvApiKey
+        localStorage.setItem('deepseek_api_key', kvApiKey)
+      }
+
+      if (kvModel) {
+        this.model = kvModel
+        localStorage.setItem('deepseek_model', kvModel)
+      }
+    } catch {
+      // Ignore KV errors; service will continue to rely on localStorage.
+    }
+  }
+
+  private async writeDeepSeekConfigToKv(partial: { apiKey?: string; model?: string }): Promise<void> {
+    const sparkKv = (globalThis as any)?.spark?.kv
+    if (!sparkKv || typeof sparkKv.get !== 'function' || typeof sparkKv.set !== 'function') {
+      return
+    }
+
+    try {
+      const raw = await sparkKv.get(this.KV_STORAGE_KEY)
+      const existing = raw
+        ? (typeof raw === 'string' ? JSON.parse(raw) : raw)
+        : {}
+
+      const current = typeof existing === 'object' && existing !== null ? existing : {}
+      const deepseekConfig = typeof current.deepseek === 'object' && current.deepseek !== null
+        ? current.deepseek
+        : {}
+
+      const updatedDeepseek = {
+        ...deepseekConfig,
+        ...(partial.apiKey !== undefined ? { apiKey: partial.apiKey } : {}),
+        ...(partial.model !== undefined ? { model: partial.model } : {})
+      }
+
+      const updatedConfig = {
+        ...current,
+        deepseek: updatedDeepseek
+      }
+
+      await sparkKv.set(this.KV_STORAGE_KEY, JSON.stringify(updatedConfig))
+    } catch {
+      // Ignore KV errors; failure to persist to KV should not break normal operation.
+    }
   }
 
   private async parseError(response: Response, fallbackMessage: string): Promise<string> {
