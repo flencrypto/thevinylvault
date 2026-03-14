@@ -9,8 +9,9 @@ import { WalletConnect } from '@/components/WalletConnect'
 import { NFTCard } from '@/components/NFTCard'
 import { NFTTransactionHistoryDialog } from '@/components/NFTTransactionHistoryDialog'
 import { BatchNFTMintDialog } from '@/components/BatchNFTMintDialog'
+import EbayListingDialog from '@/components/EbayListingDialog'
 import { useWallet } from '@/hooks/use-wallet'
-import { MintedNFT, CollectionItem } from '@/lib/types'
+import { MintedNFT, CollectionItem, ItemImage } from '@/lib/types'
 import { 
   Wallet, 
   Coins, 
@@ -22,17 +23,24 @@ import {
   Info
 } from '@phosphor-icons/react'
 import { getExplorerUrl } from '@/lib/solana-nft'
+import { generateEbayListingPackage } from '@/lib/listing-ai'
+import { toast } from 'sonner'
 
 export default function NFTView() {
   const { wallet, isConnected } = useWallet()
   const [mintedNFTs, setMintedNFTs] = useKV<MintedNFT[]>('vinyl-vault-minted-nfts', [])
   const [collectionItems] = useKV<CollectionItem[]>('vinyl-vault-collection', [])
+  const [itemImages] = useKV<ItemImage[]>('vinyl-vault-images', [])
   const [showTransactionHistory, setShowTransactionHistory] = useState(false)
   const [showBatchMint, setShowBatchMint] = useState(false)
+  const [showListingDialog, setShowListingDialog] = useState(false)
   const [selectedNFT, setSelectedNFT] = useState<MintedNFT | null>(null)
+  const [currentListingPackage, setCurrentListingPackage] = useState<any>(null)
+  const [isGeneratingListing, setIsGeneratingListing] = useState(false)
 
   const safeCollectionItems = collectionItems || []
   const safeMintedNFTs = mintedNFTs || []
+  const safeItemImages = itemImages || []
 
   const unmintedItems = safeCollectionItems.filter(
     item => !safeMintedNFTs.some(nft => nft.itemId === item.id)
@@ -46,6 +54,45 @@ export default function NFTView() {
   const handleBatchMintComplete = (newNFTs: MintedNFT[]) => {
     setMintedNFTs(current => [...(current || []), ...newNFTs])
     setShowBatchMint(false)
+  }
+
+  const handleCreateListing = async (item: CollectionItem, nft: MintedNFT) => {
+    setIsGeneratingListing(true)
+    try {
+      const itemImagesForItem = safeItemImages.filter(img => img.itemId === item.id)
+      
+      const listingPackage = await generateEbayListingPackage(item, itemImagesForItem, 'ebay')
+      
+      const enhancedDescription = `
+        <div style="margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px;">
+          <h3 style="margin: 0 0 10px 0; font-size: 18px; font-weight: bold;">🎵 Blockchain-Verified Authenticity</h3>
+          <p style="margin: 0 0 8px 0; font-size: 14px;">This vinyl record has been minted as an NFT on the Solana blockchain, providing immutable proof of authenticity and ownership history.</p>
+          <div style="background: rgba(255,255,255,0.2); padding: 10px; border-radius: 4px; margin-top: 10px;">
+            <p style="margin: 0; font-size: 12px; font-family: monospace;"><strong>NFT Mint Address:</strong> ${nft.mintAddress}</p>
+            <p style="margin: 5px 0 0 0; font-size: 12px;"><strong>Network:</strong> Solana ${nft.network}</p>
+            <p style="margin: 5px 0 0 0; font-size: 12px;"><strong>Royalty:</strong> ${(nft.sellerFeeBasisPoints / 100).toFixed(1)}% on secondary sales</p>
+          </div>
+          <p style="margin: 10px 0 0 0; font-size: 11px;">✓ Verifiable on Solana Explorer<br/>✓ Transferable NFT ownership certificate included<br/>✓ Web3 collector status</p>
+        </div>
+      ` + listingPackage.htmlDescription
+      
+      setCurrentListingPackage({
+        ...listingPackage,
+        htmlDescription: enhancedDescription,
+        title: `${listingPackage.title} [NFT-Verified]`,
+      })
+      setShowListingDialog(true)
+      
+      toast.success('Listing generated!', {
+        description: 'Your NFT-verified marketplace listing is ready with blockchain certification'
+      })
+    } catch (error) {
+      toast.error('Failed to generate listing', {
+        description: error instanceof Error ? error.message : 'Unknown error occurred'
+      })
+    } finally {
+      setIsGeneratingListing(false)
+    }
   }
 
   const totalValue = safeMintedNFTs.reduce((sum, nft) => {
@@ -213,14 +260,15 @@ export default function NFTView() {
             </Card>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {mintedNFTs.map((nft) => {
-                const item = collectionItems.find(i => i.id === nft.vinylItemId)
+              {safeMintedNFTs.map((nft) => {
+                const item = safeCollectionItems.find(i => i.id === nft.itemId)
                 return (
                   <NFTCard
                     key={nft.id}
                     nft={nft}
                     item={item}
-                    onViewTransaction={() => handleViewTransaction(nft)}
+                    onViewHistory={() => handleViewTransaction(nft)}
+                    onCreateListing={item ? handleCreateListing : undefined}
                   />
                 )
               })}
@@ -252,10 +300,10 @@ export default function NFTView() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {mintedNFTs
+                  {safeMintedNFTs
                     .sort((a, b) => new Date(b.mintedAt).getTime() - new Date(a.mintedAt).getTime())
                     .map((nft) => {
-                      const item = collectionItems.find(i => i.id === nft.vinylItemId)
+                      const item = safeCollectionItems.find(i => i.id === nft.itemId)
                       return (
                         <div
                           key={nft.id}
@@ -315,6 +363,15 @@ export default function NFTView() {
         items={unmintedItems}
         onMintComplete={handleBatchMintComplete}
       />
+
+      {currentListingPackage && (
+        <EbayListingDialog
+          open={showListingDialog}
+          onOpenChange={setShowListingDialog}
+          listingPackage={currentListingPackage}
+          images={safeItemImages.filter(img => img.itemId === currentListingPackage.itemId)}
+        />
+      )}
     </div>
   )
 }

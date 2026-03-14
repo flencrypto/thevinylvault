@@ -1,42 +1,50 @@
-import { MintedNFT } from '@/lib/types'
+import { MintedNFT, CollectionItem } from '@/lib/types'
 import { getExplorerUrl, getAddressExplorerUrl } from '@/lib/solana-nft'
 import { formatRoyaltyBadge } from '@/lib/solana-service'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Coins, ArrowSquareOut, Trash, CurrencyDollar, CheckCircle, ArrowsLeftRight } from '@phosphor-icons/react'
+import { Coins, ArrowSquareOut, Trash, CurrencyDollar, CheckCircle, ArrowsLeftRight, ShoppingCart } from '@phosphor-icons/react'
 
 interface NFTCardProps {
   nft: MintedNFT
+  item?: CollectionItem
   itemTitle?: string
   itemImage?: string
   onDelete?: (nftId: string) => void
   onViewHistory?: (nft: MintedNFT) => void
+  onCreateListing?: (item: CollectionItem, nft: MintedNFT) => void
 }
 
-export function NFTCard({ nft, itemTitle, itemImage, onDelete, onViewHistory }: NFTCardProps) {
+export function NFTCard({ nft, item, itemTitle, itemImage, onDelete, onViewHistory, onCreateListing }: NFTCardProps) {
   const mintedDate = new Date(nft.mintedAt).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
   })
 
+  const displayTitle = itemTitle || (item?.artistName && item?.releaseTitle 
+    ? `${item.artistName} - ${item.releaseTitle}` 
+    : 'Vinyl NFT')
+  
+  const displayImage = itemImage || (item?.images && item.images.length > 0 ? item.images[0] : undefined)
+
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
       <CardHeader className="bg-gradient-to-br from-primary/10 to-accent/10 pb-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            {itemImage && (
+            {displayImage && (
               <img 
-                src={itemImage} 
-                alt={itemTitle || 'NFT'} 
+                src={displayImage} 
+                alt={displayTitle} 
                 className="w-12 h-12 rounded object-cover border-2 border-border"
               />
             )}
             <div>
               <CardTitle className="text-base flex items-center gap-2">
                 <Coins size={18} className="text-accent" weight="fill" />
-                {itemTitle || 'Vinyl NFT'}
+                {displayTitle}
               </CardTitle>
               <CardDescription className="flex items-center gap-2 mt-1">
                 <CheckCircle size={14} weight="fill" className="text-accent" />
@@ -97,6 +105,18 @@ export function NFTCard({ nft, itemTitle, itemImage, onDelete, onViewHistory }: 
             </Button>
           </div>
         </div>
+
+        {item && onCreateListing && (
+          <Button
+            size="sm"
+            variant="default"
+            className="w-full gap-2"
+            onClick={() => onCreateListing(item, nft)}
+          >
+            <ShoppingCart size={16} weight="fill" />
+            Create Marketplace Listing
+          </Button>
+        )}
 
         <div className="pt-2 flex gap-2">
           {onViewHistory && (
