@@ -136,7 +136,12 @@ Generate up to 3 pressing candidates ranked by total score. For each candidate:
 2. Provide specific evidence snippets explaining why this candidate matched
 3. List all matched identifiers with their sources (including 'discogs_database' when applicable)
 4. Include detailed pressing information
-5. For Discogs-based candidates, use format "discogs-{id}" for the id field
+5. For Discogs-based candidates:
+   - Use format "discogs-{id}" for the id field
+   - Include discogsId as a number
+   - Include discogsUrl as "https://www.discogs.com/release/{id}"
+   - If variant/pressing information is available in Discogs data, include it as discogsVariant
+   - Include imageUrls array if available from Discogs
 
 If the data is genuinely ambiguous or insufficient, DO NOT fabricate certainty. Return fewer candidates with honest confidence scores rather than padding with guesses.
 
@@ -144,7 +149,7 @@ Return JSON with this structure:
 {
   "candidates": [
     {
-      "id": "uuid-style-string",
+      "id": "discogs-12345",
       "pressingName": "UK 1st Press",
       "releaseTitle": "Low",
       "artistName": "David Bowie",
@@ -153,6 +158,10 @@ Return JSON with this structure:
       "format": "LP",
       "catalogNumber": "PL 12030",
       "matrixNumbers": ["A1/B1"],
+      "discogsId": 12345,
+      "discogsUrl": "https://www.discogs.com/release/12345",
+      "discogsVariant": "180g gatefold reissue",
+      "imageUrls": ["https://i.discogs.com/..."],
       "confidence": 0.92,
       "totalScore": 0.92,
       "matchedIdentifiers": ["PL 12030", "A1/B1", "RCA label"],
@@ -166,7 +175,7 @@ Return JSON with this structure:
         {
           "type": "catalog_number",
           "value": "PL 12030",
-          "source": "image_ocr",
+          "source": "discogs_database",
           "confidence": 0.95
         },
         {

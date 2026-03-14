@@ -148,6 +148,11 @@ export interface PressingCandidate {
   format: Format
   catalogNumber?: string
   matrixNumbers?: string[]
+  discogsUrl?: string
+  discogsId?: number
+  discogsReleaseId?: number
+  discogsVariant?: string
+  imageUrls?: string[]
   confidence: number
   matchedIdentifiers: string[]
   reasoning: string

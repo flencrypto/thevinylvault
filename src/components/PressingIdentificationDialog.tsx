@@ -13,6 +13,7 @@ import { Separator } from '@/components/ui/separator'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ImageUpload } from '@/components/ImageUpload'
+import { PressingMatchVerification } from '@/components/PressingMatchVerification'
 import { ItemImage, Format, FORMAT_LABELS } from '@/lib/types'
 import { analyzeVinylImage } from '@/lib/image-analysis-ai'
 import { identifyPressing, ScoredPressingCandidate } from '@/lib/pressing-identification-ai'
@@ -482,13 +483,22 @@ export function PressingIdentificationDialog({
                       )}
 
                       {selectedCandidate === candidate.id && (
-                        <Button
-                          onClick={() => handleSelectCandidate(candidate.id)}
-                          className="w-full gap-2"
-                        >
-                          <CheckCircle size={18} weight="fill" />
-                          Select This Pressing
-                        </Button>
+                        <>
+                          {candidate.discogsId && (
+                            <PressingMatchVerification
+                              candidate={candidate}
+                              userImages={images}
+                              discogsApiToken={apiKeys?.discogsUserToken}
+                            />
+                          )}
+                          <Button
+                            onClick={() => handleSelectCandidate(candidate.id)}
+                            className="w-full gap-2 mt-3"
+                          >
+                            <CheckCircle size={18} weight="fill" />
+                            Select This Pressing
+                          </Button>
+                        </>
                       )}
                     </div>
                   </Card>
