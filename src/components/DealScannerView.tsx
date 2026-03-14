@@ -67,7 +67,43 @@ export default function DealScannerView() {
     setIsScanning(true)
     toast('Scanning marketplaces for deals...', { icon: '🔍' })
     try {
-      const notified = await dealScannerService.scanNow()
+      const result = await dealScannerService.scanNow()
+
+      // Support both legacy numeric return and extended object return with deals
+      const notified = typeof result === 'number' ? result : result?.notified ?? 0
+
+      if (result && typeof result === 'object' && Array.isArray((result as any).deals)) {
+        const nowIso = new Date().toISOString()
+        const foundDeals = (result as any).deals as Deal[]
+        const storedDeals: StoredDeal[] = foundDeals.map((deal) => {
+          let id: string
+          try {
+            // Prefer crypto.randomUUID when available for stable unique IDs
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const anyCrypto = (crypto as any) || (window as any)?.crypto
+            if (anyCrypto && typeof anyCrypto.randomUUID === 'function') {
+              id = anyCrypto.randomUUID()
+            } else {
+              id = `deal-${Date.now()}-${Math.random().toString(36).slice(2)}`
+            }
+          } catch {
+            id = `deal-${Date.now()}-${Math.random().toString(36).slice(2)}`
+          }
+
+          return {
+            ...deal,
+            id,
+            foundAt: nowIso,
+            recommendation: getRecommendation(deal),
+          }
+        })
+
+        setDeals((existing) => {
+          const current = existing ?? []
+          return [...storedDeals, ...current]
+        })
+      }
+
       setAlertCount((c) => c + notified)
 
       const lastRun = localStorage.getItem('deal_scanner_last_run')
@@ -79,7 +115,7 @@ export default function DealScannerView() {
     } finally {
       setIsScanning(false)
     }
-  }, [])
+  }, [setDeals])
 
   const toggleAutoScan = useCallback(() => {
     if (autoScanActive) {
