@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Toaster } from '@/components/ui/sonner'
 import {
   Disc,
   Sparkle,
@@ -37,6 +38,8 @@ export default function VinylVaultApp() {
   }, [])
 
   return (
+    <>
+    <Toaster />
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 pb-20 md:pb-24">
       <div className="max-w-[1800px] mx-auto">
         <header className="sticky top-0 z-40 backdrop-blur-lg bg-slate-950/90 border-b border-slate-800 safe-area-inset-top">
@@ -156,5 +159,6 @@ export default function VinylVaultApp() {
         </nav>
       </div>
     </div>
+    </>
   )
 }
