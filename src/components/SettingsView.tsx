@@ -223,6 +223,7 @@ export default function SettingsView() {
   }
 
   const handleSave = () => {
+    setApiKeys(apiKeys)
     toast.success('Settings saved successfully', {
       description: 'Your API keys and preferences have been updated',
     })

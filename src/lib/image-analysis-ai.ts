@@ -1,7 +1,10 @@
 import { ImageAnalysisResult, PressingCandidate, Format } from './types'
+import { callVisionModel, extractJSON } from './vision-api-helper'
 
 export async function analyzeVinylImage(imageDataUrl: string, imageType: string): Promise<ImageAnalysisResult> {
-  const prompt = spark.llmPrompt`You are analyzing a vinyl record ${imageType} image to extract identifying information.
+  const systemPrompt = `You are a vinyl record identification expert. You analyze vinyl record images to extract identifying information with high precision.`
+
+  const userPrompt = `You are analyzing a vinyl record ${imageType} image to extract identifying information.
 
 Examine this image and extract:
 1. Any visible text (artist names, album titles, song names, label text)
@@ -25,8 +28,8 @@ Return your analysis as JSON with this structure:
 The confidence score should reflect how clear and readable the image is.`
 
   try {
-    const response = await spark.llm(prompt, 'gpt-4o', true)
-    const result = JSON.parse(response) as ImageAnalysisResult
+    const response = await callVisionModel(systemPrompt, userPrompt, [imageDataUrl])
+    const result = JSON.parse(extractJSON(response)) as ImageAnalysisResult
     return result
   } catch (error) {
     console.error('Image analysis failed:', error)
@@ -58,7 +61,7 @@ export async function identifyPressing(
   
   const avgConfidence = analysisResults.reduce((sum, r) => sum + r.confidence, 0) / analysisResults.length
 
-  const prompt = spark.llmPrompt`You are a vinyl record pressing identification expert. Based on extracted image data and user hints, identify the most likely pressing.
+  const prompt = (spark as any).llmPrompt`You are a vinyl record pressing identification expert. Based on extracted image data and user hints, identify the most likely pressing.
 
 **Extracted Image Data:**
 - All visible text: ${allExtractedText.join(', ')}
@@ -108,8 +111,8 @@ Return as JSON with this structure:
 }`
 
   try {
-    const response = await spark.llm(prompt, 'gpt-4o', true)
-    const result = JSON.parse(response) as { candidates: PressingCandidate[] }
+    const response = await (spark as any).llm(prompt, 'gpt-4o', true)
+    const result = JSON.parse(extractJSON(response)) as { candidates: PressingCandidate[] }
     
     return result.candidates.map(candidate => ({
       ...candidate,
@@ -133,9 +136,9 @@ export async function suggestConditionGrade(
 }> {
   const imageDescriptions = imageTypes.map((type, idx) => `${type} (image ${idx + 1})`).join(', ')
 
-  const prompt = spark.llmPrompt`You are an expert vinyl record grader using the Goldmine grading standard.
+  const systemPrompt = `You are an expert vinyl record grader using the Goldmine grading standard. You examine actual record images to assess condition.`
 
-Analyze these ${imageDataUrls.length} images: ${imageDescriptions}
+  const userPrompt = `Analyze these ${imageDataUrls.length} images: ${imageDescriptions}
 
 Goldmine Grading Scale:
 - M (Mint): Perfect, unplayed
@@ -163,8 +166,8 @@ Return JSON:
 }`
 
   try {
-    const response = await spark.llm(prompt, 'gpt-4o', true)
-    const result = JSON.parse(response)
+    const response = await callVisionModel(systemPrompt, userPrompt, imageDataUrls)
+    const result = JSON.parse(extractJSON(response))
     return result
   } catch (error) {
     console.error('Condition grading failed:', error)

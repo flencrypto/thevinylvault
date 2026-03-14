@@ -1,4 +1,5 @@
 import { ImageType } from './types'
+import { callVisionModel, extractJSON } from './vision-api-helper'
 
 export type ImageClassification = 
   | 'front_cover' 
@@ -74,36 +75,32 @@ export async function classifyImage(imageDataUrl: string): Promise<{
   confidence: number
   reasoning: string
 }> {
-  const prompt = spark.llmPrompt`You are an expert at identifying vinyl record image types.
-
-I will describe an image for you to classify into one of these categories:
+  const systemPrompt = `You are an expert at identifying vinyl record image types. Classify vinyl record photographs into one of these categories:
 - front_cover: The front album artwork
 - back_cover: The back of the album sleeve showing track listing or additional artwork
 - label: The record label visible on the vinyl disc itself
 - runout: Close-up of the runout groove area showing matrix/runout etchings
 - insert: Inner sleeve, lyric sheet, or other paper inserts
 - spine: The spine edge of the album sleeve
-- unknown: Cannot be confidently classified
+- unknown: Cannot be confidently classified`
 
-Image description: This is a vinyl record photograph. Based on typical vinyl record photography patterns, analyze the likely image type.
+  const userPrompt = `Classify this vinyl record image. Look at the actual image content to determine the type.
 
 Return your analysis as JSON:
 {
   "imageType": "front_cover",
-  "confidence": 0.75,
-  "reasoning": "Likely album artwork based on image characteristics"
-}
-
-IMPORTANT: Since direct image analysis is not available in this context, provide reasonable defaults based on common vinyl photography patterns. Use moderate confidence scores (0.6-0.8) to indicate this is an educated guess.`
+  "confidence": 0.85,
+  "reasoning": "Shows album artwork with artist name and title visible"
+}`
 
   try {
-    const response = await spark.llm(prompt, 'gpt-4o', true)
-    const result = JSON.parse(response)
+    const response = await callVisionModel(systemPrompt, userPrompt, [imageDataUrl])
+    const result = JSON.parse(extractJSON(response))
     
     return {
       imageType: result.imageType || 'front_cover',
-      confidence: Math.min(result.confidence || 0.7, 0.75),
-      reasoning: result.reasoning || 'Auto-detection uses pattern matching'
+      confidence: result.confidence || 0.7,
+      reasoning: result.reasoning || 'Classification based on image analysis'
     }
   } catch (error) {
     console.error('Image classification failed:', error)
@@ -120,9 +117,9 @@ export async function extractMetadata(
   imageDataUrl: string, 
   imageType: ImageClassification
 ): Promise<MetadataExtraction & { confidence: number; uncertainties: string[] }> {
-  const prompt = spark.llmPrompt`You are an expert at reading text and metadata from vinyl record images.
+  const systemPrompt = `You are an expert at reading text and metadata from vinyl record images. You have deep knowledge of record labels, catalog numbering systems, and pressing identification.`
 
-Image type: ${imageType}
+  const userPrompt = `Image type: ${imageType}
 
 Extract the following information from this image. ONLY report information you can actually see - do not infer or guess:
 
@@ -164,8 +161,8 @@ Return as JSON:
 Mark uncertain readings in the uncertainties array. Only include fields where you found actual visible information.`
 
   try {
-    const response = await spark.llm(prompt, 'gpt-4o', true)
-    const result = JSON.parse(response)
+    const response = await callVisionModel(systemPrompt, userPrompt, [imageDataUrl])
+    const result = JSON.parse(extractJSON(response))
     return result
   } catch (error) {
     console.error('Metadata extraction failed:', error)
@@ -187,9 +184,9 @@ export async function detectConditionDefects(
   const isMedia = imageType === 'label' || imageType === 'runout'
   const isSleeve = imageType === 'front_cover' || imageType === 'back_cover' || imageType === 'spine' || imageType === 'insert'
 
-  const prompt = spark.llmPrompt`You are an expert vinyl record grader analyzing condition defects.
+  const systemPrompt = `You are an expert vinyl record grader analyzing condition defects. You examine images carefully for any signs of wear, damage, or imperfections.`
 
-Image type: ${imageType}
+  const userPrompt = `Image type: ${imageType}
 ${isMedia ? 'Focus on: Media/label condition issues' : ''}
 ${isSleeve ? 'Focus on: Sleeve/packaging condition issues' : ''}
 
@@ -231,13 +228,6 @@ Return as JSON:
       "severity": "moderate",
       "location": "front cover center",
       "description": "Circular wear mark approximately 3cm diameter"
-    },
-    {
-      "type": "corner_wear",
-      "confidence": 0.92,
-      "severity": "minor",
-      "location": "top right corner",
-      "description": "Light fraying at corner tip"
     }
   ],
   "confidence": 0.88,
@@ -247,8 +237,8 @@ Return as JSON:
 If no defects are visible, return an empty defects array. Be thorough but conservative - only report defects you can actually see.`
 
   try {
-    const response = await spark.llm(prompt, 'gpt-4o', true)
-    const result = JSON.parse(response)
+    const response = await callVisionModel(systemPrompt, userPrompt, [imageDataUrl])
+    const result = JSON.parse(extractJSON(response))
     return result
   } catch (error) {
     console.error('Condition detection failed:', error)
@@ -268,9 +258,9 @@ export async function generateListingNotes(
     `${d.type} (${d.severity}): ${d.description}`
   ).join('\n')
 
-  const prompt = spark.llmPrompt`You are an expert at writing professional vinyl record condition descriptions for marketplace listings.
+  const systemPrompt = `You are an expert at writing professional vinyl record condition descriptions for marketplace listings.`
 
-Based on the detected defects, generate professional seller notes that are:
+  const userPrompt = `Based on the detected defects, generate professional seller notes that are:
 - Honest and accurate
 - Professional and neutral in tone
 - Clear and specific
@@ -310,8 +300,10 @@ Return as JSON:
 If no defects, emphasize excellent condition appropriately.`
 
   try {
-    const response = await spark.llm(prompt, 'gpt-4o', true)
-    const result = JSON.parse(response)
+    // Listing notes generation is text-only (no images needed)
+    const combinedPrompt = (spark as any).llmPrompt`${systemPrompt}\n\n${userPrompt}`
+    const response = await (spark as any).llm(combinedPrompt, 'gpt-4o', true)
+    const result = JSON.parse(extractJSON(response))
     return result
   } catch (error) {
     console.error('Listing notes generation failed:', error)
