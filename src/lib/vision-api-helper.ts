@@ -7,6 +7,8 @@
  *  3. spark.llm – text-only fallback (images are NOT sent; degraded experience)
  */
 
+const KV_STORAGE_KEY = 'vinyl-vault-api-keys'
+
 interface VisionCredentials {
   apiKey: string
   model: string
@@ -43,23 +45,57 @@ function getVisionCredentials(): VisionCredentials | null {
 }
 
 /**
- * Extract the raw base64 payload from a data-URL string.
- * Returns the portion after "base64," so it can be used directly in image_url content.
+ * Async fallback: resolve credentials from Spark KV when localStorage is empty.
+ * Mirrors the pattern used in XAIService._syncFromKv() and DeepSeekService.syncFromKv().
+ * Also hydrates localStorage so subsequent synchronous reads succeed.
  */
-function dataUrlToBase64(dataUrl: string): string {
-  const idx = dataUrl.indexOf('base64,')
-  if (idx !== -1) {
-    return dataUrl.substring(idx + 7)
+async function getVisionCredentialsFromKv(): Promise<VisionCredentials | null> {
+  const sparkKv = (globalThis as any)?.spark?.kv
+  if (!sparkKv || typeof sparkKv.get !== 'function') return null
+
+  try {
+    const raw = await sparkKv.get(KV_STORAGE_KEY)
+    if (!raw) return null
+
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+    if (!parsed || typeof parsed !== 'object') return null
+
+    // 1. Try xAI from KV (camelCase keys as stored by SettingsView)
+    if (typeof parsed.xaiApiKey === 'string' && parsed.xaiApiKey) {
+      const model = (typeof parsed.xaiModel === 'string' && parsed.xaiModel) || 'grok-4-1-fast-reasoning'
+      // Hydrate localStorage for future synchronous reads
+      localStorage.setItem('xai_api_key', parsed.xaiApiKey)
+      localStorage.setItem('xai_model', model)
+      return { apiKey: parsed.xaiApiKey, model, baseUrl: 'https://api.x.ai/v1', provider: 'xai' }
+    }
+
+    // 2. Try DeepSeek from KV (only if vision model)
+    const deepseekKey = typeof parsed.deepseekApiKey === 'string' ? parsed.deepseekApiKey : null
+    if (deepseekKey) {
+      const model = (typeof parsed.deepseekModel === 'string' && parsed.deepseekModel) || 'deepseek-chat'
+      const isVision = model.toLowerCase().includes('vl') || model.toLowerCase().includes('vision')
+      if (isVision) {
+        localStorage.setItem('deepseek_api_key', deepseekKey)
+        localStorage.setItem('deepseek_model', model)
+        return { apiKey: deepseekKey, model, baseUrl: 'https://api.deepseek.com/v1', provider: 'deepseek' }
+      }
+    }
+  } catch {
+    // Ignore KV errors
   }
-  return dataUrl
+  return null
 }
 
 /**
- * Detect the MIME type from a data-URL (defaults to image/jpeg).
+ * Normalise an image source into a data-URL suitable for the OpenAI image_url format.
+ * If already a valid data URL, returns it as-is. Otherwise treats the input as raw base64
+ * and wraps it with a default image/jpeg MIME type.
  */
-function dataUrlMimeType(dataUrl: string): string {
-  const match = dataUrl.match(/^data:([^;]+);/)
-  return match ? match[1] : 'image/jpeg'
+function toImageDataUrl(dataUrl: string): string {
+  if (dataUrl.startsWith('data:')) {
+    return dataUrl
+  }
+  return `data:image/jpeg;base64,${dataUrl}`
 }
 
 /**
@@ -75,7 +111,8 @@ export async function callVisionModel(
   userPrompt: string,
   imageDataUrls: string[]
 ): Promise<string> {
-  const creds = getVisionCredentials()
+  // Try synchronous localStorage first, then async Spark KV fallback
+  const creds = getVisionCredentials() || await getVisionCredentialsFromKv()
 
   if (creds) {
     return callExternalVisionAPI(creds, systemPrompt, userPrompt, imageDataUrls)
@@ -94,7 +131,7 @@ async function callExternalVisionAPI(
   const imageContent = imageDataUrls.map((dataUrl) => ({
     type: 'image_url' as const,
     image_url: {
-      url: `data:${dataUrlMimeType(dataUrl)};base64,${dataUrlToBase64(dataUrl)}`,
+      url: toImageDataUrl(dataUrl),
       detail: 'high' as const,
     },
   }))
@@ -155,8 +192,26 @@ async function callSparkLlmFallback(
 
 /**
  * Extract JSON from a model response that may be wrapped in markdown code fences.
+ * Tries fenced blocks first, then falls back to finding the first balanced `{…}`.
  */
 export function extractJSON(content: string): string {
-  const match = content.match(/```json\s*([\s\S]*?)\s*```|(\{[\s\S]*\})/)
-  return match ? (match[1] || match[2]).trim() : content.trim()
+  // 1. Prefer fenced JSON blocks
+  const fenced = content.match(/```json\s*([\s\S]*?)\s*```/)
+  if (fenced) return fenced[1].trim()
+
+  // 2. Fall back to the first top-level `{…}` by finding balanced braces
+  const start = content.indexOf('{')
+  if (start === -1) return content.trim()
+
+  let depth = 0
+  for (let i = start; i < content.length; i++) {
+    if (content[i] === '{') depth++
+    else if (content[i] === '}') depth--
+    if (depth === 0) {
+      return content.substring(start, i + 1).trim()
+    }
+  }
+
+  // Unbalanced braces – return from first `{` to end as a best effort
+  return content.substring(start).trim()
 }
