@@ -460,7 +460,7 @@ export async function generateBulkListings(
   items: CollectionItem[],
   channel: 'ebay' | 'discogs' | 'shopify'
 ): Promise<Array<{ itemId: string; title: string; description: string; price: number }>> {
-  const listings = []
+  const listings: Array<{ itemId: string; title: string; description: string; price: number }> = []
 
   for (const item of items) {
     const keywords = await generateSEOKeywords(item, channel)

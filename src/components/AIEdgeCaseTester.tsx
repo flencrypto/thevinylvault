@@ -6,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { CheckCircle, XCircle, Warning, Play, Spinner } from '@phosphor-icons/react'
+import { CheckCircle, XCircle, Warning, Play, CircleNotch, WarningCircle } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { analyzeVinylImage, identifyPressing } from '@/lib/image-analysis-ai'
 import { identifyPressing as advancedIdentifyPressing } from '@/lib/pressing-identification-ai'
@@ -586,8 +586,8 @@ export default function AIEdgeCaseTester() {
             }
           },
           priceAnalysis: { enabled: false, useDiscogsData: false, useEbayData: false, priceVarianceThreshold: 0 },
-          releaseMatching: { enabled: false, minConfidence: 0, useDiscogsDatabase: false },
-          watchlistScanning: { enabled: false, scanFrequency: 'never', platforms: [] }
+          releaseMatching: { enabled: false, minConfidence: 0, autoAcceptHighConfidence: false, highConfidenceThreshold: 0 },
+          advancedSettings: { temperature: 0.7, maxTokens: 2048, retryAttempts: 3, timeoutSeconds: 30 }
         }
       })
       return {
@@ -663,7 +663,7 @@ export default function AIEdgeCaseTester() {
                 return (
                   <TabsTrigger key={key} value={key} className="relative">
                     {category.name}
-                    {category.running && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+                    {category.running && <CircleNotch className="ml-2 h-4 w-4 animate-spin" />}
                     {stats.total > 0 && (
                       <Badge 
                         variant={stats.percentage === 100 ? "default" : stats.percentage >= 50 ? "secondary" : "destructive"}
@@ -683,7 +683,7 @@ export default function AIEdgeCaseTester() {
                 <TabsContent key={key} value={key} className="mt-4">
                   {stats.total > 0 && (
                     <Alert className="mb-4">
-                      <AlertCircle className="h-4 w-4" />
+                      <WarningCircle className="h-4 w-4" />
                       <AlertDescription>
                         <strong>{category.name} Summary:</strong> {stats.passed} of {stats.total} tests passed ({stats.percentage}%)
                       </AlertDescription>
@@ -693,7 +693,7 @@ export default function AIEdgeCaseTester() {
                   <ScrollArea className="h-[600px] w-full rounded-md border p-4">
                     {category.tests.length === 0 ? (
                       <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                        <AlertCircle className="h-12 w-12 mb-2" />
+                        <WarningCircle className="h-12 w-12 mb-2" />
                         <p>No tests run yet. Click a test button to start.</p>
                       </div>
                     ) : (

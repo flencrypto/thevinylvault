@@ -3,6 +3,7 @@ export type SleeveGrade = 'M' | 'NM' | 'EX' | 'VG+' | 'VG' | 'G' | 'F' | 'P'
 export type ItemStatus = 'owned' | 'for_sale' | 'sold' | 'traded' | 'archived'
 export type SourceType = 'shop' | 'ebay' | 'discogs' | 'fair' | 'gift' | 'unknown'
 export type Format = 'LP' | '7in' | '12in' | 'EP' | 'Boxset'
+export type NFTRarity = 'Common' | 'Uncommon' | 'Rare' | 'Ultra Rare' | 'Legendary'
 
 export interface Artist {
   id: string
@@ -76,6 +77,11 @@ export interface CollectionItem {
   storageLocation?: string
   status: ItemStatus
   notes?: string
+  rarity?: NFTRarity
+  ukChartPosition?: number
+  anecdotes?: string[]
+  isRareRelease?: boolean
+  totalAlbumsReleased?: number
   condition: ItemCondition
   images?: string[]
   priceHistory?: PriceHistoryEntry[]
@@ -192,6 +198,14 @@ export const FORMAT_LABELS: Record<Format, string> = {
   EP: 'EP',
   Boxset: 'Box Set',
 }
+
+export const NFT_RARITY_OPTIONS: NFTRarity[] = [
+  'Common',
+  'Uncommon',
+  'Rare',
+  'Ultra Rare',
+  'Legendary',
+]
 
 export const STATUS_LABELS: Record<ItemStatus, string> = {
   owned: 'In Collection',

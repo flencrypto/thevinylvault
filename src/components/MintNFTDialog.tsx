@@ -147,6 +147,53 @@ export function MintNFTDialog({ open, onOpenChange, item, onMintComplete }: Mint
                     <span className="font-mono">{item.catalogNumber}</span>
                   </div>
                 )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Rare Release:</span>
+                  <Badge variant={item.isRareRelease ? 'default' : 'outline'} className="text-xs">
+                    {item.isRareRelease ? 'Yes' : 'No'}
+                  </Badge>
+                </div>
+                {item.isRareRelease && item.matrixNumbers && item.matrixNumbers.length > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Rare Matrix:</span>
+                    <span className="font-mono text-xs">{item.matrixNumbers.join(' / ')}</span>
+                  </div>
+                )}
+                {item.rarity && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Rarity:</span>
+                    <Badge variant="secondary">{item.rarity}</Badge>
+                  </div>
+                )}
+                {item.ukChartPosition && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">UK Chart Peak:</span>
+                    <span>#{item.ukChartPosition}</span>
+                  </div>
+                )}
+                {item.totalAlbumsReleased && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Albums by Artist:</span>
+                    <span>{item.totalAlbumsReleased}</span>
+                  </div>
+                )}
+                {item.purchasePrice && item.purchasePrice > 0 && item.estimatedValue?.estimateMid && (() => {
+                  const appreciationPct = ((item.estimatedValue!.estimateMid - item.purchasePrice!) / item.purchasePrice!) * 100
+                  return (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Value Appreciation:</span>
+                      <span className={`font-semibold ${appreciationPct >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                        {appreciationPct >= 0 ? '+' : ''}{appreciationPct.toFixed(1)}%
+                      </span>
+                    </div>
+                  )
+                })()}
+                {item.anecdotes && item.anecdotes.filter(a => a.trim()).length > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Anecdotes:</span>
+                    <span>{item.anecdotes.filter(a => a.trim()).length} recorded</span>
+                  </div>
+                )}
               </div>
             </div>
 

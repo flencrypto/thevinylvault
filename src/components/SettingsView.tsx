@@ -74,7 +74,7 @@ export default function SettingsView() {
   const [notificationsEnabled, setNotificationsEnabled] = useKV<boolean>('vinyl-vault-notifications', true)
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (typeof window === 'undefined' || !apiKeys) {
       return
     }
 
@@ -104,10 +104,10 @@ export default function SettingsView() {
       window.localStorage.removeItem('telegram_chat_id')
     }
   }, [
-    apiKeys.xaiApiKey,
-    apiKeys.deepseekApiKey,
-    apiKeys.telegramBotToken,
-    apiKeys.telegramChatId,
+    apiKeys?.xaiApiKey,
+    apiKeys?.deepseekApiKey,
+    apiKeys?.telegramBotToken,
+    apiKeys?.telegramChatId,
   ])
   const [autoSync, setAutoSync] = useKV<boolean>('vinyl-vault-auto-sync', true)
   
@@ -480,9 +480,9 @@ export default function SettingsView() {
 
             <div className="space-y-2">
               <Label htmlFor="pinata-jwt" className="text-slate-200 flex items-center gap-2">
-                Pinata JWT (NFT Metadata)
+                Pinata JWT (NFT Metadata Storage)
                 {apiKeys?.pinataJwt && (
-                  <Check className="w-4 h-4 text-green-500" weight="bold" />
+                  <CloudArrowUp className="w-4 h-4 text-green-500" weight="fill" />
                 )}
               </Label>
               <div className="flex gap-2">
@@ -509,7 +509,7 @@ export default function SettingsView() {
               </div>
               <p className="text-xs text-slate-500 flex items-start gap-1">
                 <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                Required for uploading NFT metadata to IPFS when minting Solana NFTs. Get a free API key at <a href="https://app.pinata.cloud/keys" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">app.pinata.cloud</a>.
+                Required for on-chain NFT minting. Metadata is pinned to IPFS via Pinata. Get your free JWT at <a href="https://app.pinata.cloud/developers/api-keys" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">app.pinata.cloud</a>.
               </p>
             </div>
 
