@@ -106,22 +106,21 @@ export function ImageUpload({ images, onImagesChange, maxImages = 10, autoUpload
       const confidenceBand = getConfidenceBand(result.confidence)
       const meetsThreshold = checkConfidence('imageClassification', result.confidence)
       
-      onImagesChange(
-        images.map(img =>
-          img.id === image.id 
-            ? { ...img, type: result.imageType as ImageType }
-            : img
-        )
-      )
-      
       if (meetsThreshold) {
+        onImagesChange(
+          images.map(img =>
+            img.id === image.id
+              ? { ...img, type: result.imageType as ImageType }
+              : img
+          )
+        )
         toast.success(`Auto-detected: ${result.imageType.replace(/_/g, ' ')}`, {
           description: `${Math.round(result.confidence * 100)}% confidence - ${result.reasoning}`
         })
       } else {
         const threshold = getThreshold('imageClassification')
         toast.warning(`Low confidence: ${result.imageType.replace(/_/g, ' ')}`, {
-          description: `${Math.round(result.confidence * 100)}% (threshold: ${threshold}%) - Please verify manually`
+          description: `${Math.round(result.confidence * 100)}% (threshold: ${threshold}%) - type unchanged, please verify manually`
         })
       }
     } catch (error) {

@@ -193,6 +193,8 @@ class WebScrapingService {
 
   private async _callPythonApi(params: ScrapeParams): Promise<RawScrapedItem[]> {
     const apiUrl = 'http://localhost:5000/api/scrape'
+    // Use the configurable timeout (seconds → ms), defaulting to 30 s
+    const timeoutMs = (params.config.timeout || 30) * 1000
 
     try {
       const response = await fetch(apiUrl, {
@@ -204,7 +206,7 @@ class WebScrapingService {
           maxResults: params.maxResults,
           config: params.config,
         }),
-        signal: AbortSignal.timeout(30_000),
+        signal: AbortSignal.timeout(timeoutMs),
       })
 
       if (!response.ok) {
