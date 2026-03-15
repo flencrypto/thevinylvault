@@ -16,15 +16,10 @@ import {
   publicKey as umiPublicKey,
   generateSigner,
   signerIdentity,
-  type Signer,
-  type Transaction as UmiTransaction,
+  Signer as UmiSigner,
+  base58,
 } from '@metaplex-foundation/umi'
-import { base58 } from '@metaplex-foundation/umi-serializers-encodings'
-import {
-  toWeb3JsTransaction,
-  fromWeb3JsTransaction,
-} from '@metaplex-foundation/umi-web3js-adapters'
-import type { VersionedTransaction as Web3JsVersionedTransaction } from '@solana/web3.js'
+import { VersionedTransaction, VersionedMessage } from '@solana/web3.js'
 
 export interface MetaplexMintResult {
   success: boolean
@@ -34,15 +29,102 @@ export interface MetaplexMintResult {
   error?: string
 }
 
+interface BrowserWalletProvider {
+  publicKey: { toString: () => string } | null | undefined
+  signTransaction?: (tx: VersionedTransaction) => Promise<VersionedTransaction>
+  signMessage?: (message: Uint8Array, encoding?: string) => Promise<Uint8Array | { signature: Uint8Array }>
+}
+
+function getWalletProvider(walletType: string): BrowserWalletProvider | null {
+  switch (walletType) {
+    case 'phantom': return (window.solana as BrowserWalletProvider) ?? null
+    case 'solflare': return (window.solflare as BrowserWalletProvider) ?? null
+    case 'backpack': return (window.backpack as BrowserWalletProvider) ?? null
+    default: return null
+  }
+}
+
+function createBrowserWalletSigner(walletAddress: string, walletType: string): UmiSigner {
+  const provider = getWalletProvider(walletType)
+  if (!provider || !provider.publicKey) {
+    throw new Error(`Wallet not connected for type: ${walletType}`)
+  }
+
+  const signTx = async (transaction: any): Promise<any> => {
+    if (typeof provider.signTransaction !== 'function') {
+      throw new Error('Wallet does not support signTransaction')
+    }
+    const message = VersionedMessage.deserialize(transaction.serializedMessage)
+    const vtx = new VersionedTransaction(message)
+    if (Array.isArray(transaction.signatures) && transaction.signatures.length > 0) {
+      vtx.signatures = transaction.signatures.map(
+        (sig: Uint8Array | null) => sig ?? new Uint8Array(64).fill(0)
+      )
+    }
+    const signed = await provider.signTransaction(vtx)
+    return { ...transaction, signatures: signed.signatures }
+  }
+
+  return {
+    publicKey: umiPublicKey(walletAddress),
+    async signMessage(message: Uint8Array): Promise<Uint8Array> {
+      if (typeof provider.signMessage !== 'function') {
+        throw new Error('Wallet does not support signMessage')
+      }
+      const result = await provider.signMessage(message, 'utf8')
+      return result instanceof Uint8Array ? result : (result.signature as Uint8Array)
+    },
+    signTransaction: signTx,
+    signAllTransactions: (transactions: any[]) => Promise.all(transactions.map(signTx)),
+  }
+}
+
 export async function uploadMetadataToArweave(metadata: SolanaNFTMetadata): Promise<string> {
-  const metadataJson = JSON.stringify(metadata, null, 2)
-  const encoder = new TextEncoder()
-  const data = encoder.encode(metadataJson)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-  
-  return `https://arweave.net/${hashHex.substring(0, 43)}`
+  let pinataJwt: string | undefined
+  try {
+    const sparkKv = (globalThis as any)?.spark?.kv
+    if (sparkKv && typeof sparkKv.get === 'function') {
+      const apiKeys = await sparkKv.get('vinyl-vault-api-keys')
+      if (apiKeys && typeof apiKeys === 'object') {
+        pinataJwt = typeof apiKeys.pinataJwt === 'string' ? apiKeys.pinataJwt : undefined
+      }
+    }
+  } catch {
+    // KV not available in this context
+  }
+
+  if (!pinataJwt) {
+    throw new Error(
+      'NFT metadata upload requires a Pinata JWT. Please configure your Pinata API key in Settings to enable on-chain minting.'
+    )
+  }
+
+  const response = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${pinataJwt}`,
+    },
+    body: JSON.stringify({
+      pinataContent: metadata,
+      pinataMetadata: {
+        name: `${metadata.name || 'nft'}-metadata.json`,
+      },
+    }),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Metadata upload to IPFS failed: ${response.status} ${errorText}`)
+  }
+
+  const result = await response.json()
+
+  if (!result.IpfsHash) {
+    throw new Error('IPFS upload succeeded but no content hash returned')
+  }
+
+  return `https://gateway.pinata.cloud/ipfs/${result.IpfsHash}`
 }
 
 function getBrowserWalletProvider(walletType: string) {
@@ -95,11 +177,9 @@ export async function mintNFTWithMetaplex(
     const rpcEndpoint = SOLANA_NETWORKS[network]
     const umi = createUmi(rpcEndpoint).use(mplCore())
 
-    const walletProvider = getBrowserWalletProvider(walletType)
-    if (!walletProvider || !walletProvider.publicKey) {
-      throw new Error(`Wallet not connected: ${walletType}`)
-    }
-    const walletSigner = createBrowserWalletSigner(walletAddress, walletProvider as unknown as BrowserWalletProvider)
+    // Attach the connected browser wallet as Umi's identity signer so that
+    // it pays transaction fees and acts as the NFT authority.
+    const walletSigner = createBrowserWalletSigner(walletAddress, walletType)
     umi.use(signerIdentity(walletSigner))
     
     const metadata = buildNFTMetadata(config)

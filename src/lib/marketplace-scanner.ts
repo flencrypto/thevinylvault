@@ -25,8 +25,8 @@ export async function scanMarketplaces(
 ): Promise<MarketListing[]> {
   const allListings: MarketListing[] = []
   
-  const searchTerms = watchlistItems.map(item => {
-    const parts = []
+  const searchTerms: string[] = watchlistItems.map(item => {
+    const parts: string[] = []
     if (item.artistName) parts.push(item.artistName)
     if (item.releaseTitle) parts.push(item.releaseTitle)
     if (item.pressingDetails) parts.push(item.pressingDetails)

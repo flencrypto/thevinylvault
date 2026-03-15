@@ -10,9 +10,10 @@ import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
-import { CollectionItem, Format, MediaGrade, SleeveGrade, SourceType, ItemStatus, STATUS_LABELS, FORMAT_LABELS, GRADE_DESCRIPTIONS, ItemImage, PriceHistoryEntry } from '@/lib/types'
+import { CollectionItem, Format, MediaGrade, SleeveGrade, SourceType, ItemStatus, STATUS_LABELS, FORMAT_LABELS, GRADE_DESCRIPTIONS, ItemImage, PriceHistoryEntry, NFTRarity, NFT_RARITY_OPTIONS } from '@/lib/types'
 import { formatCurrency, formatDate, getGradeColor, generatePriceEstimate } from '@/lib/helpers'
-import { Pencil, Trash, Info, ChartBar, Calendar, MapPin, Package, CurrencyDollar, Record, Eye, Sparkle, ClockCounterClockwise } from '@phosphor-icons/react'
+import { Pencil, Trash, Info, ChartBar, Calendar, MapPin, Package, CurrencyDollar, Record, Eye, Sparkle, ClockCounterClockwise, Trophy, Star, Books, MusicNotes, TrendUp } from '@phosphor-icons/react'
+import { Switch } from '@/components/ui/switch'
 import { ConditionGradingDialog } from '@/components/ConditionGradingDialog'
 import { PriceHistoryChart } from '@/components/PriceHistoryChart'
 import { suggestGradingNotes } from '@/lib/condition-grading-ai'
@@ -272,6 +273,68 @@ export function ItemDetailDialog({ open, onOpenChange, item, onUpdate, onDelete 
                     </Card>
                   )}
 
+                  {(item.rarity || item.ukChartPosition || (item.anecdotes && item.anecdotes.length > 0) || item.isRareRelease !== undefined || item.totalAlbumsReleased) && (
+                    <Card className="p-4 col-span-2 space-y-3">
+                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">NFT Attributes</div>
+                      {item.rarity && (
+                        <div className="flex items-center gap-2">
+                          <Star size={14} className="text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">Rarity:</span>
+                          <span className="font-semibold text-sm">{item.rarity}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <Star size={14} className={item.isRareRelease ? 'text-accent' : 'text-muted-foreground'} weight={item.isRareRelease ? 'fill' : 'regular'} />
+                        <span className="text-xs text-muted-foreground">Rare Release:</span>
+                        <Badge variant={item.isRareRelease ? 'default' : 'outline'} className="text-xs">
+                          {item.isRareRelease ? 'Yes' : 'No'}
+                        </Badge>
+                        {item.isRareRelease && item.matrixNumbers && item.matrixNumbers.length > 0 && (
+                          <span className="text-xs font-mono text-muted-foreground">({item.matrixNumbers.join(' / ')})</span>
+                        )}
+                      </div>
+                      {item.ukChartPosition && (
+                        <div className="flex items-center gap-2">
+                          <Trophy size={14} className="text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">UK Chart Peak:</span>
+                          <span className="font-semibold text-sm">#{item.ukChartPosition}</span>
+                        </div>
+                      )}
+                      {item.totalAlbumsReleased && (
+                        <div className="flex items-center gap-2">
+                          <MusicNotes size={14} className="text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">Total Albums by Artist:</span>
+                          <span className="font-semibold text-sm">{item.totalAlbumsReleased}</span>
+                        </div>
+                      )}
+                      {item.purchasePrice && item.purchasePrice > 0 && item.estimatedValue?.estimateMid && (() => {
+                        const appreciationPct = ((item.estimatedValue!.estimateMid - item.purchasePrice!) / item.purchasePrice!) * 100
+                        return (
+                          <div className="flex items-center gap-2">
+                            <TrendUp size={14} className="text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">Value Appreciation:</span>
+                            <span className={`font-semibold text-sm ${appreciationPct >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                              {appreciationPct >= 0 ? '+' : ''}{appreciationPct.toFixed(1)}%
+                            </span>
+                          </div>
+                        )
+                      })()}
+                      {item.anecdotes && item.anecdotes.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Books size={14} className="text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">Anecdotes</span>
+                          </div>
+                          <ul className="space-y-1 pl-4">
+                            {item.anecdotes.filter(a => a.trim()).map((anecdote, i) => (
+                              <li key={i} className="text-sm list-disc">{anecdote}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </Card>
+                  )}
+
                   {item.images && item.images.length > 0 && (
                     <Card className="p-4 col-span-2">
                       <div className="text-xs text-muted-foreground mb-3">Images ({item.images.length})</div>
@@ -413,6 +476,75 @@ export function ItemDetailDialog({ open, onOpenChange, item, onUpdate, onDelete 
                       onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                       rows={4}
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="rarity">Rarity (NFT Attribute)</Label>
+                    <Select
+                      value={formData.rarity || ''}
+                      onValueChange={(value) => setFormData({ ...formData, rarity: value ? value as NFTRarity : undefined })}
+                    >
+                      <SelectTrigger id="rarity">
+                        <SelectValue placeholder="Select rarity…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">— Not set —</SelectItem>
+                        {NFT_RARITY_OPTIONS.map(r => (
+                          <SelectItem key={r} value={r}>{r}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="ukChartPosition">UK Chart Peak Position</Label>
+                    <Input
+                      id="ukChartPosition"
+                      type="number"
+                      min={1}
+                      max={200}
+                      placeholder="e.g. 1"
+                      value={formData.ukChartPosition ?? ''}
+                      onChange={(e) => setFormData({ ...formData, ukChartPosition: e.target.value ? parseInt(e.target.value) : undefined })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="totalAlbumsReleased">Total Albums Released by Artist</Label>
+                    <Input
+                      id="totalAlbumsReleased"
+                      type="number"
+                      min={1}
+                      placeholder="e.g. 12"
+                      value={formData.totalAlbumsReleased ?? ''}
+                      onChange={(e) => setFormData({ ...formData, totalAlbumsReleased: e.target.value ? parseInt(e.target.value) : undefined })}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between col-span-2 p-3 border border-border rounded-lg">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="isRareRelease" className="text-sm font-medium">Rare Release</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Mark as a rare pressing — the matrix number will be included in the NFT attributes
+                      </p>
+                    </div>
+                    <Switch
+                      id="isRareRelease"
+                      checked={formData.isRareRelease ?? false}
+                      onCheckedChange={(checked) => setFormData({ ...formData, isRareRelease: checked })}
+                    />
+                  </div>
+
+                  <div className="space-y-2 col-span-2">
+                    <Label htmlFor="anecdotes">Anecdotes (one per line)</Label>
+                    <Textarea
+                      id="anecdotes"
+                      value={(formData.anecdotes || []).join('\n')}
+                      onChange={(e) => setFormData({ ...formData, anecdotes: e.target.value ? e.target.value.split('\n').filter(line => line.trim()) : [] })}
+                      rows={4}
+                      placeholder="Add interesting facts or stories about this record, one per line…"
+                    />
+                    <p className="text-xs text-muted-foreground">These anecdotes will appear in the NFT description.</p>
                   </div>
                 </div>
               )}

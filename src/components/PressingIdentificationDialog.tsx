@@ -14,7 +14,7 @@ import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ImageUpload } from '@/components/ImageUpload'
 import { PressingMatchVerification } from '@/components/PressingMatchVerification'
-import { ItemImage, Format, FORMAT_LABELS } from '@/lib/types'
+import { ItemImage, Format, FORMAT_LABELS, ImageAnalysisResult } from '@/lib/types'
 import { analyzeVinylImage } from '@/lib/image-analysis-ai'
 import { identifyPressing, ScoredPressingCandidate } from '@/lib/pressing-identification-ai'
 import { Sparkle, CheckCircle, Warning, Info, X, Database, Lightning } from '@phosphor-icons/react'
@@ -88,7 +88,7 @@ export function PressingIdentificationDialog({
     setSelectedCandidate(null)
 
     try {
-      const imageAnalysis = []
+      const imageAnalysis: ImageAnalysisResult[] = []
       
       if (images.length > 0) {
         setAnalysisProgress(20)
