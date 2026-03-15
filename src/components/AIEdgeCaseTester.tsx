@@ -6,7 +6,10 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { CheckCircle, XCircle, Warning, Play, CircleNotch, WarningCircle } from '@phosphor-icons/react'
+import { CheckCircle, XCircle, Warning, Play, Spinner, Circle as CircleIcon, Info as InfoIcon } from '@phosphor-icons/react'
+
+const Loader2 = Spinner
+const AlertCircle = InfoIcon
 import { toast } from 'sonner'
 import { analyzeVinylImage, identifyPressing } from '@/lib/image-analysis-ai'
 import { identifyPressing as advancedIdentifyPressing } from '@/lib/pressing-identification-ai'
@@ -586,8 +589,8 @@ export default function AIEdgeCaseTester() {
             }
           },
           priceAnalysis: { enabled: false, useDiscogsData: false, useEbayData: false, priceVarianceThreshold: 0 },
-          releaseMatching: { enabled: false, minConfidence: 0, autoAcceptHighConfidence: false, highConfidenceThreshold: 0 },
-          advancedSettings: { temperature: 0.7, maxTokens: 2048, retryAttempts: 3, timeoutSeconds: 30 }
+          releaseMatching: { enabled: false, minConfidence: 0, autoAcceptHighConfidence: false, highConfidenceThreshold: 0.85 },
+          advancedSettings: { temperature: 0.7, maxTokens: 1500, retryAttempts: 2, timeoutSeconds: 30 }
         }
       })
       return {

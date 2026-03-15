@@ -180,9 +180,8 @@ export async function mintNFTWithMetaplex(
 
     return {
       success: true,
-      mintAddress: assetSigner.publicKey.toString(),
-      // signature is a Uint8Array — convert to base58 string for display/lookup
-      transactionSignature: base58.deserialize(signature)[0],
+      mintAddress: assetSigner.publicKey,
+      transactionSignature: String(tx.signature),
       metadataUri,
     }
   } catch (error) {
