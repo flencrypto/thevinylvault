@@ -74,7 +74,7 @@ export default function SettingsView() {
   const [notificationsEnabled, setNotificationsEnabled] = useKV<boolean>('vinyl-vault-notifications', true)
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (typeof window === 'undefined' || !apiKeys) {
       return
     }
 
@@ -104,10 +104,10 @@ export default function SettingsView() {
       window.localStorage.removeItem('telegram_chat_id')
     }
   }, [
-    apiKeys.xaiApiKey,
-    apiKeys.deepseekApiKey,
-    apiKeys.telegramBotToken,
-    apiKeys.telegramChatId,
+    apiKeys?.xaiApiKey,
+    apiKeys?.deepseekApiKey,
+    apiKeys?.telegramBotToken,
+    apiKeys?.telegramChatId,
   ])
   const [autoSync, setAutoSync] = useKV<boolean>('vinyl-vault-auto-sync', true)
   

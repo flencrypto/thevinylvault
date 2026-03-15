@@ -124,7 +124,7 @@ export default function MultiversXNFTSection() {
       const result = await multiversxService.mintRecordNFT(tokenId, {
         artist: selectedItem.artistName,
         title: selectedItem.releaseTitle,
-        year: selectedItem.year || '',
+        year: String(selectedItem.year || ''),
         catno: selectedItem.catalogNumber || '',
         condition: selectedItem.condition.mediaGrade || '',
       })

@@ -313,7 +313,7 @@ export async function mintNFTWithMetaplex(
               address: umiPublicKey(creator.address),
               percentage: creator.share,
             })),
-            ruleSet: { type: 'None' },
+            ruleSet: ruleSet('None'),
           },
         }),
       ],
