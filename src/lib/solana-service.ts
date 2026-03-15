@@ -1,5 +1,4 @@
 import { 
-  SolanaNFTMetadata, 
   NFTMintConfig, 
   MintedNFT, 
   SolanaNetwork,
@@ -8,6 +7,7 @@ import {
   SOLANA_NETWORKS
 } from './solana-nft'
 import { CollectionItem } from './types'
+import { uploadMetadataToArweave } from './solana-metaplex'
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults'
 import { 
   createV1,
@@ -208,18 +208,7 @@ export async function prepareNFTMetadataFromItem(
   }
 }
 
-export async function uploadMetadataToArweave(metadata: SolanaNFTMetadata): Promise<string> {
-  const metadataJson = JSON.stringify(metadata, null, 2)
-  const blob = new Blob([metadataJson], { type: 'application/json' })
-  
-  const encoder = new TextEncoder()
-  const data = encoder.encode(metadataJson)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-  
-  return `https://arweave.net/${hashHex.substring(0, 43)}`
-}
+export { uploadMetadataToArweave }
 
 async function getWalletAdapter(walletType: string) {
   switch (walletType) {

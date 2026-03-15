@@ -29,14 +29,51 @@ export interface MetaplexMintResult {
 }
 
 export async function uploadMetadataToArweave(metadata: SolanaNFTMetadata): Promise<string> {
-  const metadataJson = JSON.stringify(metadata, null, 2)
-  const encoder = new TextEncoder()
-  const data = encoder.encode(metadataJson)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-  
-  return `https://arweave.net/${hashHex.substring(0, 43)}`
+  let pinataJwt: string | undefined
+  try {
+    const sparkKv = (globalThis as any)?.spark?.kv
+    if (sparkKv && typeof sparkKv.get === 'function') {
+      const apiKeys = await sparkKv.get('vinyl-vault-api-keys')
+      if (apiKeys && typeof apiKeys === 'object') {
+        pinataJwt = typeof apiKeys.pinataJwt === 'string' ? apiKeys.pinataJwt : undefined
+      }
+    }
+  } catch {
+    // KV not available in this context
+  }
+
+  if (!pinataJwt) {
+    throw new Error(
+      'NFT metadata upload requires a Pinata JWT. Please configure your Pinata API key in Settings to enable on-chain minting.'
+    )
+  }
+
+  const response = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${pinataJwt}`,
+    },
+    body: JSON.stringify({
+      pinataContent: metadata,
+      pinataMetadata: {
+        name: `${metadata.name || 'nft'}-metadata.json`,
+      },
+    }),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Metadata upload to IPFS failed: ${response.status} ${errorText}`)
+  }
+
+  const result = await response.json()
+
+  if (!result.IpfsHash) {
+    throw new Error('IPFS upload succeeded but no content hash returned')
+  }
+
+  return `https://gateway.pinata.cloud/ipfs/${result.IpfsHash}`
 }
 
 export async function mintNFTWithMetaplex(
