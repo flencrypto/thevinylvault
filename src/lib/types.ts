@@ -80,6 +80,8 @@ export interface CollectionItem {
   rarity?: NFTRarity
   ukChartPosition?: number
   anecdotes?: string[]
+  isRareRelease?: boolean
+  totalAlbumsReleased?: number
   condition: ItemCondition
   images?: string[]
   priceHistory?: PriceHistoryEntry[]

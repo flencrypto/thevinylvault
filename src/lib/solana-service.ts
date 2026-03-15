@@ -80,6 +80,29 @@ export async function prepareNFTMetadataFromItem(
     attributes.push({ trait_type: 'UK Chart Position (Peak)', value: item.ukChartPosition })
   }
 
+  if (item.isRareRelease !== undefined) {
+    attributes.push({ trait_type: 'Rare Release', value: item.isRareRelease ? 'Yes' : 'No' })
+  }
+
+  if (item.isRareRelease && item.matrixNumbers && item.matrixNumbers.length > 0) {
+    attributes.push({
+      trait_type: 'Rare Release Matrix',
+      value: item.matrixNumbers.join(' / '),
+    })
+  }
+
+  if (item.totalAlbumsReleased) {
+    attributes.push({ trait_type: 'Total Albums Released by Artist', value: item.totalAlbumsReleased })
+  }
+
+  if (item.purchasePrice && item.estimatedValue?.estimateMid && item.purchasePrice > 0) {
+    const appreciation = ((item.estimatedValue.estimateMid - item.purchasePrice) / item.purchasePrice) * 100
+    attributes.push({
+      trait_type: 'Value Appreciation',
+      value: `${appreciation >= 0 ? '+' : ''}${appreciation.toFixed(1)}%`,
+    })
+  }
+
   if (item.storageLocation) {
     attributes.push({ trait_type: 'Storage Location', value: item.storageLocation })
   }
@@ -178,12 +201,28 @@ export async function prepareNFTMetadataFromItem(
     }
     description += `\n`
   }
+
+  if (item.purchasePrice && item.purchasePrice > 0 && item.estimatedValue?.estimateMid) {
+    const appreciation = ((item.estimatedValue.estimateMid - item.purchasePrice) / item.purchasePrice) * 100
+    description += `Value Appreciation: ${appreciation >= 0 ? '+' : ''}${appreciation.toFixed(1)}% since acquisition\n`
+  }
   
   if (item.priceHistory && item.priceHistory.length > 1) {
     const firstPrice = item.priceHistory[0].estimatedValue
     const latestPrice = item.priceHistory[item.priceHistory.length - 1].estimatedValue
     const change = ((latestPrice - firstPrice) / firstPrice) * 100
-    description += `Value Change: ${change > 0 ? '+' : ''}${change.toFixed(1)}% since acquisition\n`
+    description += `Value Change: ${change > 0 ? '+' : ''}${change.toFixed(1)}% since first recorded price\n`
+  }
+
+  if (item.isRareRelease) {
+    description += `\nRare Release: Yes\n`
+    if (item.matrixNumbers && item.matrixNumbers.length > 0) {
+      description += `Rare Release Matrix: ${item.matrixNumbers.join(' / ')}\n`
+    }
+  }
+
+  if (item.totalAlbumsReleased) {
+    description += `Total Albums Released by Artist: ${item.totalAlbumsReleased}\n`
   }
   
   if (item.notes) {
