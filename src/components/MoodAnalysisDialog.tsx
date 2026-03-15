@@ -57,7 +57,8 @@ function detectMood(item: CollectionItem): MoodEntry & { keywords: string[] } {
 
   for (const mood of MOOD_MAP) {
     for (const keyword of mood.keywords) {
-      if (text.includes(keyword)) {
+      const pattern = new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i')
+      if (pattern.test(text)) {
         return mood
       }
     }
