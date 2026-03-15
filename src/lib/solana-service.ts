@@ -1,5 +1,4 @@
 import { 
-  SolanaNFTMetadata, 
   NFTMintConfig, 
   MintedNFT, 
   SolanaNetwork,
@@ -8,6 +7,7 @@ import {
   SOLANA_NETWORKS
 } from './solana-nft'
 import { CollectionItem } from './types'
+import { uploadMetadataToArweave } from './solana-metaplex'
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults'
 import { 
   createV1,
@@ -70,6 +70,37 @@ export async function prepareNFTMetadataFromItem(
 
   if (item.vinylColor) {
     attributes.push({ trait_type: 'Vinyl Color', value: item.vinylColor })
+  }
+
+  if (item.rarity) {
+    attributes.push({ trait_type: 'Rarity', value: item.rarity })
+  }
+
+  if (item.ukChartPosition) {
+    attributes.push({ trait_type: 'UK Chart Position (Peak)', value: item.ukChartPosition })
+  }
+
+  if (item.isRareRelease !== undefined) {
+    attributes.push({ trait_type: 'Rare Release', value: item.isRareRelease ? 'Yes' : 'No' })
+  }
+
+  if (item.isRareRelease && item.matrixNumbers && item.matrixNumbers.length > 0) {
+    attributes.push({
+      trait_type: 'Rare Release Matrix',
+      value: item.matrixNumbers.join(' / '),
+    })
+  }
+
+  if (item.totalAlbumsReleased) {
+    attributes.push({ trait_type: 'Total Albums Released by Artist', value: item.totalAlbumsReleased })
+  }
+
+  if (item.purchasePrice && item.estimatedValue?.estimateMid && item.purchasePrice > 0) {
+    const appreciation = ((item.estimatedValue.estimateMid - item.purchasePrice) / item.purchasePrice) * 100
+    attributes.push({
+      trait_type: 'Value Appreciation',
+      value: `${appreciation >= 0 ? '+' : ''}${appreciation.toFixed(1)}%`,
+    })
   }
 
   if (item.storageLocation) {
@@ -170,16 +201,39 @@ export async function prepareNFTMetadataFromItem(
     }
     description += `\n`
   }
+
+  if (item.purchasePrice && item.purchasePrice > 0 && item.estimatedValue?.estimateMid) {
+    const appreciation = ((item.estimatedValue.estimateMid - item.purchasePrice) / item.purchasePrice) * 100
+    description += `Value Appreciation: ${appreciation >= 0 ? '+' : ''}${appreciation.toFixed(1)}% since acquisition\n`
+  }
   
   if (item.priceHistory && item.priceHistory.length > 1) {
     const firstPrice = item.priceHistory[0].estimatedValue
     const latestPrice = item.priceHistory[item.priceHistory.length - 1].estimatedValue
     const change = ((latestPrice - firstPrice) / firstPrice) * 100
-    description += `Value Change: ${change > 0 ? '+' : ''}${change.toFixed(1)}% since acquisition\n`
+    description += `Value Change: ${change > 0 ? '+' : ''}${change.toFixed(1)}% since first recorded price\n`
+  }
+
+  if (item.isRareRelease) {
+    description += `\nRare Release: Yes\n`
+    if (item.matrixNumbers && item.matrixNumbers.length > 0) {
+      description += `Rare Release Matrix: ${item.matrixNumbers.join(' / ')}\n`
+    }
+  }
+
+  if (item.totalAlbumsReleased) {
+    description += `Total Albums Released by Artist: ${item.totalAlbumsReleased}\n`
   }
   
   if (item.notes) {
     description += `\nCollector Notes:\n${item.notes}\n`
+  }
+
+  if (item.anecdotes && item.anecdotes.length > 0) {
+    description += `\nAnecdotes:\n`
+    item.anecdotes.forEach((anecdote, i) => {
+      description += `${i + 1}. ${anecdote}\n`
+    })
   }
   
   if (item.discogsId) {
@@ -208,18 +262,7 @@ export async function prepareNFTMetadataFromItem(
   }
 }
 
-export async function uploadMetadataToArweave(metadata: SolanaNFTMetadata): Promise<string> {
-  const metadataJson = JSON.stringify(metadata, null, 2)
-  const blob = new Blob([metadataJson], { type: 'application/json' })
-  
-  const encoder = new TextEncoder()
-  const data = encoder.encode(metadataJson)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-  
-  return `https://arweave.net/${hashHex.substring(0, 43)}`
-}
+export { uploadMetadataToArweave }
 
 async function getWalletAdapter(walletType: string) {
   switch (walletType) {
