@@ -122,7 +122,8 @@ export function MoodAnalysisDialog({ open, onOpenChange }: MoodAnalysisDialogPro
           .join(' ')
           .toLowerCase()
         for (const keyword of entry.keywords) {
-          if (text.includes(keyword)) {
+          const pattern = new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i')
+          if (pattern.test(text)) {
             const current = genreKeywordHits.get(keyword) || { count: 0, color: entry.color }
             current.count++
             genreKeywordHits.set(keyword, current)
