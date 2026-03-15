@@ -8,6 +8,7 @@ import { ExportGradedItemsDialog } from '@/components/ExportGradedItemsDialog'
 import { MarketTrendsWidget } from '@/components/MarketTrendsWidget'
 import { TrendAlertsDialog } from '@/components/TrendAlertsDialog'
 import { BatchPressingIdentificationDialog } from '@/components/BatchPressingIdentificationDialog'
+import { MoodAnalysisDialog } from '@/components/MoodAnalysisDialog'
 import QuickActionsBar from '@/components/QuickActionsBar'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -15,7 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Plus, MagnifyingGlass, FunnelSimple, SortAscending, Disc, Export, Bell, TrendUp, TrendDown, Lightning, Sparkle } from '@phosphor-icons/react'
+import { Plus, MagnifyingGlass, FunnelSimple, SortAscending, Disc, Export, Bell, TrendUp, TrendDown, Lightning, Sparkle, MusicNote } from '@phosphor-icons/react'
 import { calculateCollectionValue, formatCurrency } from '@/lib/helpers'
 import { TrendIndicator } from './TrendIndicator'
 import { generateTrendAlerts, getTrendAlertSummary } from '@/lib/trend-monitoring'
@@ -32,6 +33,7 @@ export default function CollectionView() {
   const [exportDialogOpen, setExportDialogOpen] = useState(false)
   const [alertsDialogOpen, setAlertsDialogOpen] = useState(false)
   const [batchIdentifyDialogOpen, setBatchIdentifyDialogOpen] = useState(false)
+  const [moodAnalysisDialogOpen, setMoodAnalysisDialogOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<CollectionItem | null>(null)
   
   const [searchQuery, setSearchQuery] = useState('')
@@ -377,6 +379,16 @@ export default function CollectionView() {
 
           <Button 
             variant="outline" 
+            onClick={() => setMoodAnalysisDialogOpen(true)} 
+            className="gap-1.5 flex-1 sm:flex-none h-10"
+            disabled={(items || []).length === 0}
+          >
+            <MusicNote size={18} />
+            <span>Mood Analysis</span>
+          </Button>
+
+          <Button 
+            variant="outline" 
             onClick={() => setAlertsDialogOpen(true)} 
             className="gap-1.5 relative flex-1 sm:flex-none h-10"
           >
@@ -542,6 +554,10 @@ export default function CollectionView() {
         onOpenChange={setBatchIdentifyDialogOpen}
         items={(items || []).filter(item => !item.pressingId)}
         onComplete={handleBatchIdentificationComplete}
+      />
+      <MoodAnalysisDialog
+        open={moodAnalysisDialogOpen}
+        onOpenChange={setMoodAnalysisDialogOpen}
       />
     </div>
     </div>
