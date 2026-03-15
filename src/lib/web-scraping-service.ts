@@ -193,6 +193,8 @@ class WebScrapingService {
 
   private async _callPythonApi(params: ScrapeParams): Promise<RawScrapedItem[]> {
     const apiUrl = 'http://localhost:5000/api/scrape'
+    // Use the configurable timeout (seconds → ms), defaulting to 30 s
+    const timeoutMs = (params.config.timeout || 30) * 1000
 
     try {
       const response = await fetch(apiUrl, {
@@ -204,7 +206,7 @@ class WebScrapingService {
           maxResults: params.maxResults,
           config: params.config,
         }),
-        signal: AbortSignal.timeout(30_000),
+        signal: AbortSignal.timeout(timeoutMs),
       })
 
       if (!response.ok) {
@@ -220,7 +222,7 @@ class WebScrapingService {
       return result.results as RawScrapedItem[]
     } catch (error: unknown) {
       if (error instanceof DOMException && error.name === 'AbortError') {
-        throw new Error('API request timed out after 30 seconds')
+        throw new Error(`API request timed out after ${timeoutMs / 1000} seconds`)
       }
       if (error instanceof TypeError && error.message.includes('fetch')) {
         throw new Error(

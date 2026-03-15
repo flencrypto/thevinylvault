@@ -112,21 +112,18 @@ class TelegramService {
       localStorage.setItem('telegram_chat_id', chatId)
     }
 
-    // Keep Spark KV (`vinyl-vault-api-keys`) in sync with the latest credentials
-    try {
-      const kvRaw = localStorage.getItem('vinyl-vault-api-keys')
-      const kv = kvRaw ? JSON.parse(kvRaw) : {}
-
-      if (botToken !== undefined) {
-        kv.telegram_bot_token = this.botToken
-      }
-      if (chatId !== undefined) {
-        kv.telegram_chat_id = this.chatId
-      }
-
-      localStorage.setItem('vinyl-vault-api-keys', JSON.stringify(kv))
-    } catch {
-      // Ignore KV sync errors; core localStorage-based behavior still works
+    // Sync to Spark KV using camelCase schema (matches SettingsView)
+    const sparkKv = (globalThis as any)?.spark?.kv
+    if (sparkKv && typeof sparkKv.get === 'function') {
+      void (sparkKv.get('vinyl-vault-api-keys') as Promise<Record<string, unknown>>)
+        .then((raw) => {
+          const kv = raw && typeof raw === 'object' ? raw : {}
+          const updates: Record<string, string> = {}
+          if (botToken !== undefined) updates.telegramBotToken = this.botToken
+          if (chatId !== undefined) updates.telegramChatId = this.chatId
+          return sparkKv.set('vinyl-vault-api-keys', { ...kv, ...updates })
+        })
+        .catch(() => { /* Ignore KV sync errors */ })
     }
   }
 

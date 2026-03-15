@@ -7,12 +7,16 @@
  *   webScrapingService (./web-scraping-service)
  *
  * Configuration is read from localStorage keys `auto_buy_config` and
- * `vinyl_collection`.  Scan state is stored in localStorage keys
+ * `telegram_alerts_config`.  The vinyl collection is read from Spark KV
+ * under `vinyl-vault-collection` (same store used by the rest of the app),
+ * with a legacy fallback to the localStorage key `vinyl_collection`.
+ * Scan state is stored in localStorage keys
  * `deal_scanner_last_run` and `deal_scanner_notified_ids`.
  */
 
 import { telegramService } from './telegram-service'
 import { webScrapingService } from './web-scraping-service'
+import type { CollectionItem } from './types'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -101,7 +105,27 @@ class DealScannerService {
     return { ...DEAL_SCANNER_DEFAULTS, ...autoBuy, ...telegram }
   }
 
-  private _getCollection(): ScanRecord[] {
+  private async _getCollection(): Promise<ScanRecord[]> {
+    // Prefer Spark KV — same store as the rest of the app ('vinyl-vault-collection').
+    // The KV store holds CollectionItem objects, so map their fields to the
+    // ScanRecord shape expected by scanRecord().
+    try {
+      const sparkKv = (globalThis as any)?.spark?.kv
+      if (sparkKv && typeof sparkKv.get === 'function') {
+        const kvCollection = await sparkKv.get('vinyl-vault-collection') as CollectionItem[] | undefined
+        if (Array.isArray(kvCollection) && kvCollection.length > 0) {
+          return kvCollection.map((item): ScanRecord => ({
+            artist: item.artistName,
+            title: item.releaseTitle,
+            discogsReleaseId: item.discogsReleaseId != null ? String(item.discogsReleaseId) : undefined,
+            marketValue: item.estimatedValue?.estimateMid ?? 0,
+          }))
+        }
+      }
+    } catch {
+      // Fall through to legacy localStorage key
+    }
+    // Legacy fallback — this key stores records already in ScanRecord shape
     try {
       return JSON.parse(localStorage.getItem('vinyl_collection') || '[]')
     } catch {
@@ -424,7 +448,7 @@ class DealScannerService {
     try {
       const config = this._getConfig()
       // For manual scans, use the config thresholds but don't gate on enabled
-      const collection = this._getCollection()
+      const collection = await this._getCollection()
       if (!collection.length) return { notified: 0, deals: [] }
 
       for (const record of collection) {

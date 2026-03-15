@@ -88,14 +88,15 @@ export class XAIService {
     // Keep direct key for backwards compatibility
     localStorage.setItem('xai_api_key', key)
 
-    // Also update the shared KV-style blob if present/needed
-    try {
-      const kvRaw = localStorage.getItem('vinyl-vault-api-keys')
-      const kvObj = kvRaw ? JSON.parse(kvRaw) : {}
-      kvObj.xai_api_key = key
-      localStorage.setItem('vinyl-vault-api-keys', JSON.stringify(kvObj))
-    } catch {
-      // Ignore KV sync errors; direct localStorage key still works
+    // Sync to Spark KV using camelCase schema (matches SettingsView)
+    const sparkKv = (globalThis as any)?.spark?.kv
+    if (sparkKv && typeof sparkKv.get === 'function') {
+      void (sparkKv.get('vinyl-vault-api-keys') as Promise<Record<string, unknown>>)
+        .then((raw) => {
+          const kv = raw && typeof raw === 'object' ? raw : {}
+          return sparkKv.set('vinyl-vault-api-keys', { ...kv, xaiApiKey: key })
+        })
+        .catch(() => { /* Ignore KV sync errors */ })
     }
   }
 
@@ -104,14 +105,15 @@ export class XAIService {
     // Keep direct key for backwards compatibility
     localStorage.setItem('xai_model', model)
 
-    // Also update the shared KV-style blob if present/needed
-    try {
-      const kvRaw = localStorage.getItem('vinyl-vault-api-keys')
-      const kvObj = kvRaw ? JSON.parse(kvRaw) : {}
-      kvObj.xai_model = model
-      localStorage.setItem('vinyl-vault-api-keys', JSON.stringify(kvObj))
-    } catch {
-      // Ignore KV sync errors; direct localStorage key still works
+    // Sync to Spark KV using camelCase schema (matches SettingsView)
+    const sparkKv = (globalThis as any)?.spark?.kv
+    if (sparkKv && typeof sparkKv.get === 'function') {
+      void (sparkKv.get('vinyl-vault-api-keys') as Promise<Record<string, unknown>>)
+        .then((raw) => {
+          const kv = raw && typeof raw === 'object' ? raw : {}
+          return sparkKv.set('vinyl-vault-api-keys', { ...kv, xaiModel: model })
+        })
+        .catch(() => { /* Ignore KV sync errors */ })
     }
   }
 

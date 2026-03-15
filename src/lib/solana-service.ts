@@ -7,7 +7,7 @@ import {
   SOLANA_NETWORKS
 } from './solana-nft'
 import { CollectionItem } from './types'
-import { uploadMetadataToArweave } from './solana-metaplex'
+import { uploadNFTMetadataToIPFS } from './solana-metaplex'
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults'
 import { 
   createV1,
@@ -262,7 +262,7 @@ export async function prepareNFTMetadataFromItem(
   }
 }
 
-export { uploadMetadataToArweave }
+export { uploadNFTMetadataToIPFS }
 
 async function getWalletAdapter(walletType: string) {
   switch (walletType) {
@@ -293,7 +293,7 @@ export async function mintNFTWithMetaplex(
     }
 
     const metadata = buildNFTMetadata(config)
-    const metadataUri = await uploadMetadataToArweave(metadata)
+    const metadataUri = await uploadNFTMetadataToIPFS(metadata)
 
     const assetSigner = generateSigner(umi)
     const owner = umiPublicKey(walletAddress)
