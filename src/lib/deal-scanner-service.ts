@@ -113,11 +113,11 @@ class DealScannerService {
       const sparkKv = (globalThis as any)?.spark?.kv
       if (sparkKv && typeof sparkKv.get === 'function') {
         const kvCollection = await sparkKv.get('vinyl-vault-collection') as CollectionItem[] | undefined
-        if (Array.isArray(kvCollection) && kvCollection.length > 0) {
+        if (Array.isArray(kvCollection)) {
           return kvCollection.map((item): ScanRecord => ({
             artist: item.artistName,
             title: item.releaseTitle,
-            discogsReleaseId: item.discogsReleaseId != null ? String(item.discogsReleaseId) : undefined,
+            discogsReleaseId: item.discogsId?.toString(),
             marketValue: item.estimatedValue?.estimateMid ?? 0,
           }))
         }
