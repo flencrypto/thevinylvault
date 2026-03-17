@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Slider } from '@/components/ui/slider'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Binoculars, Play, Stop, Lightning, ArrowsClockwise, TrendUp, CurrencyGbp, Storefront } from '@phosphor-icons/react'
+import { Binoculars, Play, Stop, Lightning, ArrowsClockwise, TrendUp, CurrencyGbp, Storefront, Calculator } from '@phosphor-icons/react'
+import { ArbitrageCalculatorDialog } from '@/components/ArbitrageCalculatorDialog'
 import { dealScannerService, type Deal, type ScanConfig } from '@/lib/deal-scanner-service'
 import { dealFinderService } from '@/lib/deal-finder-service'
 import { telegramService } from '@/lib/telegram-service'
@@ -60,6 +61,7 @@ export default function DealScannerView() {
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all')
   const [minRoiFilter, setMinRoiFilter] = useState(0)
   const [alertCount, setAlertCount] = useState(0)
+  const [profitCalcOpen, setProfitCalcOpen] = useState(false)
 
   const config = scanConfig || DEFAULT_SCAN_CONFIG
 
@@ -298,6 +300,15 @@ export default function DealScannerView() {
                 <SelectItem value="30">Every 30 min</SelectItem>
               </SelectContent>
             </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setProfitCalcOpen(true)}
+              className="gap-1.5 text-xs border-slate-700"
+            >
+              <Calculator size={14} />
+              Profit Calculator
+            </Button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -475,6 +486,8 @@ export default function DealScannerView() {
           })}
         </div>
       </AnimatePresence>
+
+      <ArbitrageCalculatorDialog open={profitCalcOpen} onOpenChange={setProfitCalcOpen} />
     </div>
   )
 }

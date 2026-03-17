@@ -28,6 +28,7 @@ interface APIKeys {
   deepseekApiKey: string
   telegramBotToken: string
   telegramChatId: string
+  pinataJwt: string
 }
 
 interface ConfidenceThresholds {
@@ -51,6 +52,7 @@ export default function SettingsView() {
     deepseekApiKey: '',
     telegramBotToken: '',
     telegramChatId: '',
+    pinataJwt: '',
   })
 
   const [showKeys, setShowKeys] = useState({
@@ -66,12 +68,13 @@ export default function SettingsView() {
     deepseekApiKey: false,
     telegramBotToken: false,
     telegramChatId: false,
+    pinataJwt: false,
   })
 
   const [notificationsEnabled, setNotificationsEnabled] = useKV<boolean>('vinyl-vault-notifications', true)
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (typeof window === 'undefined' || !apiKeys) {
       return
     }
 
@@ -101,10 +104,10 @@ export default function SettingsView() {
       window.localStorage.removeItem('telegram_chat_id')
     }
   }, [
-    apiKeys.xaiApiKey,
-    apiKeys.deepseekApiKey,
-    apiKeys.telegramBotToken,
-    apiKeys.telegramChatId,
+    apiKeys?.xaiApiKey,
+    apiKeys?.deepseekApiKey,
+    apiKeys?.telegramBotToken,
+    apiKeys?.telegramChatId,
   ])
   const [autoSync, setAutoSync] = useKV<boolean>('vinyl-vault-auto-sync', true)
   
@@ -133,6 +136,7 @@ export default function SettingsView() {
       deepseekApiKey: '',
       telegramBotToken: '',
       telegramChatId: '',
+      pinataJwt: '',
     }) => ({
       ...current,
       [key]: value,
@@ -243,6 +247,7 @@ export default function SettingsView() {
       deepseekApiKey: '',
       telegramBotToken: '',
       telegramChatId: '',
+      pinataJwt: '',
     })
     toast.success('All API keys cleared')
   }
@@ -469,6 +474,43 @@ export default function SettingsView() {
               <p className="text-xs text-slate-500 flex items-start gap-1">
                 <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
                 Required for uploading photos to eBay listings. Get your free API key at <a href="https://api.imgbb.com" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">api.imgbb.com</a>. Images are hosted externally and embedded in marketplace HTML descriptions.
+              </p>
+            </div>
+
+            <Separator className="bg-slate-800" />
+
+            <div className="space-y-2">
+              <Label htmlFor="pinata-jwt" className="text-slate-200 flex items-center gap-2">
+                Pinata JWT (NFT Metadata Storage)
+                {apiKeys?.pinataJwt && (
+                  <CloudArrowUp className="w-4 h-4 text-green-500" weight="fill" />
+                )}
+              </Label>
+              <div className="flex gap-2">
+                <div className="flex-1 relative">
+                  <Input
+                    id="pinata-jwt"
+                    type={showKeys.pinataJwt ? 'text' : 'password'}
+                    value={apiKeys?.pinataJwt || ''}
+                    onChange={(e) => handleKeyChange('pinataJwt', e.target.value)}
+                    placeholder="Enter your Pinata JWT token"
+                    className="bg-slate-950/50 border-slate-700 text-white pr-10"
+                  />
+                  <button
+                    onClick={() => toggleShowKey('pinataJwt')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                  >
+                    {showKeys.pinataJwt ? (
+                      <EyeSlash className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 flex items-start gap-1">
+                <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                Required for on-chain NFT minting. Metadata is pinned to IPFS via Pinata. Get your free JWT at <a href="https://app.pinata.cloud/developers/api-keys" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">app.pinata.cloud</a>.
               </p>
             </div>
 

@@ -666,7 +666,7 @@ export default function AIEdgeCaseTester() {
                 return (
                   <TabsTrigger key={key} value={key} className="relative">
                     {category.name}
-                    {category.running && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+                    {category.running && <CircleNotch className="ml-2 h-4 w-4 animate-spin" />}
                     {stats.total > 0 && (
                       <Badge 
                         variant={stats.percentage === 100 ? "default" : stats.percentage >= 50 ? "secondary" : "destructive"}
@@ -686,7 +686,7 @@ export default function AIEdgeCaseTester() {
                 <TabsContent key={key} value={key} className="mt-4">
                   {stats.total > 0 && (
                     <Alert className="mb-4">
-                      <AlertCircle className="h-4 w-4" />
+                      <WarningCircle className="h-4 w-4" />
                       <AlertDescription>
                         <strong>{category.name} Summary:</strong> {stats.passed} of {stats.total} tests passed ({stats.percentage}%)
                       </AlertDescription>
@@ -696,7 +696,7 @@ export default function AIEdgeCaseTester() {
                   <ScrollArea className="h-[600px] w-full rounded-md border p-4">
                     {category.tests.length === 0 ? (
                       <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                        <AlertCircle className="h-12 w-12 mb-2" />
+                        <WarningCircle className="h-12 w-12 mb-2" />
                         <p>No tests run yet. Click a test button to start.</p>
                       </div>
                     ) : (

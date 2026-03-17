@@ -2,6 +2,8 @@ import { ScoredPressingCandidate } from './pressing-identification-ai'
 import { ItemImage } from './types'
 import { getDiscogsReleaseInfo } from './marketplace-discogs'
 
+declare const spark: Window['spark']
+
 interface VerificationResult {
   overallMatch: number
   imageMatch: number
@@ -43,13 +45,6 @@ export async function verifyPressingMatch(
       result.discogsImages = discogsRelease.images.map((img: any) => img.uri)
     }
 
-    const userImageDescriptions = userImages.map(img => {
-      return {
-        type: img.type,
-        dataUrl: img.dataUrl
-      }
-    })
-
     const discogsImageDescriptions = discogsRelease.images?.map((img: any) => ({
       type: img.type,
       uri: img.uri
@@ -61,12 +56,8 @@ export async function verifyPressingMatch(
 
     const labelInfo = discogsRelease.labels?.[0]
 
-    const prompt = spark.llmPrompt`You are an expert vinyl record pressing verification system. Your task is to analyze user-uploaded images against Discogs database information to verify if they match the same pressing.
-
-**USER IMAGES UPLOADED:**
-${userImageDescriptions.map((img, idx) => `- Image ${idx + 1}: ${img.type} (data available for analysis)`).join('\n')}
-
-**DISCOGS DATABASE RECORD:**
+    // Build the shared metadata context used by both vision and text-only paths
+    const metadataContext = `**DISCOGS DATABASE RECORD:**
 - Release ID: ${candidate.discogsId}
 - Artist: ${candidate.artistName}
 - Title: ${candidate.releaseTitle}
@@ -82,7 +73,7 @@ ${discogsImageDescriptions.length > 0 ? `- Database has ${discogsImageDescriptio
 ${candidate.matches.map((m: any) => `- ${m.type}: "${m.value}" (source: ${m.source}, confidence: ${Math.round(m.confidence * 100)}%)`).join('\n')}
 
 **VERIFICATION TASK:**
-Based on the information above, verify the likelihood that the user's record matches this specific Discogs pressing. Consider:
+Verify the likelihood that the user's record matches this specific Discogs pressing. Consider:
 
 1. **Image Verification** (if user uploaded cover/label images):
    - Do the visible design elements match the expected pressing?
@@ -104,26 +95,95 @@ Based on the information above, verify the likelihood that the user's record mat
 - Matrix Match: 0-100% (how well matrix/runout data matches)
 - Label Match: 0-100% (how well label information matches)
 
-Return JSON with this structure:
+Return JSON:
 {
   "imageMatch": 85,
   "matrixMatch": 90,
   "labelMatch": 95,
   "overallMatch": 90,
-  "details": [
-    "Catalog number PL 12030 exactly matches Discogs database",
-    "Matrix 'A1/B1' consistent with 1977 UK first pressing pattern",
-    "Label design matches RCA UK 1970s style"
-  ],
-  "warnings": [
-    "No runout image provided - matrix verification limited to OCR text",
-    "Only front cover supplied - back cover and label images would improve verification"
-  ]
+  "details": ["Catalog number PL 12030 exactly matches Discogs database"],
+  "warnings": ["No runout image provided - matrix verification limited to OCR text"]
 }
 
 Be honest about uncertainty. If information is missing or ambiguous, reflect that in the scores and warnings.`
 
-    const response = await spark.llm(prompt, 'gpt-4o', true)
+    // Try to use xAI vision when user images are present, so the model actually
+    // sees the images rather than receiving only a text description.
+    const imagesWithData = userImages.filter(img => img.dataUrl)
+    const hasImages = imagesWithData.length > 0
+
+    let response: string
+
+    if (hasImages) {
+      // Attempt a vision API call via xAI so the model can inspect the actual images
+      const sparkKv = (globalThis as any)?.spark?.kv
+      let xaiApiKey = ''
+      let xaiModel = 'grok-4-1-fast-reasoning'
+      if (sparkKv && typeof sparkKv.get === 'function') {
+        try {
+          const raw = await sparkKv.get('vinyl-vault-api-keys')
+          const keys = raw as Record<string, string> | null
+          if (keys && typeof keys === 'object') {
+            xaiApiKey = keys.xaiApiKey || ''
+            xaiModel = keys.xaiModel || xaiModel
+          }
+        } catch { /* ignore */ }
+      }
+
+      if (xaiApiKey) {
+        const userImagesNote = imagesWithData
+          .map((img, idx) => `- Image ${idx + 1}: ${img.type}`)
+          .join('\n')
+        const systemMessage = `You are an expert vinyl record pressing verification system. Analyze the provided images against the Discogs database information below to verify if they match the same pressing.\n\n**USER IMAGES PROVIDED:**\n${userImagesNote}\n\n${metadataContext}`
+
+        const apiResponse = await fetch('https://api.x.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${xaiApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: xaiModel,
+            response_format: { type: 'json_object' },
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  { type: 'text', text: systemMessage },
+                  ...imagesWithData.map(img => ({
+                    type: 'image_url' as const,
+                    image_url: { url: img.dataUrl, detail: 'high' as const },
+                  })),
+                ],
+              },
+            ],
+          }),
+        })
+
+        if (!apiResponse.ok) {
+          throw new Error(`xAI API error ${apiResponse.status}: ${await apiResponse.text()}`)
+        }
+
+        const apiResult = await apiResponse.json()
+        response = apiResult.choices?.[0]?.message?.content || '{}'
+      } else {
+        // xAI not configured — fall back to text-only with honest wording
+        const fallbackPrompt = spark.llmPrompt`You are an expert vinyl record pressing verification system. Note: no image data is available for this verification — base your analysis only on the metadata below.
+
+**USER IMAGES PROVIDED (content not available for this analysis):**
+${imagesWithData.map((img, idx) => `- Image ${idx + 1}: ${img.type}`).join('\n')}
+
+${metadataContext}`
+        response = await spark.llm(fallbackPrompt, 'gpt-4o', true)
+      }
+    } else {
+      // No images — metadata-only verification
+      const metaOnlyPrompt = spark.llmPrompt`You are an expert vinyl record pressing verification system. No images were uploaded — perform a metadata-only verification using the information below.
+
+${metadataContext}`
+      response = await spark.llm(metaOnlyPrompt, 'gpt-4o', true)
+    }
+
     const aiResult = JSON.parse(response)
 
     result.imageMatch = aiResult.imageMatch || 50
