@@ -60,6 +60,26 @@ async function getVisionCredentialsFromKv(): Promise<VisionCredentials | null> {
     const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
     if (!parsed || typeof parsed !== 'object') return null
 
+    // Hydrate all API keys into localStorage so services can read them synchronously
+    const hydrateKey = (localKey: string, value: unknown) => {
+      if (typeof value === 'string' && value) {
+        localStorage.setItem(localKey, value)
+      }
+    }
+    hydrateKey('openai_api_key', parsed.openaiKey)
+    hydrateKey('discogs_consumer_key', parsed.discogsKey)
+    hydrateKey('discogs_consumer_secret', parsed.discogsSecret)
+    hydrateKey('discogs_personal_token', parsed.discogsUserToken)
+    hydrateKey('ebay_client_id', parsed.ebayClientId)
+    hydrateKey('ebay_app_id', parsed.ebayClientId)
+    hydrateKey('ebay_client_secret', parsed.ebayClientSecret)
+    hydrateKey('ebay_dev_id', parsed.ebayDevId)
+    hydrateKey('imgbb_api_key', parsed.imgbbKey)
+    hydrateKey('deepseek_api_key', parsed.deepseekApiKey)
+    hydrateKey('telegram_bot_token', parsed.telegramBotToken)
+    hydrateKey('telegram_chat_id', parsed.telegramChatId)
+    hydrateKey('pinata_jwt', parsed.pinataJwt)
+
     // 1. Try xAI from KV (camelCase keys as stored by SettingsView)
     if (typeof parsed.xaiApiKey === 'string' && parsed.xaiApiKey) {
       const model = (typeof parsed.xaiModel === 'string' && parsed.xaiModel) || 'grok-4-1-fast-reasoning'
@@ -75,7 +95,6 @@ async function getVisionCredentialsFromKv(): Promise<VisionCredentials | null> {
       const model = (typeof parsed.deepseekModel === 'string' && parsed.deepseekModel) || 'deepseek-chat'
       const isVision = model.toLowerCase().includes('vl') || model.toLowerCase().includes('vision')
       if (isVision) {
-        localStorage.setItem('deepseek_api_key', deepseekKey)
         localStorage.setItem('deepseek_model', model)
         return { apiKey: deepseekKey, model, baseUrl: 'https://api.deepseek.com/v1', provider: 'deepseek' }
       }

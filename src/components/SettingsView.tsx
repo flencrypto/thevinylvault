@@ -78,36 +78,43 @@ export default function SettingsView() {
       return
     }
 
-    const { xaiApiKey, deepseekApiKey, telegramBotToken, telegramChatId } = apiKeys
-
-    if (xaiApiKey) {
-      window.localStorage.setItem('xai_api_key', xaiApiKey)
-    } else {
-      window.localStorage.removeItem('xai_api_key')
+    const syncKey = (localKey: string, value: string | undefined) => {
+      if (value) {
+        window.localStorage.setItem(localKey, value)
+      } else {
+        window.localStorage.removeItem(localKey)
+      }
     }
 
-    if (deepseekApiKey) {
-      window.localStorage.setItem('deepseek_api_key', deepseekApiKey)
-    } else {
-      window.localStorage.removeItem('deepseek_api_key')
-    }
-
-    if (telegramBotToken) {
-      window.localStorage.setItem('telegram_bot_token', telegramBotToken)
-    } else {
-      window.localStorage.removeItem('telegram_bot_token')
-    }
-
-    if (telegramChatId) {
-      window.localStorage.setItem('telegram_chat_id', telegramChatId)
-    } else {
-      window.localStorage.removeItem('telegram_chat_id')
-    }
+    syncKey('openai_api_key', apiKeys.openaiKey)
+    syncKey('discogs_consumer_key', apiKeys.discogsKey)
+    syncKey('discogs_consumer_secret', apiKeys.discogsSecret)
+    syncKey('discogs_personal_token', apiKeys.discogsUserToken)
+    // ebay_app_id is the alias used by deal-scanner-service for ebayClientId
+    syncKey('ebay_client_id', apiKeys.ebayClientId)
+    syncKey('ebay_app_id', apiKeys.ebayClientId)
+    syncKey('ebay_client_secret', apiKeys.ebayClientSecret)
+    syncKey('ebay_dev_id', apiKeys.ebayDevId)
+    syncKey('imgbb_api_key', apiKeys.imgbbKey)
+    syncKey('xai_api_key', apiKeys.xaiApiKey)
+    syncKey('deepseek_api_key', apiKeys.deepseekApiKey)
+    syncKey('telegram_bot_token', apiKeys.telegramBotToken)
+    syncKey('telegram_chat_id', apiKeys.telegramChatId)
+    syncKey('pinata_jwt', apiKeys.pinataJwt)
   }, [
+    apiKeys?.openaiKey,
+    apiKeys?.discogsKey,
+    apiKeys?.discogsSecret,
+    apiKeys?.discogsUserToken,
+    apiKeys?.ebayClientId,
+    apiKeys?.ebayClientSecret,
+    apiKeys?.ebayDevId,
+    apiKeys?.imgbbKey,
     apiKeys?.xaiApiKey,
     apiKeys?.deepseekApiKey,
     apiKeys?.telegramBotToken,
     apiKeys?.telegramChatId,
+    apiKeys?.pinataJwt,
   ])
   const [autoSync, setAutoSync] = useKV<boolean>('vinyl-vault-auto-sync', true)
   
@@ -253,6 +260,25 @@ export default function SettingsView() {
       telegramChatId: '',
       pinataJwt: '',
     })
+    if (typeof window !== 'undefined') {
+      const localKeys = [
+        'openai_api_key',
+        'discogs_consumer_key',
+        'discogs_consumer_secret',
+        'discogs_personal_token',
+        'ebay_client_id',
+        'ebay_app_id',
+        'ebay_client_secret',
+        'ebay_dev_id',
+        'imgbb_api_key',
+        'xai_api_key',
+        'deepseek_api_key',
+        'telegram_bot_token',
+        'telegram_chat_id',
+        'pinata_jwt',
+      ]
+      localKeys.forEach((k) => window.localStorage.removeItem(k))
+    }
     toast.success('All API keys cleared')
   }
 
