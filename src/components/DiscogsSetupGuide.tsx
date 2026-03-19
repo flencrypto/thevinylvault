@@ -1,12 +1,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Database, Check, ArrowRight, Info, Lig
 import { Database, Check, ArrowRight, Info, Lightning, TestTube } from '@phosphor-icons/react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
+interface DiscogsSetupGuideProps {
+  onGetStarted: () => void
+  isConfigured?: boolean
 }
-export default function Di
-    return (
- 
 
 export default function DiscogsSetupGuide({ onGetStarted, isConfigured = false }: DiscogsSetupGuideProps) {
   if (isConfigured) {
@@ -18,54 +18,38 @@ export default function DiscogsSetupGuide({ onGetStarted, isConfigured = false }
             Discogs API Configured
           </CardTitle>
           <CardDescription className="text-slate-300">
-              <p className="text-xs text-slate-300">
-              </p>
-          </div>
+            Your Discogs Personal Access Token is configured and ready to use.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
             <Button
-                const tokenInput = document.getElementById('discogs-user-token')
-              }}
+              onClick={onGetStarted}
+              className="bg-green-500 hover:bg-green-600 text-white"
               size="sm"
             >
-              Test Connection
+              <Check className="w-4 h-4" />
+              Ready to Use
+            </Button>
           </div>
+        </CardContent>
       </Card>
+    )
   }
-  return (
-      <CardHeader>
-          <div clas
-              <Database classN
-            <div>
-              <CardDescription className="text-slate-300 mt-1">
-              </
-          </div>
-        </div>
-      <CardContent className="space-y-5">
-          <h3
-            Why Discogs?
-          <p className="text-
-            With your
-        </div>
-        <div className
-          <ol
-     
-   
 
-          
-                    target="_blank"
-                  
-                    Discogs Developer Settings
-                </p>
-            </li>
-              <div className="w-6 h-6 bg-accent/20 rounded-full flex items-center j
-              </di
-                <
-            </li>
-              <div className="w-6 h-6 bg-accent/20 rounded-full
-              </div>
-                <p className="te
-            </li>
-              <d
-              </div>
+  return (
+    <Card className="bg-gradient-to-br from-accent/10 via-transparent to-transparent border-accent/30">
+      <CardHeader>
+        <div className="flex items-start gap-3">
+          <div className="p-2 bg-accent/20 rounded-lg">
+            <Database className="w-6 h-6 text-accent" weight="fill" />
+          </div>
+          <div>
+            <CardTitle className="text-white">Setup Discogs API</CardTitle>
+            <CardDescription className="text-slate-300 mt-1">
+              Connect to Discogs for accurate pressing identification
+            </CardDescription>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -86,8 +70,8 @@ export default function DiscogsSetupGuide({ onGetStarted, isConfigured = false }
             <li className="flex items-start gap-3">
               <div className="w-6 h-6 bg-accent/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                 <span className="text-xs font-bold text-accent">1</span>
-            </li>
-              <div className="w-6 h-6 
+              </div>
+              <div className="flex-1">
                 <p className="text-sm text-slate-200">
                   Visit{' '}
                   <a
@@ -148,16 +132,16 @@ export default function DiscogsSetupGuide({ onGetStarted, isConfigured = false }
                 <span className="text-xs font-bold text-accent">7</span>
               </div>
               <div className="flex-1">
+                <p className="text-sm text-slate-200">Click "Configure Token" below to enter it</p>
+              </div>
+            </li>
+          </ol>
+        </div>
 
-
-
-
-
-
-
-
-
-
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            onClick={onGetStarted}
+            className="bg-accent hover:bg-accent/90 text-accent-foreground flex-1 gap-2"
             size="lg"
           >
             <Database className="w-5 h-5" weight="fill" />
