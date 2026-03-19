@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -39,6 +39,8 @@ import { ABTest } from '@/lib/ab-testing-types'
 import { useKV } from '@github/spark/hooks'
 import { AutoPricingRecommendation } from '@/lib/dynamic-pricing-ai'
 
+const LISTING_DRAFT_KEY = 'vinyl-vault-listing-draft'
+
 type AnalysisStep = 'idle' | 'analyzing_images' | 'identifying_pressing' | 'grading_condition' | 'generating_listing' | 'complete'
 
 interface AnalysisResult {
@@ -67,6 +69,92 @@ interface ListingContent {
   suggestedPrice: number
 }
 
+interface ManualData {
+  artistName: string
+  releaseTitle: string
+  year: number
+  country: string
+  format: Format
+  catalogNumber: string
+  mediaGrade: MediaGrade
+  sleeveGrade: SleeveGrade
+  notes: string
+}
+
+interface ListingDraft {
+  images: ItemImage[]
+  analysisStep: AnalysisStep
+  analysisResult: AnalysisResult | null
+  conditionResult: ConditionResult | null
+  listingContent: ListingContent | null
+  manualOverride: boolean
+  manualData: ManualData
+  savedAt: string
+}
+
+const DEFAULT_MANUAL_DATA: ManualData = {
+  artistName: '',
+  releaseTitle: '',
+  year: new Date().getFullYear(),
+  country: '',
+  format: 'LP' as Format,
+  catalogNumber: '',
+  mediaGrade: 'VG+' as MediaGrade,
+  sleeveGrade: 'VG+' as SleeveGrade,
+  notes: ''
+}
+
+/** Returns true when any manual-form field has been changed from the blank default. */
+function hasManualData(data: ManualData | undefined): boolean {
+  if (!data) return false
+  return (
+    !!data.artistName ||
+    !!data.releaseTitle ||
+    !!data.catalogNumber ||
+    !!data.country ||
+    !!data.notes ||
+    data.year !== DEFAULT_MANUAL_DATA.year ||
+    data.format !== DEFAULT_MANUAL_DATA.format ||
+    data.mediaGrade !== DEFAULT_MANUAL_DATA.mediaGrade ||
+    data.sleeveGrade !== DEFAULT_MANUAL_DATA.sleeveGrade
+  )
+}
+
+function loadListingDraft(): ListingDraft | null {
+  try {
+    const saved = localStorage.getItem(LISTING_DRAFT_KEY)
+    if (!saved) return null
+    const draft = JSON.parse(saved) as ListingDraft
+    // Only restore if there is meaningful data to recover
+    if (!draft.images?.length && !draft.analysisResult && !hasManualData(draft.manualData)) return null
+    return draft
+  } catch {
+    return null
+  }
+}
+
+function saveListingDraft(draft: Omit<ListingDraft, 'savedAt'>) {
+  const payload: ListingDraft = { ...draft, savedAt: new Date().toISOString() }
+  try {
+    localStorage.setItem(LISTING_DRAFT_KEY, JSON.stringify(payload))
+  } catch {
+    // Quota exceeded — retry without image data so at least metadata is saved
+    try {
+      localStorage.setItem(LISTING_DRAFT_KEY, JSON.stringify({ ...payload, images: [] }))
+    } catch {
+      // Storage fully unavailable — silently ignore
+    }
+  }
+}
+
+function clearListingDraft() {
+  try {
+    localStorage.removeItem(LISTING_DRAFT_KEY)
+  } catch {
+    // Ignore
+  }
+}
+
 export default function NewListingView() {
   const [items, setItems] = useKV<CollectionItem[]>('vinyl-vault-collection', [])
   const [abTests] = useKV<ABTest[]>('vinyl-vault-ab-tests', [])
@@ -85,17 +173,41 @@ export default function NewListingView() {
   const [usedPatternOptimization, setUsedPatternOptimization] = useState(false)
   
   const [manualOverride, setManualOverride] = useState(false)
-  const [manualData, setManualData] = useState({
-    artistName: '',
-    releaseTitle: '',
-    year: new Date().getFullYear(),
-    country: '',
-    format: 'LP' as Format,
-    catalogNumber: '',
-    mediaGrade: 'VG+' as MediaGrade,
-    sleeveGrade: 'VG+' as SleeveGrade,
-    notes: ''
-  })
+  const [manualData, setManualData] = useState<ManualData>(DEFAULT_MANUAL_DATA)
+
+  // Track whether this is the initial mount so the draft-save effect doesn't
+  // immediately overwrite the draft with blank state before we've had a chance
+  // to restore it.
+  const draftRestoredRef = useRef(false)
+
+  // Restore draft on mount
+  useEffect(() => {
+    const draft = loadListingDraft()
+    if (draft) {
+      if (draft.images?.length) setImages(draft.images)
+      if (draft.analysisStep && draft.analysisStep !== 'idle') setAnalysisStep(draft.analysisStep)
+      if (draft.analysisResult) setAnalysisResult(draft.analysisResult)
+      if (draft.conditionResult) setConditionResult(draft.conditionResult)
+      if (draft.listingContent) setListingContent(draft.listingContent)
+      if (draft.manualOverride !== undefined) setManualOverride(draft.manualOverride)
+      if (draft.manualData) setManualData(draft.manualData)
+      toast.info('Draft restored', {
+        description: `Saved ${new Date(draft.savedAt).toLocaleTimeString()}`
+      })
+    }
+    draftRestoredRef.current = true
+  }, [])
+
+  // Persist draft whenever relevant state changes (skip the very first render
+  // before the restore effect has run).
+  useEffect(() => {
+    if (!draftRestoredRef.current) return
+    if (images.length === 0 && analysisStep === 'idle' && !analysisResult && !hasManualData(manualData)) {
+      clearListingDraft()
+      return
+    }
+    saveListingDraft({ images, analysisStep, analysisResult, conditionResult, listingContent, manualOverride, manualData })
+  }, [images, analysisStep, analysisResult, conditionResult, listingContent, manualOverride, manualData])
 
   const handleAnalyze = async () => {
     if (images.length === 0) {
@@ -236,17 +348,19 @@ export default function NewListingView() {
     }
 
     setItems((current) => [newItem, ...(current || [])])
-    
+    clearListingDraft()
     setShowPreview(true)
   }
 
   const handleReset = () => {
+    clearListingDraft()
     setImages([])
     setAnalysisStep('idle')
     setAnalysisResult(null)
     setConditionResult(null)
     setListingContent(null)
     setManualOverride(false)
+    setManualData(DEFAULT_MANUAL_DATA)
     setShowPreview(false)
     setPricingRecommendation(null)
     toast.success('Ready for new listing')

@@ -19,6 +19,29 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 type SourceFilter = 'all' | 'eBay' | 'Discogs' | 'Web Scraper'
 
+const DEAL_FILTERS_KEY = 'vinyl-vault-deal-filters'
+
+interface DealFilters {
+  sourceFilter: SourceFilter
+  minRoiFilter: number
+}
+
+function loadDealFilters(): DealFilters {
+  try {
+    const saved = localStorage.getItem(DEAL_FILTERS_KEY)
+    if (saved) {
+      const parsed = JSON.parse(saved) as DealFilters
+      return {
+        sourceFilter: parsed.sourceFilter ?? 'all',
+        minRoiFilter: typeof parsed.minRoiFilter === 'number' ? parsed.minRoiFilter : 0,
+      }
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return { sourceFilter: 'all', minRoiFilter: 0 }
+}
+
 interface StoredDeal extends Deal {
   id: string
   foundAt: string
@@ -62,11 +85,20 @@ export default function DealScannerView() {
 
   const [isScanning, setIsScanning] = useState(false)
   const [autoScanActive, setAutoScanActive] = useState(dealScannerService.isRunning)
-  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all')
-  const [minRoiFilter, setMinRoiFilter] = useState(0)
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>(() => loadDealFilters().sourceFilter)
+  const [minRoiFilter, setMinRoiFilter] = useState(() => loadDealFilters().minRoiFilter)
   const [alertCount, setAlertCount] = useState(0)
   const [profitCalcOpen, setProfitCalcOpen] = useState(false)
   const [isMarketplaceSettingsOpen, setIsMarketplaceSettingsOpen] = useState(false)
+
+  // Persist filter preferences whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(DEAL_FILTERS_KEY, JSON.stringify({ sourceFilter, minRoiFilter }))
+    } catch {
+      // Ignore storage errors
+    }
+  }, [sourceFilter, minRoiFilter])
 
   const config = scanConfig || DEFAULT_SCAN_CONFIG
   // Derive web scraper state from the persisted scan config so the toggle
