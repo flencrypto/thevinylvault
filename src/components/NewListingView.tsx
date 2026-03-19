@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { ImageUpload } from '@/components/ImageUpload'
 import { BatchPhotoCaptureDialog } from '@/components/BatchPhotoCaptureDialog'
+import BatchRecordUploadDialog from '@/components/BatchRecordUploadDialog'
 import BarcodeScannerWidget, { BarcodeScanResult } from '@/components/BarcodeScannerWidget'
 import { ItemImage, Format, MediaGrade, SleeveGrade } from '@/lib/types'
 import {
@@ -23,7 +24,8 @@ import {
   Disc,
   Plus,
   ChartLine,
-  Stack
+  Stack,
+  Files
 } from '@phosphor-icons/react'
 import { analyzeVinylImage } from '@/lib/image-analysis-ai'
 import { identifyPressing } from '@/lib/pressing-identification-ai'
@@ -169,6 +171,7 @@ export default function NewListingView() {
   const [showPricingDialog, setShowPricingDialog] = useState(false)
   const [showABTestDialog, setShowABTestDialog] = useState(false)
   const [showBatchCapture, setShowBatchCapture] = useState(false)
+  const [showBatchUpload, setShowBatchUpload] = useState(false)
   const [pricingRecommendation, setPricingRecommendation] = useState<AutoPricingRecommendation | null>(null)
   const [usedPatternOptimization, setUsedPatternOptimization] = useState(false)
   
@@ -412,6 +415,14 @@ export default function NewListingView() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowBatchUpload(true)}
+            className="gap-2"
+          >
+            <Files size={18} weight="fill" />
+            Batch Upload
+          </Button>
           <Button
             variant="outline"
             onClick={() => setShowBatchCapture(true)}
@@ -770,6 +781,11 @@ export default function NewListingView() {
       <BatchPhotoCaptureDialog
         open={showBatchCapture}
         onOpenChange={setShowBatchCapture}
+      />
+
+      <BatchRecordUploadDialog
+        open={showBatchUpload}
+        onOpenChange={setShowBatchUpload}
       />
     </div>
   )
