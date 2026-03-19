@@ -22,6 +22,7 @@ import NewListingView from './NewListingView'
 import SettingsView from './SettingsView'
 import MarketplaceComparisonView from './MarketplaceComparisonView'
 import DealScannerView from './DealScannerView'
+import PWAUpdatePrompt from './PWAUpdatePrompt'
 import { scanSchedulerService } from '@/lib/scan-scheduler-service'
 
 type TabValue = 'new-listing' | 'collection' | 'bargains' | 'watchlist' | 'comparison' | 'nfts' | 'deals' | 'ebay-dev' | 'settings'
@@ -40,6 +41,7 @@ export default function VinylVaultApp() {
   return (
     <>
     <Toaster />
+    <PWAUpdatePrompt />
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 pb-20 md:pb-24">
       <div className="max-w-[1800px] mx-auto">
         <header className="sticky top-0 z-40 backdrop-blur-lg bg-slate-950/90 border-b border-slate-800 safe-area-inset-top">
