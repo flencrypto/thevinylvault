@@ -26,6 +26,9 @@ export default defineConfig({
     'global': 'globalThis',
     'process.env': {}
   },
+  build: {
+    chunkSizeWarningLimit: 2000
+  },
   optimizeDeps: {
     esbuildOptions: {
       define: {
