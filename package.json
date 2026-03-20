@@ -83,13 +83,8 @@
     },
     "devDependencies": {
         "@eslint/js": "^9.21.0",
-<<<<<<< dependabot/npm_and_yarn/tailwindcss/postcss-4.2.2
         "@tailwindcss/postcss": "^4.2.2",
-        "@types/react": "^19.0.10",
-=======
-        "@tailwindcss/postcss": "^4.1.8",
         "@types/react": "^19.2.14",
->>>>>>> main
         "@types/react-dom": "^19.0.4",
         "@vitejs/plugin-react-swc": "^4.3.0",
         "eslint": "^9.28.0",

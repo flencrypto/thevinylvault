@@ -75,8 +75,10 @@ export default function MarketplaceComparisonView() {
 
     setIsSearching(true)
     try {
-      const ebayResults = await searchEbay(searchQuery)
-      const discogsResults = await searchDiscogs(searchQuery)
+      const [ebayResults, discogsResults] = await Promise.all([
+        searchEbay(searchQuery),
+        searchDiscogs(searchQuery),
+      ])
 
       const comparison = analyzeComparison(searchQuery, ebayResults, discogsResults)
       

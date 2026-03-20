@@ -4,14 +4,14 @@ import { Badge } from '@/components/ui/badge'
 import { getGradeColor, getStatusColor, formatCurrency, generatePriceEstimate } from '@/lib/helpers'
 import { FORMAT_LABELS, STATUS_LABELS } from '@/lib/types'
 import { TrendBadge } from './TrendIndicator'
-import { useMemo } from 'react'
+import React, { useMemo } from 'react'
 
 interface ItemCardProps {
   item: CollectionItem
-  onClick?: () => void
+  onItemClick?: (item: CollectionItem) => void
 }
 
-export function ItemCard({ item, onClick }: ItemCardProps) {
+export const ItemCard = React.memo(function ItemCard({ item, onItemClick }: ItemCardProps) {
   const estimate = generatePriceEstimate(item)
 
   const trendData = useMemo(() => {
@@ -37,7 +37,7 @@ export function ItemCard({ item, onClick }: ItemCardProps) {
   return (
     <Card 
       className="transition-all duration-200 hover:shadow-lg hover:scale-[1.01] cursor-pointer"
-      onClick={onClick}
+      onClick={onItemClick ? () => onItemClick(item) : undefined}
     >
       <CardContent className="p-6">
         <div className="flex gap-4">
@@ -109,4 +109,4 @@ export function ItemCard({ item, onClick }: ItemCardProps) {
       </CardContent>
     </Card>
   )
-}
+})

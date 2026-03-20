@@ -50,25 +50,21 @@ export async function fetchComparableSales(
   const recencyDays = options?.recencyDays || 90
   const includeInternal = options?.includeInternal !== false
 
+  const fetches: Promise<ComparableSale[]>[] = [
+    fetchEbayComparableSales(item, maxResults / 2, recencyDays),
+    fetchDiscogsComparableSales(item, maxResults / 2, recencyDays),
+    ...(includeInternal ? [fetchInternalComparableSales(item)] : []),
+  ]
+
+  const results = await Promise.allSettled(fetches)
+
   const comps: ComparableSale[] = []
-
-  try {
-    const ebayComps = await fetchEbayComparableSales(item, maxResults / 2, recencyDays)
-    comps.push(...ebayComps)
-  } catch (error) {
-    console.warn('Failed to fetch eBay comps:', error)
-  }
-
-  try {
-    const discogsComps = await fetchDiscogsComparableSales(item, maxResults / 2, recencyDays)
-    comps.push(...discogsComps)
-  } catch (error) {
-    console.warn('Failed to fetch Discogs comps:', error)
-  }
-
-  if (includeInternal) {
-    const internalComps = await fetchInternalComparableSales(item)
-    comps.push(...internalComps)
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      comps.push(...result.value)
+    } else {
+      console.warn('Failed to fetch comparable sales:', result.reason)
+    }
   }
 
   return comps

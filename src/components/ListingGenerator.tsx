@@ -44,11 +44,9 @@ export function ListingGenerator({ open, onOpenChange, item, onSave }: ListingGe
 
     try {
       setGenerationProgress(20)
-      await new Promise(resolve => setTimeout(resolve, 300))
 
       const keywords = await generateSEOKeywords(item, channel)
       setGenerationProgress(40)
-      await new Promise(resolve => setTimeout(resolve, 300))
 
       const completedTests = (abTests || []).filter(t => t.status === 'completed')
       const { title, subtitle, description } = await generateListingCopy(item, channel, keywords, {
@@ -56,7 +54,6 @@ export function ListingGenerator({ open, onOpenChange, item, onSave }: ListingGe
         completedABTests: completedTests,
       })
       setGenerationProgress(70)
-      await new Promise(resolve => setTimeout(resolve, 300))
 
       const suggestedPrice = suggestListingPrice(estimate, item.condition.mediaGrade)
       setGenerationProgress(90)

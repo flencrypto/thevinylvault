@@ -120,17 +120,28 @@ function formatCurrency(amount: number, currency: string = 'USD'): string {
 }
 
 export function getTrendAlertSummary(alerts: TrendAlert[]) {
-  const activeAlerts = alerts.filter((a) => !a.dismissed)
-  const unreadAlerts = activeAlerts.filter((a) => !a.read)
-
-  return {
-    total: activeAlerts.length,
-    unread: unreadAlerts.length,
-    critical: activeAlerts.filter((a) => a.severity === 'critical').length,
-    high: activeAlerts.filter((a) => a.severity === 'high').length,
-    medium: activeAlerts.filter((a) => a.severity === 'medium').length,
-    low: activeAlerts.filter((a) => a.severity === 'low').length,
-    gains: activeAlerts.filter((a) => a.type === 'significant_gain' || a.type === 'rapid_increase').length,
-    losses: activeAlerts.filter((a) => a.type === 'significant_loss' || a.type === 'rapid_decrease').length,
+  const summary = {
+    total: 0,
+    unread: 0,
+    critical: 0,
+    high: 0,
+    medium: 0,
+    low: 0,
+    gains: 0,
+    losses: 0,
   }
+
+  for (const a of alerts) {
+    if (a.dismissed) continue
+    summary.total++
+    if (!a.read) summary.unread++
+    if (a.severity === 'critical') summary.critical++
+    else if (a.severity === 'high') summary.high++
+    else if (a.severity === 'medium') summary.medium++
+    else if (a.severity === 'low') summary.low++
+    if (a.type === 'significant_gain' || a.type === 'rapid_increase') summary.gains++
+    if (a.type === 'significant_loss' || a.type === 'rapid_decrease') summary.losses++
+  }
+
+  return summary
 }

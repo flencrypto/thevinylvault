@@ -225,10 +225,13 @@ export default function NewListingView() {
       )
       
       setAnalysisStep('identifying_pressing')
-      const pressingCandidates = await identifyPressing({
-        imageAnalysis: imageAnalysisResults,
-        discogsSearchEnabled: false
-      })
+      const [pressingCandidates, conditionAnalysis] = await Promise.all([
+        identifyPressing({
+          imageAnalysis: imageAnalysisResults,
+          discogsSearchEnabled: false
+        }),
+        analyzeConditionFromImages(images),
+      ])
       
       const bestCandidate = pressingCandidates[0]
       
@@ -248,8 +251,6 @@ export default function NewListingView() {
       })
       
       setAnalysisStep('grading_condition')
-      const conditionAnalysis = await analyzeConditionFromImages(images)
-      
       const gradingNotes = await suggestGradingNotes(conditionAnalysis.defects)
       
       setConditionResult({

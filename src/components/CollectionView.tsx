@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { CollectionItem, ItemStatus, Format, MediaGrade, TrendAlert } from '@/lib/types'
 import { ItemCard } from '@/components/ItemCard'
@@ -20,13 +20,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Plus, MagnifyingGlass, FunnelSimple, SortAscending, Disc, Export, Bell, TrendUp, TrendDown, Lightning, Sparkle, MusicNote, Atom, ShieldCheck, VirtualReality } from '@phosphor-icons/react'
-import { calculateCollectionValue, formatCurrency } from '@/lib/helpers'
+import { calculateCollectionValue, formatCurrency, generatePriceEstimate } from '@/lib/helpers'
 import { TrendIndicator } from './TrendIndicator'
 import { generateTrendAlerts, getTrendAlertSummary } from '@/lib/trend-monitoring'
 import { toast } from 'sonner'
 import { BarcodeScanResult } from './BarcodeScannerWidget'
 
 type SortOption = 'recent' | 'artist' | 'year' | 'value' | 'grade'
+
+const GRADE_ORDER = ['M', 'NM', 'EX', 'VG+', 'VG', 'G', 'F', 'P']
 
 export default function CollectionView() {
   const [items, setItems] = useKV<CollectionItem[]>('vinyl-vault-collection', [])
@@ -79,10 +81,10 @@ export default function CollectionView() {
     setItems((current) => (current || []).filter((item) => item.id !== itemId))
   }
 
-  const handleItemClick = (item: CollectionItem) => {
+  const handleItemClick = useCallback((item: CollectionItem) => {
     setSelectedItem(item)
     setDetailDialogOpen(true)
-  }
+  }, [])
 
   const filteredAndSortedItems = useMemo(() => {
     let result = [...(items || [])]
@@ -116,18 +118,19 @@ export default function CollectionView() {
       case 'year':
         result.sort((a, b) => b.year - a.year)
         break
-      case 'value':
-        result.sort((a, b) => {
-          const aValue = calculateCollectionValue([a])
-          const bValue = calculateCollectionValue([b])
-          return bValue - aValue
-        })
-        break
+      case 'value': {
+          if (result.length > 1) {
+            const valueMap = new Map(
+              result.map(item => [item.id, generatePriceEstimate(item).estimateMid * item.quantity])
+            )
+            result.sort((a, b) => (valueMap.get(b.id) ?? 0) - (valueMap.get(a.id) ?? 0))
+          }
+          break
+        }
       case 'grade':
-        result.sort((a, b) => {
-          const gradeOrder = ['M', 'NM', 'EX', 'VG+', 'VG', 'G', 'F', 'P']
-          return gradeOrder.indexOf(a.condition.mediaGrade) - gradeOrder.indexOf(b.condition.mediaGrade)
-        })
+        result.sort((a, b) =>
+          GRADE_ORDER.indexOf(a.condition.mediaGrade) - GRADE_ORDER.indexOf(b.condition.mediaGrade)
+        )
         break
       case 'recent':
       default:
@@ -230,10 +233,11 @@ export default function CollectionView() {
 
   const handleBatchIdentificationComplete = (results: any[]) => {
     const matchedResults = results.filter(r => r.bestMatch)
+    const resultMap = new Map(results.map(r => [r.itemId, r]))
     
     setItems((current) => 
       (current || []).map(item => {
-        const result = results.find(r => r.itemId === item.id)
+        const result = resultMap.get(item.id)
         if (result?.bestMatch) {
           return {
             ...item,
@@ -516,7 +520,7 @@ export default function CollectionView() {
       {filteredAndSortedItems.length > 0 ? (
         <div className="grid grid-cols-1 gap-3 sm:gap-4">
           {filteredAndSortedItems.map((item) => (
-            <ItemCard key={item.id} item={item} onClick={() => handleItemClick(item)} />
+            <ItemCard key={item.id} item={item} onItemClick={handleItemClick} />
           ))}
         </div>
       ) : (items || []).length === 0 ? (
