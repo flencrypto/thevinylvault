@@ -256,7 +256,7 @@ export function ValuationDialog({ open, onOpenChange, item }: ValuationDialogPro
                             borderRadius: '8px'
                           }}
                           labelFormatter={(date) => formatDate(date)}
-                          formatter={(value: number) => [formatCurrency(value, 'GBP'), 'Sold Price']}
+                          formatter={(value) => [formatCurrency(Number(value || 0), 'GBP'), 'Sold Price']}
                         />
                         <Line 
                           type="monotone" 

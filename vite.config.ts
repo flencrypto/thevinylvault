@@ -109,6 +109,7 @@ export default defineConfig({
     chunkSizeWarningLimit: 2000
   },
   optimizeDeps: {
+    include: ['@vitejs/plugin-react-swc/refresh-runtime'],
     esbuildOptions: {
       define: {
         global: 'globalThis'
