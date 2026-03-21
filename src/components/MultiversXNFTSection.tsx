@@ -13,7 +13,6 @@ import {
   CheckCircle,
   SpinnerGap,
   Globe,
-  Info,
   Warning
 } from '@phosphor-icons/react'
 import { toast } from 'sonner'

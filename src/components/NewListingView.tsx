@@ -2,11 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { ImageUpload } from '@/components/ImageUpload'
 import { BatchPhotoCaptureDialog } from '@/components/BatchPhotoCaptureDialog'
 import BatchRecordUploadDialog from '@/components/BatchRecordUploadDialog'
@@ -158,7 +154,7 @@ function clearListingDraft() {
 }
 
 export default function NewListingView() {
-  const [items, setItems] = useKV<CollectionItem[]>('vinyl-vault-collection', [])
+  const [, setItems] = useKV<CollectionItem[]>('vinyl-vault-collection', [])
   const [abTests] = useKV<ABTest[]>('vinyl-vault-ab-tests', [])
   const [autoOptimize] = useKV<boolean>('vinyl-vault-auto-optimize-titles', false)
   

@@ -3,10 +3,10 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { X, Copy, Check, CloudArrowUp, Storefront } from '@phosphor-icons/react'
+import { Copy, Check, Storefront } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { ItemImage, MediaGrade, SleeveGrade } from '@/lib/types'
+import { ItemImage, MediaGrade, SleeveGrade, Format, ItemStatus, SourceType } from '@/lib/types'
 import { generateEbayListingPackage, EbayListingPackage } from '@/lib/listing-ai'
 import EbayListingDialog from './EbayListingDialog'
 
@@ -67,18 +67,18 @@ export function ListingPreviewDialog({
         collectionId: 'temp',
         artistName: recordDetails.artistName,
         releaseTitle: recordDetails.releaseTitle,
-        format: recordDetails.format as any,
+        format: recordDetails.format as Format,
         year: recordDetails.year,
         country: recordDetails.country,
         catalogNumber: recordDetails.catalogNumber,
         purchaseCurrency: 'USD',
-        sourceType: 'unknown' as any,
+        sourceType: 'unknown' as SourceType,
         quantity: 1,
-        status: 'owned' as any,
+        status: 'owned' as ItemStatus,
         condition: {
           mediaGrade: conditionDetails.mediaGrade,
           sleeveGrade: conditionDetails.sleeveGrade,
-          gradingStandard: 'Goldmine' as any,
+          gradingStandard: 'Goldmine' as 'Goldmine' | 'RecordCollector',
           gradingNotes: listingContent.conditionSummary,
           gradedAt: new Date().toISOString()
         },
@@ -115,18 +115,18 @@ export function ListingPreviewDialog({
         collectionId: 'temp',
         artistName: recordDetails.artistName,
         releaseTitle: recordDetails.releaseTitle,
-        format: recordDetails.format as any,
+        format: recordDetails.format as Format,
         year: recordDetails.year,
         country: recordDetails.country,
         catalogNumber: recordDetails.catalogNumber,
         purchaseCurrency: 'USD',
-        sourceType: 'unknown' as any,
+        sourceType: 'unknown' as SourceType,
         quantity: 1,
-        status: 'owned' as any,
+        status: 'owned' as ItemStatus,
         condition: {
           mediaGrade: conditionDetails.mediaGrade,
           sleeveGrade: conditionDetails.sleeveGrade,
-          gradingStandard: 'Goldmine' as any,
+          gradingStandard: 'Goldmine' as 'Goldmine' | 'RecordCollector',
           gradingNotes: listingContent.conditionSummary,
           gradedAt: new Date().toISOString()
         },

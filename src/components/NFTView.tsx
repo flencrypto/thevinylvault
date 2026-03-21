@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -25,7 +25,7 @@ import {
   Crown
 } from '@phosphor-icons/react'
 import { getExplorerUrl } from '@/lib/solana-nft'
-import { generateEbayListingPackage } from '@/lib/listing-ai'
+import { generateEbayListingPackage, EbayListingPackage } from '@/lib/listing-ai'
 import { toast } from 'sonner'
 import BitcoinNFTSection from './BitcoinNFTSection'
 import MultiversXNFTSection from './MultiversXNFTSection'
@@ -39,8 +39,8 @@ export default function NFTView() {
   const [showBatchMint, setShowBatchMint] = useState(false)
   const [showListingDialog, setShowListingDialog] = useState(false)
   const [selectedNFT, setSelectedNFT] = useState<MintedNFT | null>(null)
-  const [currentListingPackage, setCurrentListingPackage] = useState<any>(null)
-  const [isGeneratingListing, setIsGeneratingListing] = useState(false)
+  const [currentListingPackage, setCurrentListingPackage] = useState<EbayListingPackage | null>(null)
+  const [, setIsGeneratingListing] = useState(false)
 
   const safeCollectionItems = collectionItems || []
   const safeMintedNFTs = mintedNFTs || []

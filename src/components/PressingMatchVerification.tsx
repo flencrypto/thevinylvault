@@ -47,6 +47,7 @@ export function PressingMatchVerification({
     if (candidate.discogsId && discogsApiToken) {
       performVerification()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candidate.discogsId, discogsApiToken])
 
   const performVerification = async () => {
