@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { Slider } from '@/components/ui/slider'
 import { Badge } from '@/components/ui/badge'
-import { Key, Check, Eye, EyeSlash, Info, Brain, Detective, Image, GraduationCap, Lightning, Database, CloudArrowUp, TestTube, Question, Robot, PaperPlaneTilt } from '@phosphor-icons/react'
+import { Key, Check, Eye, EyeSlash, Info, Brain, Detective, Image, GraduationCap, Lightning, Database, CloudArrowUp, TestTube, Question, Robot, PaperPlaneTilt, BellRinging, Copy } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { testDiscogsConnection } from '@/lib/marketplace-discogs'
 import { uploadImageToImgBB } from '@/lib/imgbb-service'
@@ -662,6 +662,81 @@ export default function SettingsView() {
                 <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
                 Used for marketplace listings, pricing data, and sales analytics
               </p>
+            </div>
+
+            <Separator className="bg-slate-800" />
+
+            {/* eBay Marketplace Account Deletion / Closure Notifications */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <BellRinging className="w-4 h-4 text-amber-400" weight="fill" />
+                <h4 className="text-sm font-semibold text-white">eBay Marketplace Account Deletion Notifications</h4>
+              </div>
+
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
+                <p className="text-xs text-amber-200/80 leading-relaxed">
+                  eBay requires all developers using their APIs to subscribe to (or opt out of) marketplace account
+                  deletion/closure notifications. Failure to comply will result in termination of API access.
+                </p>
+
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-slate-300">
+                    Step 1 — Set the <code className="text-amber-300 bg-slate-800 px-1 py-0.5 rounded text-[11px]">EBAY_VERIFICATION_TOKEN</code> environment variable in your Netlify dashboard
+                  </p>
+                  <p className="text-xs text-slate-400 pl-3">
+                    Generate any secure random string (e.g. a UUID) and save it as{' '}
+                    <code className="text-amber-300 bg-slate-800 px-1 py-0.5 rounded text-[11px]">EBAY_VERIFICATION_TOKEN</code>{' '}
+                    in <strong>Netlify → Site settings → Environment variables</strong>.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-slate-300">
+                    Step 2 — Register the endpoint URL &amp; verification token in the eBay Developer Portal
+                  </p>
+                  <p className="text-xs text-slate-400 pl-3">
+                    Go to <a href="https://developer.ebay.com/my/developer/application/notifications" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">developer.ebay.com → Application → Notifications</a> and subscribe to the <strong>Marketplace Account Deletion</strong> topic using:
+                  </p>
+                  <div className="pl-3 space-y-2">
+                    <div>
+                      <p className="text-[11px] text-slate-500 mb-1">Endpoint URL</p>
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 text-[11px] text-green-300 bg-slate-900 border border-slate-700 rounded px-2 py-1.5 break-all">
+                          {typeof window !== 'undefined' ? `${window.location.origin}/api/ebay/marketplace-deletion` : 'https://<your-domain>/api/ebay/marketplace-deletion'}
+                        </code>
+                        <button
+                          onClick={() => {
+                            const url = `${window.location.origin}/api/ebay/marketplace-deletion`
+                            navigator.clipboard.writeText(url)
+                              .then(() => toast.success('Endpoint URL copied'))
+                              .catch(() => toast.error('Failed to copy'))
+                          }}
+                          className="shrink-0 p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+                          title="Copy endpoint URL"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Verification token: the same value you set for{' '}
+                      <code className="text-amber-300 bg-slate-800 px-1 py-0.5 rounded">EBAY_VERIFICATION_TOKEN</code>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-slate-300">
+                    Step 3 — eBay will validate the endpoint automatically
+                  </p>
+                  <p className="text-xs text-slate-400 pl-3">
+                    After saving, eBay sends a GET request with a <code className="text-amber-300 bg-slate-800 px-1 py-0.5 rounded text-[11px]">challenge_code</code> to your endpoint.
+                    The Netlify function at <code className="text-amber-300 bg-slate-800 px-1 py-0.5 rounded text-[11px]">/api/ebay/marketplace-deletion</code> responds
+                    with the correct SHA-256 hash, completing validation.
+                    Once validated, your eBay App ID (Client ID) is activated.
+                  </p>
+                </div>
+              </div>
             </div>
 
             <Separator className="bg-slate-800" />

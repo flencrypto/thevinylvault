@@ -2,6 +2,13 @@
   command         = "npm run build"
   publish         = "dist"
 
+# eBay Marketplace Account Deletion/Closure Notification endpoint.
+# Must appear before the SPA catch-all redirect below.
+[[redirects]]
+  from   = "/api/ebay/marketplace-deletion"
+  to     = "/.netlify/functions/ebay-deletion-notification"
+  status = 200
+
 [[redirects]]
   from   = "/*"
   to     = "/index.html"
