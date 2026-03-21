@@ -16,7 +16,7 @@ import { Pencil, Trash, Info, ChartBar, Calendar, MapPin, Package, CurrencyDolla
 import { Switch } from '@/components/ui/switch'
 import { ConditionGradingDialog } from '@/components/ConditionGradingDialog'
 import { PriceHistoryChart } from '@/components/PriceHistoryChart'
-import { suggestGradingNotes } from '@/lib/condition-grading-ai'
+import { suggestGradingNotes, DefectDetail } from '@/lib/condition-grading-ai'
 import { toast } from 'sonner'
 
 interface ItemDetailDialogProps {
@@ -95,8 +95,8 @@ export function ItemDetailDialog({ open, onOpenChange, item, onUpdate, onDelete 
     toast.success('Item deleted from collection')
   }
   
-  const handleConditionGraded = async (result: any, gradedImages: ItemImage[]) => {
-    const newFormData: any = { ...formData }
+  const handleConditionGraded = async (result: { mediaGrade?: MediaGrade; sleeveGrade?: SleeveGrade; defects: DefectDetail[] }, gradedImages: ItemImage[]) => {
+    const newFormData: CollectionItem = { ...formData }
     
     if (result.mediaGrade) {
       newFormData.condition = {

@@ -114,9 +114,9 @@ export default function DealScannerView() {
       // Support both legacy numeric return and extended object return with deals
       const notified = typeof result === 'number' ? result : result?.notified ?? 0
 
-      if (result && typeof result === 'object' && Array.isArray((result as any).deals)) {
+      if (result && typeof result === 'object' && Array.isArray((result as Record<string, unknown>).deals)) {
         const nowIso = new Date().toISOString()
-        const foundDeals = (result as any).deals as Deal[]
+        const foundDeals = (result as Record<string, unknown>).deals as Deal[]
         const storedDeals: StoredDeal[] = foundDeals.map((deal) => {
           let id: string
           try {

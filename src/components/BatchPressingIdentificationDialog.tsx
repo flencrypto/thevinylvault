@@ -4,14 +4,14 @@ import { useConfidenceThresholds } from '@/hooks/use-confidence-thresholds'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Checkbox } from '@/components/ui/checkbox'
 import { CollectionItem } from '@/lib/types'
 import { identifyPressing, ScoredPressingCandidate } from '@/lib/pressing-identification-ai'
-import { Lightning, CheckCircle, Warning, X, Disc, Sparkle, Clock, Pause, Play, Database } from '@phosphor-icons/react'
+import { Lightning, CheckCircle, Warning, Disc, Sparkle, Clock, Pause, Play, Database } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
 interface BatchIdentificationResult {
@@ -49,6 +49,7 @@ export function BatchPressingIdentificationDialog({
   useEffect(() => {
     if (open && items.length > 0) {
       const unidentifiedItems = items.filter(item => !item.pressingId)
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedItemIds(unidentifiedItems.map(item => item.id))
       setResults(unidentifiedItems.map(item => ({
         itemId: item.id,
@@ -189,6 +190,7 @@ export function BatchPressingIdentificationDialog({
     }
 
     if (isProcessing && currentIndex >= results.length) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsProcessing(false)
       toast.success('All items processed', {
         description: `Completed ${processedCount} identifications`,
@@ -307,7 +309,7 @@ export function BatchPressingIdentificationDialog({
 
           <ScrollArea className="flex-1 pr-4">
             <div className="space-y-2">
-              {results.map((result, index) => (
+              {results.map((result) => (
                 <Card 
                   key={result.itemId}
                   className={`

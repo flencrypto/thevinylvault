@@ -48,7 +48,7 @@ export function BlockchainAuthDialog({ open, onOpenChange }: BlockchainAuthDialo
   const [selectedItemId, setSelectedItemId] = useState<string>('')
   const [chain, setChain] = useState<string>('solana')
 
-  const collection = items || []
+  const collection = useMemo(() => items || [], [items])
 
   const selectedItem = useMemo(
     () => collection.find(item => item.id === selectedItemId) ?? null,
@@ -72,8 +72,6 @@ export function BlockchainAuthDialog({ open, onOpenChange }: BlockchainAuthDialo
       mintDate: new Date().toISOString().split('T')[0],
     }
   }, [selectedItem])
-
-  const chainInfo = CHAINS.find(c => c.id === chain) ?? CHAINS[0]
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

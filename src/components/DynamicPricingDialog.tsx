@@ -68,12 +68,6 @@ export default function DynamicPricingDialog({
     }
   }
 
-  const confidenceColor = (confidence: number) => {
-    if (confidence >= 0.8) return 'text-green-400'
-    if (confidence >= 0.6) return 'text-yellow-400'
-    return 'text-orange-400'
-  }
-
   const getTrendIcon = () => {
     if (!recommendation) return null
     if (recommendation.marketIntelligence.trendMomentum === 'increasing') 
@@ -122,7 +116,7 @@ export default function DynamicPricingDialog({
             <Label>Pricing Strategy</Label>
             <Select 
               value={selectedStrategy} 
-              onValueChange={(value: any) => setSelectedStrategy(value)}
+              onValueChange={(value: string) => setSelectedStrategy(value as 'competitive' | 'premium' | 'quick_sale' | 'market_rate')}
               disabled={isAnalyzing}
             >
               <SelectTrigger>

@@ -70,7 +70,8 @@ export function ImageAnalysisDialog({
   const [results, setResults] = useState<Map<string, ImageAnalysisOutput>>(new Map())
   const [currentStep, setCurrentStep] = useState('')
   const [showRawOutput, setShowRawOutput] = useState<string | null>(null)
-  const { checkConfidence, getThreshold } = useConfidenceThresholds()
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { checkConfidence: _checkConfidence, getThreshold } = useConfidenceThresholds()
 
   const handleAnalyze = async () => {
     if (images.length === 0) return
@@ -124,12 +125,6 @@ export function ImageAnalysisDialog({
       return { variant: 'secondary' as const, label: 'Review Needed', icon: <Warning size={14} /> }
     }
     return { variant: 'destructive' as const, label: 'Low Confidence', icon: <Warning size={14} weight="fill" /> }
-  }
-
-  const getSeverityColor = (severity: string) => {
-    if (severity === 'minor') return 'text-blue-500'
-    if (severity === 'moderate') return 'text-yellow-500'
-    return 'text-red-500'
   }
 
   return (

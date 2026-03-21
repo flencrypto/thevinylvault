@@ -19,7 +19,8 @@ export function DragDropImageZone({
   maxFiles = 10,
   currentFileCount = 0,
   disabled = false,
-  accept = 'image/*',
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  accept: _accept = 'image/*',
   children,
   className,
   showUploadPrompt = true

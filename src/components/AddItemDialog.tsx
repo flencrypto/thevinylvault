@@ -11,7 +11,7 @@ import { ImageUpload } from '@/components/ImageUpload'
 import { PressingIdentificationDialog } from '@/components/PressingIdentificationDialog'
 import { ConditionGradingDialog } from '@/components/ConditionGradingDialog'
 import { ImageAnalysisDialog } from '@/components/ImageAnalysisDialog'
-import { suggestGradingNotes } from '@/lib/condition-grading-ai'
+import { suggestGradingNotes, ConditionAnalysisResult } from '@/lib/condition-grading-ai'
 import { generateListingNotes, ImageAnalysisOutput } from '@/lib/openai-vision-service'
 import { generatePriceEstimate } from '@/lib/helpers'
 import { Sparkle, Eye, ScanSmiley } from '@phosphor-icons/react'
@@ -133,8 +133,8 @@ export function AddItemDialog({ open, onOpenChange, onAdd }: AddItemDialogProps)
     toast.success('Pressing details filled from AI identification')
   }
 
-  const handleConditionGraded = async (result: any, gradedImages: ItemImage[]) => {
-    const newFormData: any = { ...formData }
+  const handleConditionGraded = async (result: ConditionAnalysisResult, gradedImages: ItemImage[]) => {
+    const newFormData: typeof formData = { ...formData }
     
     if (result.mediaGrade) {
       newFormData.mediaGrade = result.mediaGrade

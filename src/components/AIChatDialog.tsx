@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { CollectionItem } from '@/lib/types'
 import { ChatMessage, ChatCorrection, LearningData, askAboutRecord, askGeneralQuestion } from '@/lib/ai-chat-service'
@@ -37,6 +37,17 @@ interface AIChatDialogProps {
   onApplyCorrection?: (itemId: string, corrections: Record<string, string>) => void
 }
 
+interface SpeechRecognitionInstance {
+  continuous: boolean
+  interimResults: boolean
+  lang: string
+  onresult: ((event: { results: { [i: number]: { [j: number]: { transcript: string } } } }) => void) | null
+  onerror: ((event: { error: string }) => void) | null
+  onend: (() => void) | null
+  start: () => void
+  stop: () => void
+}
+
 export function AIChatDialog({ 
   open, 
   onOpenChange, 
@@ -53,13 +64,14 @@ export function AIChatDialog({
   const [isRecording, setIsRecording] = useState(false)
   const [isSupported, setIsSupported] = useState(false)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
-  const recognitionRef = useRef<any>(null)
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
 
-  const safeMessages = messages || []
+  const safeMessages = useMemo(() => messages || [], [messages])
   const safeLearning = learningData || []
 
   useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    const win = window as Window & { SpeechRecognition?: new() => SpeechRecognitionInstance; webkitSpeechRecognition?: new() => SpeechRecognitionInstance }
+    const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition
     if (SpeechRecognition) {
       setIsSupported(true)
       recognitionRef.current = new SpeechRecognition()
@@ -67,14 +79,14 @@ export function AIChatDialog({
       recognitionRef.current.interimResults = false
       recognitionRef.current.lang = 'en-US'
 
-      recognitionRef.current.onresult = (event: any) => {
+      recognitionRef.current.onresult = (event: { results: { [i: number]: { [j: number]: { transcript: string } } } }) => {
         const transcript = event.results[0][0].transcript
         setInput(transcript)
         setIsRecording(false)
         toast.success('Voice captured successfully')
       }
 
-      recognitionRef.current.onerror = (event: any) => {
+      recognitionRef.current.onerror = (event: { error: string }) => {
         console.error('Speech recognition error:', event.error)
         setIsRecording(false)
         if (event.error === 'no-speech') {

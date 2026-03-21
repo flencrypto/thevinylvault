@@ -6,10 +6,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { CheckCircle, XCircle, Warning, Play, Spinner, Circle as CircleIcon, Info as InfoIcon } from '@phosphor-icons/react'
+import { CheckCircle, XCircle, Warning, Play, Spinner } from '@phosphor-icons/react'
 
-const Loader2 = Spinner
-const AlertCircle = InfoIcon
 import { toast } from 'sonner'
 import { analyzeVinylImage, identifyPressing } from '@/lib/image-analysis-ai'
 import { identifyPressing as advancedIdentifyPressing } from '@/lib/pressing-identification-ai'
@@ -22,7 +20,7 @@ interface TestResult {
   testName: string
   passed: boolean
   message: string
-  details?: any
+  details?: unknown
   duration: number
 }
 
@@ -61,7 +59,7 @@ export default function AIEdgeCaseTester() {
   const runTest = async (
     categoryKey: string,
     testName: string,
-    testFn: () => Promise<{ passed: boolean; message: string; details?: any }>
+    testFn: () => Promise<{ passed: boolean; message: string; details?: unknown }>
   ) => {
     const startTime = performance.now()
     try {
@@ -75,12 +73,12 @@ export default function AIEdgeCaseTester() {
         duration
       })
       return result.passed
-    } catch (error: any) {
+    } catch (error: unknown) {
       const duration = performance.now() - startTime
       addTestResult(categoryKey, {
         testName,
         passed: false,
-        message: `Error: ${error.message}`,
+        message: `Error: ${error instanceof Error ? error.message : String(error)}`,
         details: error,
         duration
       })
@@ -136,16 +134,16 @@ export default function AIEdgeCaseTester() {
 
     await runTest('imageAnalysis', 'Null/undefined handling', async () => {
       try {
-        const result = await analyzeVinylImage(null as any, undefined as any)
+        const result = await analyzeVinylImage(null as unknown as string, undefined as unknown as string)
         return {
           passed: result.confidence === 0,
           message: 'Handled null/undefined inputs',
           details: result
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         return {
           passed: false,
-          message: `Should not throw: ${error.message}`,
+          message: `Should not throw: ${error instanceof Error ? error.message : String(error)}`,
           details: error
         }
       }
@@ -303,7 +301,7 @@ export default function AIEdgeCaseTester() {
         {
           id: 'test1',
           itemId: 'test',
-          type: 'invalid_type' as any,
+          type: 'invalid_type' as unknown as ItemImage['type'],
           dataUrl: 'data:image/png;base64,test',
           mimeType: 'image/jpeg',
           uploadedAt: new Date().toISOString()
@@ -323,8 +321,8 @@ export default function AIEdgeCaseTester() {
           id: 'test1',
           itemId: 'test',
           type: 'front_cover',
-          dataUrl: undefined as any,
-          mimeType: undefined as any,
+          dataUrl: undefined as unknown as string,
+          mimeType: undefined as unknown as string,
           uploadedAt: new Date().toISOString()
         }
       ]
@@ -335,10 +333,10 @@ export default function AIEdgeCaseTester() {
           message: 'Handled undefined properties without crashing',
           details: result
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         return {
           passed: false,
-          message: `Should not crash: ${error.message}`,
+          message: `Should not crash: ${error instanceof Error ? error.message : String(error)}`,
           details: error
         }
       }
@@ -384,8 +382,8 @@ export default function AIEdgeCaseTester() {
 
     await runTest('listingGeneration', 'Item with null values', async () => {
       const item = createTestItem({
-        catalogNumber: null as any,
-        notes: null as any,
+        catalogNumber: null as unknown as string,
+        notes: null as unknown as string,
       })
       try {
         const copy = await generateListingCopy(item, 'ebay', [])
@@ -394,10 +392,10 @@ export default function AIEdgeCaseTester() {
           message: 'Handled null values in item',
           details: copy
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         return {
           passed: false,
-          message: `Should handle nulls: ${error.message}`,
+          message: `Should handle nulls: ${error instanceof Error ? error.message : String(error)}`,
           details: error
         }
       }
@@ -549,10 +547,10 @@ export default function AIEdgeCaseTester() {
           message: 'Handled missing currency',
           details: result
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         return {
           passed: false,
-          message: `Should not crash: ${error.message}`,
+          message: `Should not crash: ${error instanceof Error ? error.message : String(error)}`,
           details: error
         }
       }
@@ -722,7 +720,7 @@ export default function AIEdgeCaseTester() {
                                 </Badge>
                               </div>
                             </CardHeader>
-                            {test.details && (
+                            {test.details !== undefined && (
                               <CardContent>
                                 <Separator className="mb-3" />
                                 <div className="text-xs">

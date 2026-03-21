@@ -229,7 +229,7 @@ export class ScanSchedulerService {
   private calculateNextRun(schedule: ScheduledScan, fromDate: Date): string {
     const [hours, minutes] = schedule.time.split(':').map(Number)
     
-    let nextRun = new Date(fromDate)
+    const nextRun = new Date(fromDate)
     nextRun.setHours(hours, minutes, 0, 0)
 
     nextRun.setDate(nextRun.getDate() + 1)

@@ -6,7 +6,6 @@ import { Card } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { 
   Sparkle, 
@@ -20,16 +19,13 @@ import {
   CurrencyCircleDollar,
   CircleNotch,
   Play,
-  Pause,
   Stop,
   Copy
 } from '@phosphor-icons/react'
 import { CollectionItem } from '@/lib/types'
 import { 
-  TitleVariant, 
   ABTest, 
   TITLE_STYLE_DESCRIPTIONS, 
-  TITLE_STYLE_EXAMPLES 
 } from '@/lib/ab-testing-types'
 import {
   generateTitleVariants,
@@ -116,7 +112,8 @@ export default function ABTestingDialog({
     toast.success('Title applied to listing')
   }
 
-  const handleUpdateMetrics = (variantId: string) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _handleUpdateMetrics = (variantId: string) => {
     if (!currentTest) return
 
     const test = updateVariantPerformance(currentTest, variantId, {

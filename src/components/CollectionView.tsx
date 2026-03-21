@@ -65,6 +65,7 @@ export default function CollectionView() {
         }
       })
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- trendAlerts intentionally omitted: adding it would cause an infinite loop since this effect writes to trendAlerts
   }, [items])
 
   const handleAddItem = (newItem: CollectionItem) => {
@@ -226,12 +227,13 @@ export default function CollectionView() {
     }
   }
 
-  const handleBarcodeScanned = (result: BarcodeScanResult) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleBarcodeScanned = (_result: BarcodeScanResult) => {
     toast.success(`Barcode scanned! Opening add dialog...`)
     setAddDialogOpen(true)
   }
 
-  const handleBatchIdentificationComplete = (results: any[]) => {
+  const handleBatchIdentificationComplete = (results: Array<{ itemId: string; bestMatch?: { id: string } }>) => {
     const matchedResults = results.filter(r => r.bestMatch)
     const resultMap = new Map(results.map(r => [r.itemId, r]))
     

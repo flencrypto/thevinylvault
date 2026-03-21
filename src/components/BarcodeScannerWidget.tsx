@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Barcode, X, CheckCircle, Warning, Camera, Upload } from '@phosphor-icons/react'
+import { Barcode, CheckCircle, Warning, Camera, Upload } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
@@ -68,7 +68,7 @@ export default function BarcodeScannerWidget({ onScanComplete, variant = 'card' 
         videoRef.current.srcObject = stream
         videoRef.current.play()
       }
-    } catch (err) {
+    } catch {
       setError('Camera access denied. Please enable camera permissions.')
       toast.error('Camera access denied')
       setScanMode('manual')
@@ -97,7 +97,7 @@ export default function BarcodeScannerWidget({ onScanComplete, variant = 'card' 
       } else {
         toast.error('No barcode detected. Try again or enter manually.')
       }
-    } catch (err) {
+    } catch {
       toast.error('Failed to scan barcode')
     } finally {
       setIsScanning(false)
@@ -146,7 +146,7 @@ Return ONLY the barcode number as a plain string with no additional text. If no 
         } else {
           toast.error('No barcode detected in image')
         }
-      } catch (err) {
+      } catch {
         toast.error('Failed to process image')
       } finally {
         setIsScanning(false)
@@ -174,7 +174,7 @@ Return ONLY the barcode number as a plain string with no additional text. If no 
         setError('Barcode not found in database. Try manual entry.')
         toast.error('Barcode not recognized')
       }
-    } catch (err) {
+    } catch {
       setError('Search failed. Please try again.')
       toast.error('Barcode lookup failed')
     } finally {

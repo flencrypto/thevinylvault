@@ -4,10 +4,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Progress } from '@/components/ui/progress'
-import { ItemImage, ImageType, CollectionItem } from '@/lib/types'
+import { ItemImage, ImageType, CollectionItem, ImageAnalysisResult } from '@/lib/types'
 import { 
   Camera, 
   Trash, 
@@ -24,16 +23,21 @@ import {
 import { toast } from 'sonner'
 import { classifyImage } from '@/lib/openai-vision-service'
 import { analyzeVinylImage } from '@/lib/image-analysis-ai'
-import { identifyPressing } from '@/lib/pressing-identification-ai'
-import { analyzeConditionFromImages } from '@/lib/condition-grading-ai'
-import { generateListingCopy } from '@/lib/listing-ai'
+import { identifyPressing, ScoredPressingCandidate } from '@/lib/pressing-identification-ai'
+import { analyzeConditionFromImages, ConditionAnalysisResult } from '@/lib/condition-grading-ai'
 import { DragDropImageZone } from '@/components/DragDropImageZone'
+
+interface BatchAnalysisResult {
+  pressing: ScoredPressingCandidate[]
+  condition: ConditionAnalysisResult
+  images: ImageAnalysisResult[]
+}
 
 interface RecordBatch {
   id: string
   images: ItemImage[]
   status: 'capturing' | 'analyzing' | 'complete' | 'error'
-  analysisResult?: any
+  analysisResult?: BatchAnalysisResult
   createdAt: string
 }
 
@@ -44,7 +48,7 @@ interface BatchPhotoCaptureDialogProps {
 
 export function BatchPhotoCaptureDialog({ open, onOpenChange }: BatchPhotoCaptureDialogProps) {
   const [apiKeys] = useKV<{ openaiKey?: string, imgbbKey?: string }>('vinyl-vault-api-keys', {})
-  const [items, setItems] = useKV<CollectionItem[]>('vinyl-vault-collection', [])
+  const [, setItems] = useKV<CollectionItem[]>('vinyl-vault-collection', [])
   
   const [batches, setBatches] = useState<RecordBatch[]>([])
   const [currentBatchId, setCurrentBatchId] = useState<string | null>(null)
@@ -90,6 +94,7 @@ export function BatchPhotoCaptureDialog({ open, onOpenChange }: BatchPhotoCaptur
     const dataUrl = await fileToDataUrl(file)
     
     const newImage: ItemImage = {
+      // eslint-disable-next-line react-hooks/purity
       id: `img-${Date.now()}`,
       type: 'front_cover',
       dataUrl,
@@ -136,6 +141,7 @@ export function BatchPhotoCaptureDialog({ open, onOpenChange }: BatchPhotoCaptur
       const dataUrl = await fileToDataUrl(file)
       
       const newImage: ItemImage = {
+        // eslint-disable-next-line react-hooks/purity
         id: `img-${Date.now()}-${Math.random()}`,
         type: 'front_cover',
         dataUrl,

@@ -51,8 +51,8 @@ class TelegramService {
 
   constructor() {
     // Prefer existing dedicated localStorage keys
-    let botToken = localStorage.getItem('telegram_bot_token') || ''
-    let chatId = localStorage.getItem('telegram_chat_id') || ''
+    const botToken = localStorage.getItem('telegram_bot_token') || ''
+    const chatId = localStorage.getItem('telegram_chat_id') || ''
 
     // If not set, try to hydrate from Spark KV via globalThis
     if (!botToken || !chatId) {
