@@ -14,8 +14,6 @@ import {
   ArrowsLeftRight,
   ShoppingCart,
   Disc,
-  Camera,
-  Barcode,
   SortAscending,
   Funnel
 } from '@phosphor-icons/react'

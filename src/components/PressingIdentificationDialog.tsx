@@ -17,9 +17,8 @@ import { PressingMatchVerification } from '@/components/PressingMatchVerificatio
 import { ItemImage, Format, FORMAT_LABELS, ImageAnalysisResult } from '@/lib/types'
 import { analyzeVinylImage } from '@/lib/image-analysis-ai'
 import { identifyPressing, ScoredPressingCandidate } from '@/lib/pressing-identification-ai'
-import { Sparkle, CheckCircle, Warning, Info, X, Database, Lightning } from '@phosphor-icons/react'
+import { Sparkle, CheckCircle, Warning, Info, Database, Lightning } from '@phosphor-icons/react'
 import { toast } from 'sonner'
-import type { DiscogsApiConfig } from '@/lib/marketplace-discogs'
 
 interface PressingIdentificationDialogProps {
   open: boolean
@@ -67,14 +66,6 @@ export function PressingIdentificationDialog({
       }
     }
   }, [candidates, shouldAutoMatch])
-
-  const handleAddImage = (image: ItemImage) => {
-    setImages(prev => [...prev, image])
-  }
-
-  const handleRemoveImage = (imageId: string) => {
-    setImages(prev => prev.filter(img => img.id !== imageId))
-  }
 
   const handleIdentifyPressing = async () => {
     if (images.length === 0 && !manualHints.artist && !manualHints.catalogNumber) {

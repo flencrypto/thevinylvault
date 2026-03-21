@@ -14,7 +14,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { Robot, Brain, Lightning, Target, Sparkle, Warning, Info, CheckCircle } from '@phosphor-icons/react'
 import { useKV } from '@github/spark/hooks'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
 
 export interface AgentConfig {
   enabled: boolean
@@ -110,6 +109,7 @@ export function AgentConfigDialog({ open, onOpenChange }: AgentConfigDialogProps
   const [localConfig, setLocalConfig] = useState<AgentConfig>(config)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalConfig(config)
   }, [config, open])
 

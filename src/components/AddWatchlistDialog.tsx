@@ -27,6 +27,7 @@ export function AddWatchlistDialog({ open, onOpenChange, onAdd }: AddWatchlistDi
     e.preventDefault()
 
     const newItem: WatchlistItem = {
+      // eslint-disable-next-line react-hooks/purity
       id: `watchlist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       collectionId: 'default',
       type,

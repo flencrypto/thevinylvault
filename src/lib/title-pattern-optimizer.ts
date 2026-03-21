@@ -120,7 +120,6 @@ async function extractPatterns(winners: TitleVariant[]): Promise<TitlePattern[]>
 
 function parseTitle(title: string): TitleElement[] {
   const elements: TitleElement[] = []
-  let position = 0
 
   const yearMatch = title.match(/\b(19\d{2}|20\d{2})\b/)
   if (yearMatch) {

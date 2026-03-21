@@ -6,7 +6,6 @@ import { Card } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { 
   Sparkle, 
@@ -20,16 +19,13 @@ import {
   CurrencyCircleDollar,
   CircleNotch,
   Play,
-  Pause,
   Stop,
   Copy
 } from '@phosphor-icons/react'
 import { CollectionItem } from '@/lib/types'
 import { 
-  TitleVariant, 
   ABTest, 
   TITLE_STYLE_DESCRIPTIONS, 
-  TITLE_STYLE_EXAMPLES 
 } from '@/lib/ab-testing-types'
 import {
   generateTitleVariants,
@@ -116,20 +112,7 @@ export default function ABTestingDialog({
     toast.success('Title applied to listing')
   }
 
-  const handleUpdateMetrics = (variantId: string) => {
-    if (!currentTest) return
 
-    const test = updateVariantPerformance(currentTest, variantId, {
-      views: Math.floor(Math.random() * 100) + 50,
-      clicks: Math.floor(Math.random() * 30) + 10,
-      watchlists: Math.floor(Math.random() * 10),
-      messages: Math.floor(Math.random() * 5),
-      sales: Math.floor(Math.random() * 3),
-    })
-
-    setCurrentTest(test)
-    setABTests(tests => (tests || []).map(t => t.id === test.id ? test : t))
-  }
 
   const testToDisplay = currentTest || existingTest
   const testResults = testToDisplay ? determineWinningVariant(testToDisplay) : []

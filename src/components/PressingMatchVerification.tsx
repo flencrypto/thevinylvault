@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -43,13 +43,7 @@ export function PressingMatchVerification({
   const [verifying, setVerifying] = useState(false)
   const [verification, setVerification] = useState<VerificationResult | null>(null)
 
-  useEffect(() => {
-    if (candidate.discogsId && discogsApiToken) {
-      performVerification()
-    }
-  }, [candidate.discogsId, discogsApiToken])
-
-  const performVerification = async () => {
+  const performVerification = useCallback(async () => {
     setVerifying(true)
     try {
       const result = await verifyPressingMatch(candidate, userImages, discogsApiToken)
@@ -59,7 +53,13 @@ export function PressingMatchVerification({
     } finally {
       setVerifying(false)
     }
-  }
+  }, [candidate, userImages, discogsApiToken])
+
+  useEffect(() => {
+    if (candidate.discogsId && discogsApiToken) {
+      performVerification()
+    }
+  }, [candidate.discogsId, discogsApiToken, performVerification])
 
   const getMatchColor = (percentage: number) => {
     if (percentage >= 85) return 'text-green-400'

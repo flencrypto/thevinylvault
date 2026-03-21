@@ -36,6 +36,8 @@ export function NFTTransactionHistoryDialog({
 
   useEffect(() => {
     if (open && nft) {
+      
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoading(true)
       fetchNFTTransactions(nft)
         .then(setTransactions)
@@ -144,7 +146,7 @@ export function NFTTransactionHistoryDialog({
 
             <ScrollArea className="h-[400px] pr-4">
               <div className="space-y-3">
-                {transactions.map((tx, index) => (
+                {transactions.map((tx) => (
                   <div 
                     key={tx.id} 
                     className="bg-card border border-border rounded-lg p-4 hover:shadow-md transition-shadow"

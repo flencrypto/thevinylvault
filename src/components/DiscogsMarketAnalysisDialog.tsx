@@ -12,7 +12,6 @@ import {
   Minus,
   MapPin,
   User,
-  Tag,
   Sparkle,
   Bell,
   Info
@@ -92,7 +91,7 @@ export default function DiscogsMarketAnalysisDialog({
     try {
       await createPriceAlert(releaseId, releaseName, targetPrice, priceStats.currency)
       toast.success(`Price alert created for ${priceStats.currency} ${targetPrice.toFixed(2)}`)
-    } catch (error) {
+    } catch {
       toast.error('Failed to create price alert')
     }
   }

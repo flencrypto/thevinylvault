@@ -55,15 +55,23 @@ export function DragDropImageZone({
     if (disabled) return
 
     const files = Array.from(e.dataTransfer.files)
-    const imageFiles = files.filter(file => file.type.startsWith('image/'))
+    const acceptedTypes = accept.split(',').map(t => t.trim())
+    const filteredFiles = files.filter(file => 
+      acceptedTypes.some(type => {
+        if (type.endsWith('/*')) {
+          return file.type.startsWith(type.replace('/*', '/'))
+        }
+        return file.type === type
+      })
+    )
     
     const remainingSlots = maxFiles - currentFileCount
-    const filesToProcess = imageFiles.slice(0, remainingSlots)
+    const filesToProcess = filteredFiles.slice(0, remainingSlots)
 
     if (filesToProcess.length > 0) {
       onFilesSelected(filesToProcess)
     }
-  }, [disabled, maxFiles, currentFileCount, onFilesSelected])
+  }, [accept, disabled, maxFiles, currentFileCount, onFilesSelected])
 
   return (
     <div

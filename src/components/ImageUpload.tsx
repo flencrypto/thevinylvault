@@ -6,8 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ImageType, ItemImage } from '@/lib/types'
-import { Camera, Trash, Image as ImageIcon, CloudArrowUp, CheckCircle, Sparkle, CircleNotch, Warning } from '@phosphor-icons/react'
-import { cn } from '@/lib/utils'
+import { Camera, Trash, Image as ImageIcon, CloudArrowUp, CheckCircle, Sparkle, CircleNotch } from '@phosphor-icons/react'
 import { uploadImageToImgBB } from '@/lib/imgbb-service'
 import { classifyImage } from '@/lib/openai-vision-service'
 import { useConfidenceThresholds } from '@/hooks/use-confidence-thresholds'
@@ -29,7 +28,7 @@ export function ImageUpload({ images, onImagesChange, maxImages = 10, autoUpload
   const [apiKeys] = useKV<{ imgbbKey?: string, openaiKey?: string }>('vinyl-vault-api-keys', {})
   const [uploadingImages, setUploadingImages] = useState<Set<string>>(new Set())
   const [detectingTypes, setDetectingTypes] = useState<Set<string>>(new Set())
-  const { checkConfidence, getThreshold, getConfidenceBand } = useConfidenceThresholds()
+  const { checkConfidence, getThreshold } = useConfidenceThresholds()
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -114,7 +113,6 @@ export function ImageUpload({ images, onImagesChange, maxImages = 10, autoUpload
 
     try {
       const result = await classifyImage(image.dataUrl)
-      const confidenceBand = getConfidenceBand(result.confidence)
       const meetsThreshold = checkConfidence('imageClassification', result.confidence)
       
       if (meetsThreshold) {

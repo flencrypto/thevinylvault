@@ -3,16 +3,21 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { X, Download, ArrowClockwise } from '@phosphor-icons/react'
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): void
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
+}
+
 export default function PWAUpdatePrompt() {
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
   const [showUpdatePrompt, setShowUpdatePrompt] = useState(false)
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null)
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault()
-      setDeferredPrompt(e)
+      setDeferredPrompt(e as BeforeInstallPromptEvent)
       setShowInstallPrompt(true)
     }
 
