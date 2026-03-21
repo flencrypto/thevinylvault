@@ -5,14 +5,12 @@ interface SplashScreenProps {
 }
 
 export default function SplashScreen({ onComplete }: SplashScreenProps) {
-  const [phase, setPhase] = useState<'entering' | 'visible' | 'fading'>('entering')
+  const [fading, setFading] = useState(false)
 
   useEffect(() => {
-    const enterTimer = setTimeout(() => setPhase('visible'), 50)
-    const fadeTimer = setTimeout(() => setPhase('fading'), 2800)
-    const completeTimer = setTimeout(() => onComplete(), 3400)
+    const fadeTimer = setTimeout(() => setFading(true), 2500)
+    const completeTimer = setTimeout(() => onComplete(), 3100)
     return () => {
-      clearTimeout(enterTimer)
       clearTimeout(fadeTimer)
       clearTimeout(completeTimer)
     }
@@ -22,8 +20,8 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
     <div
       className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"
       style={{
-        opacity: phase === 'fading' ? 0 : phase === 'entering' ? 0 : 1,
-        transition: phase === 'fading' ? 'opacity 0.6s ease-out' : 'opacity 0.4s ease-in',
+        opacity: fading ? 0 : 1,
+        transition: fading ? 'opacity 0.6s ease-out' : undefined,
       }}
     >
       {/* Ambient glow behind record */}
