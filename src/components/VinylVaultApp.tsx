@@ -13,6 +13,7 @@ import {
   ArrowsLeftRight,
   Binoculars,
   Wrench,
+  Robot,
 } from '@phosphor-icons/react'
 import CollectionView from './CollectionView'
 import BargainsView from './BargainsView'
@@ -24,11 +25,12 @@ import SettingsView from './SettingsView'
 import MarketplaceComparisonView from './MarketplaceComparisonView'
 import DealScannerView from './DealScannerView'
 import PWAUpdatePrompt from './PWAUpdatePrompt'
+import ValuationAgentWorkflow from './ValuationAgentWorkflow'
 import { scanSchedulerService } from '@/lib/scan-scheduler-service'
 
 const SetupView = lazy(() => import('./SetupView'))
 
-type TabValue = 'new-listing' | 'collection' | 'bargains' | 'watchlist' | 'comparison' | 'nfts' | 'deals' | 'ebay-dev' | 'settings' | 'setup'
+type TabValue = 'new-listing' | 'collection' | 'bargains' | 'watchlist' | 'comparison' | 'nfts' | 'deals' | 'ebay-dev' | 'agents' | 'settings' | 'setup'
 
 export default function VinylVaultApp() {
   const [activeTab, setActiveTab] = useKV<TabValue>('vinyl-vault-active-tab', 'new-listing')
@@ -87,6 +89,9 @@ export default function VinylVaultApp() {
             <TabsContent value="ebay-dev" className="m-0 mt-0">
               <EbayDeletionChecklist />
             </TabsContent>
+            <TabsContent value="agents" className="m-0 mt-0">
+              <ValuationAgentWorkflow />
+            </TabsContent>
             <TabsContent value="settings" className="m-0 mt-0">
               <SettingsView />
             </TabsContent>
@@ -100,7 +105,7 @@ export default function VinylVaultApp() {
 
         <nav className="fixed bottom-0 left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800 pb-safe-area-inset-bottom">
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)}>
-            <TabsList className="w-full min-h-[64px] md:h-20 grid grid-cols-10 bg-transparent border-0 p-0 gap-0">
+            <TabsList className="w-full min-h-[64px] md:h-20 grid grid-cols-11 bg-transparent border-0 p-0 gap-0">
               <TabsTrigger 
                 value="new-listing" 
                 className="flex-col gap-0.5 sm:gap-1 h-full min-h-[64px] md:min-h-[80px] rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-0.5 sm:px-1 touch-manipulation active:scale-95 transition-transform"
@@ -156,6 +161,13 @@ export default function VinylVaultApp() {
               >
                 <Code className="w-5 h-5 sm:w-6 sm:h-6" weight="fill" />
                 <span className="text-[9px] sm:text-[10px] leading-tight">eBay</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="agents" 
+                className="flex-col gap-0.5 sm:gap-1 h-full min-h-[64px] md:min-h-[80px] rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-0.5 sm:px-1 touch-manipulation active:scale-95 transition-transform"
+              >
+                <Robot className="w-5 h-5 sm:w-6 sm:h-6" weight="fill" />
+                <span className="text-[9px] sm:text-[10px] leading-tight">Agents</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="settings" 
