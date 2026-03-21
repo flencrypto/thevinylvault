@@ -175,7 +175,7 @@ export default function ValuationSynthesizerAgent() {
         {bothReady && !valuation && (
           <div className='flex flex-col items-center justify-center py-8 text-center'>
             <CircleNotch size={32} className='mb-3 animate-spin text-amber-400' />
-            <p className='text-sm font-medium'>Synthesising final valuation…</p>
+            <p className='text-sm font-medium'>Synthesizing final valuation…</p>
           </div>
         )}
 
