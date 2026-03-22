@@ -78,7 +78,7 @@ export function ListingPreviewDialog({
         condition: {
           mediaGrade: conditionDetails.mediaGrade,
           sleeveGrade: conditionDetails.sleeveGrade,
-          gradingStandard: 'Goldmine',
+          gradingStandard: 'Goldmine' as const,
           gradingNotes: listingContent.conditionSummary,
           gradedAt: new Date().toISOString()
         },
@@ -126,7 +126,7 @@ export function ListingPreviewDialog({
         condition: {
           mediaGrade: conditionDetails.mediaGrade,
           sleeveGrade: conditionDetails.sleeveGrade,
-          gradingStandard: 'Goldmine',
+          gradingStandard: 'Goldmine' as const,
           gradingNotes: listingContent.conditionSummary,
           gradedAt: new Date().toISOString()
         },

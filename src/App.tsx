@@ -6,10 +6,9 @@ function App() {
   const [showSplash, setShowSplash] = useState(true)
 
   return showSplash ? (
-  <SplashScreen onComplete={() => setShowSplash(false)} />
-) : (
-  <VinylVaultApp />
-    </>
+    <SplashScreen onComplete={() => setShowSplash(false)} />
+  ) : (
+    <VinylVaultApp />
   )
 }
 

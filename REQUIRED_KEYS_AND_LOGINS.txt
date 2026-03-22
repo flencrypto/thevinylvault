@@ -1,110 +1,434 @@
-VinylVault - Required API Keys & External Integrations
-Generated: 2025-01-01
+VinylVault — Required API Keys, Credentials & External Integrations
+Generated: 2026-03-21
+Last updated by: Comprehensive Audit (automated)
 
-This app runs entirely client-side. All API keys are stored in your browser's
-localStorage (synced from the app's KV storage layer). No server-side
-environment variables are required.
+══════════════════════════════════════════════════════════════════════
+OVERVIEW
+══════════════════════════════════════════════════════════════════════
 
-To configure: Open the app → Settings tab → paste your keys.
+VinylVault is a fully client-side app (Vite + React SPA). There is no
+backend server. All API credentials are stored in your browser's
+localStorage, or in GitHub Spark KV (for server-side Spark features).
 
-========================================================================
+HOW TO CONFIGURE:
+  → Open the app → click the "Settings" tab in the bottom navigation
+  → Scroll to the relevant integration section
+  → Paste your key/token and click Save
 
-[1] OPENAI (Required for AI features)
-    localStorage key : openai_api_key
-    Purpose          : AI condition grading, image analysis, listing generation,
-                       pressing identification, bargain scoring
-    Get it at        : https://platform.openai.com/api-keys
-    Notes            : Requires a paid OpenAI account with GPT-4 Vision access.
-                       Key format: sk-...
+IMPORTANT: Never commit secrets to version control. All keys listed
+below are stored ONLY in the user's browser (localStorage) or Spark KV.
 
-------------------------------------------------------------------------
+══════════════════════════════════════════════════════════════════════
+[1] OPENAI API KEY  ★ REQUIRED for core AI features
+══════════════════════════════════════════════════════════════════════
 
-[2] DISCOGS (Required for marketplace & valuation features)
-    localStorage key : discogs_personal_token
-    Also used as     : discogs_consumer_key (OAuth, if Consumer Key + Secret used)
-    Purpose          : Marketplace search, release valuation, pressing ID,
-                       price history, collection sync
-    Get it at        : https://www.discogs.com/settings/developers
-    Notes            : Free Discogs account required. Generate a Personal Access
-                       Token in your developer settings.
+Feature(s) unlocked:
+  • AI Condition Grading (photo → grade analysis)
+  • Pressing Identification via image analysis
+  • Listing Description Generator (eBay / Discogs copy)
+  • AI Chat assistant (AIChatDialog)
+  • Bargain scoring & deal detection AI
+  • Mood Analysis, Batch Valuation AI
+  • Image Analysis Dialog
+  • Export Graded Items descriptions
 
-------------------------------------------------------------------------
+Required credential:
+  localStorage key : openai_api_key
+  Spark KV key     : vinyl-vault-api-keys → { openaiApiKey }
 
-[3] EBAY DEVELOPER (Required for eBay deal scanning)
-    localStorage keys: ebay_client_id
-                       ebay_client_secret
-    Also used as     : ebay_app_id (alias for ebay_client_id)
-    Purpose          : eBay deal scanning, live listing search, price comparison
-    Get it at        : https://developer.ebay.com/my/keys
-    Notes            : Sign in with your eBay account. Create a Production app
-                       to get App ID (Client ID) and Client Secret.
+OAuth required: No — API key only
 
-------------------------------------------------------------------------
+Where to get it:
+  1. Create or log in at https://platform.openai.com/
+  2. Go to https://platform.openai.com/api-keys
+  3. Click "Create new secret key"
+  4. Copy the key (starts with sk-…)
+  5. Open VinylVault → Settings → AI Configuration → paste key → Save
 
-[4] IMGBB (Required for image hosting)
-    localStorage key : imgbb_api_key
-    Purpose          : Image hosting for marketplace listings, stable URLs
-                       for eBay and Discogs listings
-    Get it at        : https://api.imgbb.com
-    Notes            : Free account supports up to 32MB per image.
+Key format:   sk-...
+Paid account: Required (GPT-4 Vision access needs a funded account)
+Pricing:      https://openai.com/pricing
 
-------------------------------------------------------------------------
+Which UI actions depend on this:
+  • "Grade Condition" button on any record card
+  • "Identify Pressing" in Collection View
+  • "Generate Listing" / "Preview Listing" dialogs
+  • AI Chat button (💬) in toolbar
+  • "Batch Valuate" in Collection View
+  • Any feature prefixed with "AI" in the app
+  • PressingIdentificationDialog, ImageAnalysisDialog, ValuationDialog
 
-[5] XAI / GROK (Optional - alternative AI provider)
-    localStorage key : xai_api_key
-    Purpose          : Alternative to OpenAI for record analysis and listing
-                       generation using Grok
-    Get it at        : https://console.x.ai
-    Notes            : Optional. Used as fallback/alternative to OpenAI.
+Notes:
+  - If the key is missing, an IntegrationGateDialog is shown explaining
+    what's needed and linking to Settings.
+  - Model used: gpt-4o (with vision for image tasks)
 
-------------------------------------------------------------------------
+──────────────────────────────────────────────────────────────────────
+[2] XAI (GROK) API KEY  — Optional AI provider alternative
+──────────────────────────────────────────────────────────────────────
 
-[6] DEEPSEEK AI (Optional - alternative AI provider)
-    localStorage key : deepseek_api_key
-    Purpose          : Cost-effective alternative AI for analysis and
-                       listing generation
-    Get it at        : https://platform.deepseek.com
-    Notes            : Optional. Competitive pricing vs OpenAI.
+Feature(s) unlocked:
+  • All AI features listed in [1] above, using xAI's Grok model instead
+    of OpenAI (when configured as primary AI provider)
 
-------------------------------------------------------------------------
+Required credential:
+  localStorage key : xai_api_key
+  localStorage key : xai_model  (default: grok-4-1-fast-reasoning)
+  Spark KV key     : vinyl-vault-api-keys → { xaiApiKey, xaiModel }
 
-[7] PINATA / IPFS (Optional - required for NFT minting)
-    localStorage key : pinata_jwt
-    Purpose          : IPFS metadata storage for Solana NFT minting
-    Get it at        : https://app.pinata.cloud/developers/api-keys
-    Notes            : Free tier includes 1GB. Use the JWT token (not API key).
-                       Required if you want to mint NFTs for your records.
+OAuth required: No
 
-------------------------------------------------------------------------
+Where to get it:
+  1. Visit https://console.x.ai/
+  2. Sign in with your X (Twitter) account
+  3. Navigate to API Keys section
+  4. Create a new API key
+  5. Open VinylVault → Settings → AI Configuration → xAI section → Save
 
-[8] TELEGRAM BOT (Optional - deal alert notifications)
-    localStorage keys: telegram_bot_token
-                       telegram_chat_id
-    Purpose          : Push notifications to Telegram when bargains are found
-    Get it at        : https://core.telegram.org/bots#botfather
-    Notes            : Create a bot via @BotFather in Telegram. Get your
-                       chat_id by messaging your bot then calling:
-                       https://api.telegram.org/bot<TOKEN>/getUpdates
+Key format: xai-...
+Pricing: https://x.ai/api
 
-========================================================================
+──────────────────────────────────────────────────────────────────────
+[3] DEEPSEEK API KEY  — Optional AI provider alternative
+──────────────────────────────────────────────────────────────────────
 
-QUICK SETUP CHECKLIST:
-  [ ] openai_api_key      - Get from platform.openai.com/api-keys
-  [ ] discogs_personal_token - Get from discogs.com/settings/developers
-  [ ] ebay_client_id      - Get from developer.ebay.com/my/keys
-  [ ] ebay_client_secret  - Get from developer.ebay.com/my/keys
-  [ ] imgbb_api_key       - Get from api.imgbb.com
-  [ ] xai_api_key         - Optional: console.x.ai
-  [ ] deepseek_api_key    - Optional: platform.deepseek.com
-  [ ] pinata_jwt          - Optional (NFTs): app.pinata.cloud
-  [ ] telegram_bot_token  - Optional (alerts): @BotFather on Telegram
-  [ ] telegram_chat_id    - Optional (alerts): from getUpdates API
+Feature(s) unlocked:
+  • All AI features using DeepSeek models as provider
 
-========================================================================
+Required credential:
+  localStorage key : deepseek_api_key
+  localStorage key : deepseek_model  (default: deepseek-chat)
+  Spark KV key     : vinyl-vault-api-keys → { deepseekApiKey, deepseekModel }
 
-SECURITY NOTE:
-  All keys are stored in your browser's localStorage only. They are never
-  sent to any server other than the respective API endpoints they authorize.
-  Do NOT commit API keys to version control.
+OAuth required: No
 
-========================================================================
+Where to get it:
+  1. Visit https://platform.deepseek.com/
+  2. Register an account
+  3. Go to API Keys → Create API key
+  4. Open VinylVault → Settings → AI Configuration → DeepSeek section → Save
+
+══════════════════════════════════════════════════════════════════════
+[4] DISCOGS PERSONAL ACCESS TOKEN  ★ REQUIRED for marketplace features
+══════════════════════════════════════════════════════════════════════
+
+Feature(s) unlocked:
+  • Record valuation (estimated values from Discogs marketplace)
+  • Pressing identification via Discogs database
+  • Marketplace search and price history
+  • Collection import from Discogs
+  • Bargain scanning (Discogs marketplace)
+  • DiscogsTestDialog, DiscogsMarketAnalysisDialog
+  • WatchlistView Discogs searches
+  • BargainsView Discogs deal scanning
+
+Required credential:
+  localStorage key : discogs_personal_token
+  (Alternative OAuth keys below)
+
+OAuth required: Optional — Personal Access Token is simpler
+
+Where to get it (Personal Token — recommended):
+  1. Log in at https://www.discogs.com/
+  2. Go to https://www.discogs.com/settings/developers
+  3. Scroll to "Personal Access Tokens" section
+  4. Click "Generate new token"
+  5. Copy the token
+  6. Open VinylVault → Settings → Discogs Integration → paste token → Save
+
+Where to get it (OAuth — advanced):
+  1. Go to https://www.discogs.com/settings/developers
+  2. Register a new application to get Consumer Key + Consumer Secret
+  3. Open VinylVault → Settings → Discogs → enter Consumer Key + Secret
+
+OAuth credentials:
+  localStorage key : discogs_consumer_key
+  localStorage key : discogs_consumer_secret
+
+Key format:   Long alphanumeric string
+Rate limits:  60 requests/minute (authenticated), 25/minute (unauthenticated)
+Free account: Yes, free Discogs account is sufficient
+
+Which UI actions depend on this:
+  • "Get Value" / valuation on any record
+  • "Scan for Bargains" in BargainsView
+  • "Search Discogs" in WatchlistView
+  • Pressing identification searches
+  • Market analysis dialogs
+
+Notes:
+  - Without this token, Discogs calls will fail or be heavily rate-limited.
+  - The DiscogsSetupGuide component in the app guides users through setup.
+
+──────────────────────────────────────────────────────────────────────
+[5] EBAY APP ID (CLIENT ID)  ★ REQUIRED for eBay bargain scanning
+──────────────────────────────────────────────────────────────────────
+
+Feature(s) unlocked:
+  • eBay marketplace search and deal scanning
+  • eBay bargain listings in BargainsView / DealScannerView
+  • Price comparison between eBay and Discogs
+
+Required credential:
+  localStorage key : ebay_client_id  (primary)
+  localStorage key : ebay_app_id     (alias, both are checked)
+  Spark KV key     : vinyl-vault-api-keys → { ebayClientId }
+
+OAuth required: No — App ID (Client ID) only, for the Finding API
+
+Where to get it:
+  1. Go to https://developer.ebay.com/
+  2. Sign in with your eBay account (or create one)
+  3. Navigate to My Account → Application Keys
+  4. Click "Create an App ID"
+  5. Select "Production" environment
+  6. Copy the "App ID (Client ID)"
+  7. Open VinylVault → Settings → eBay Integration → paste App ID → Save
+
+Key format:   YourName-AppName-PRD-xxxxxxxxxxxxxxx-xxxxxxxx
+Cost:         Free Developer Program account
+Docs:         https://developer.ebay.com/develop/apis/restful-apis/buy-apis
+
+Which UI actions depend on this:
+  • "Scan eBay" in DealScannerView / BargainsView
+  • eBay price comparison in MarketplaceComparisonView
+  • eBay bargain cards in BargainCard component
+
+Notes:
+  - Uses the eBay Finding API (browse/search), not the Trading API
+  - No OAuth flow needed for read-only search
+  - Rate limits: 5,000 calls/day on free tier
+
+══════════════════════════════════════════════════════════════════════
+[6] PINATA JWT  — Required for NFT metadata upload (IPFS)
+══════════════════════════════════════════════════════════════════════
+
+Feature(s) unlocked:
+  • Minting vinyl records as Solana NFTs
+  • Uploading record images and metadata to IPFS via Pinata
+  • BatchNFTMintDialog, MintNFTDialog
+  • NFT metadata pinning for permanent storage
+
+Required credential:
+  Spark KV key : vinyl-vault-api-keys → { pinataJwt }
+
+OAuth required: No
+
+Where to get it:
+  1. Visit https://pinata.cloud/
+  2. Create a free account
+  3. Go to API Keys → New Key
+  4. Enable "pinFileToIPFS" and "pinJSONToIPFS" permissions
+  5. Copy the JWT token
+  6. Open VinylVault → Settings → NFT/Blockchain → Pinata JWT → Save
+
+Key format:   eyJ... (JWT format)
+Free tier:    1 GB storage, sufficient for most collections
+Docs:         https://docs.pinata.cloud/
+
+Which UI actions depend on this:
+  • "Mint as NFT" button on record cards
+  • "Batch Mint NFTs" in NFT View
+  • Any NFT minting workflow
+
+──────────────────────────────────────────────────────────────────────
+[7] SOLANA WALLET  — Required for NFT minting / blockchain features
+──────────────────────────────────────────────────────────────────────
+
+Feature(s) unlocked:
+  • Minting vinyl records as Solana NFTs (Metaplex Core)
+  • Viewing and managing minted NFTs in NFTView
+  • Blockchain-verified eBay listings
+  • NFT transaction history
+
+Required setup:
+  A Solana browser wallet extension installed and connected:
+    • Phantom Wallet:   https://phantom.app/         (window.solana)
+    • Solflare:         https://solflare.com/         (window.solflare)
+    • Backpack:         https://backpack.app/         (window.backpack)
+
+OAuth / Login required: Yes — wallet connect (browser extension)
+
+How to connect:
+  1. Install a Solana wallet browser extension (Phantom recommended)
+  2. Create or import a wallet
+  3. Fund with SOL for transaction fees (~0.01 SOL per mint)
+  4. Open VinylVault → NFT View → "Connect Wallet"
+  5. Approve the connection in the wallet extension
+
+Notes:
+  - Mainnet-beta is the default network for production mints
+  - Each NFT mint costs ~0.01–0.02 SOL in network fees
+  - The WalletConnect component handles wallet detection
+
+──────────────────────────────────────────────────────────────────────
+[8] IMGBB API KEY  — Optional, for eBay image hosting
+──────────────────────────────────────────────────────────────────────
+
+Feature(s) unlocked:
+  • Uploading record images to ImgBB for use in eBay listings
+  • eBay requires externally hosted image URLs (not local files)
+  • ImgBBUploadDialog
+
+Required credential:
+  localStorage key : (configured in ImgBBUploadDialog settings)
+
+OAuth required: No
+
+Where to get it:
+  1. Visit https://imgbb.com/
+  2. Create a free account
+  3. Go to https://api.imgbb.com/ to get your API key
+  4. Open VinylVault → Settings → ImgBB section → paste key → Save
+
+Notes:
+  - Only needed if you want to list records on eBay with hosted images
+  - Free tier: unlimited uploads, images hosted permanently
+
+──────────────────────────────────────────────────────────────────────
+[9] TELEGRAM BOT TOKEN + CHAT ID  — Optional, for deal alerts
+──────────────────────────────────────────────────────────────────────
+
+Feature(s) unlocked:
+  • Receive Telegram notifications when bargain deals are found
+  • Automated deal alerts via Telegram bot
+  • TrendAlertsDialog Telegram notifications
+
+Required credentials:
+  localStorage key : telegram_bot_token
+  localStorage key : telegram_chat_id
+
+OAuth required: No
+
+Where to get it:
+  1. Open Telegram and search for @BotFather
+  2. Send /newbot and follow the prompts to create a bot
+  3. Copy the bot token (format: 123456:ABC-DEF1234ghIkl-zyx57W2v...)
+  4. Start a conversation with your bot or add it to a group
+  5. Get your Chat ID: send a message, then visit:
+     https://api.telegram.org/bot{TOKEN}/getUpdates
+  6. Find "chat":{"id": YOUR_CHAT_ID} in the response
+  7. Open VinylVault → Settings → Notifications → Telegram → Save
+
+Docs: https://core.telegram.org/bots/api
+
+──────────────────────────────────────────────────────────────────────
+[10] MUSICBRAINZ CONTACT EMAIL  — Optional, for enhanced metadata
+──────────────────────────────────────────────────────────────────────
+
+Feature(s) unlocked:
+  • MusicBrainz API lookups for additional release metadata
+  • Enhanced pressing identification
+
+Required credential:
+  localStorage key : musicbrainz_contact_email
+
+OAuth required: No
+
+Where to get it:
+  1. Create a free MusicBrainz account at https://musicbrainz.org/
+  2. Use your account email as the contact email for API requests
+  3. Open VinylVault → Settings → MusicBrainz → enter email → Save
+
+Notes:
+  - MusicBrainz requires a User-Agent with contact email for API use
+  - Free, no API key needed — just a contact email
+
+──────────────────────────────────────────────────────────────────────
+[11] MULTIVERSX WALLET  — Optional, for MultiversX NFT features
+──────────────────────────────────────────────────────────────────────
+
+Feature(s) unlocked:
+  • Minting vinyl records as NFTs on MultiversX blockchain
+  • MultiversXNFTSection in NFTView
+
+Required setup:
+  • MultiversX wallet (xPortal app or web wallet)
+  • xPortal: https://xportal.com/
+
+OAuth / Login required: Yes — wallet connect
+
+Notes:
+  - This is a secondary blockchain option alongside Solana
+  - See MultiversXNFTSection component for implementation details
+
+──────────────────────────────────────────────────────────────────────
+[12] BITCOIN ORDINALS WALLET  — Optional, for Bitcoin NFT features
+──────────────────────────────────────────────────────────────────────
+
+Feature(s) unlocked:
+  • Inscribing vinyl records as Bitcoin Ordinals
+  • BitcoinNFTSection in NFTView
+
+Required setup:
+  • Bitcoin Ordinals-compatible wallet (Xverse, Unisat, etc.)
+  • Xverse: https://www.xverse.app/
+  • Unisat: https://unisat.io/
+
+OAuth / Login required: Yes — wallet connect
+
+══════════════════════════════════════════════════════════════════════
+SUMMARY TABLE
+══════════════════════════════════════════════════════════════════════
+
+Integration         | Required? | Auth Type        | UI Location
+--------------------|-----------|------------------|-----------------
+OpenAI API Key      | ★ Core    | API Key          | Settings → AI
+xAI (Grok) Key      | Optional  | API Key          | Settings → AI
+DeepSeek Key        | Optional  | API Key          | Settings → AI
+Discogs Token       | ★ Core    | Personal Token   | Settings → Discogs
+eBay App ID         | ★ Core    | App ID           | Settings → eBay
+Pinata JWT          | NFT only  | JWT              | Settings → NFT
+Solana Wallet       | NFT only  | Browser Wallet   | NFT View → Connect
+ImgBB API Key       | Optional  | API Key          | Settings → ImgBB
+Telegram Bot Token  | Optional  | Bot Token        | Settings → Alerts
+MusicBrainz Email   | Optional  | Email (no key)   | Settings → Meta
+MultiversX Wallet   | Optional  | Browser Wallet   | NFT View
+Bitcoin Wallet      | Optional  | Browser Wallet   | NFT View
+
+══════════════════════════════════════════════════════════════════════
+CLIENT-SIDE STORAGE NOTES
+══════════════════════════════════════════════════════════════════════
+
+All credentials are stored client-side ONLY. VinylVault has no server.
+
+localStorage keys (in browser storage):
+  openai_api_key             — OpenAI API key
+  xai_api_key                — xAI/Grok API key
+  xai_model                  — xAI model name (default: grok-4-1-fast-reasoning)
+  deepseek_api_key           — DeepSeek API key
+  deepseek_model             — DeepSeek model name (default: deepseek-chat)
+  discogs_personal_token     — Discogs Personal Access Token
+  discogs_consumer_key       — Discogs OAuth Consumer Key
+  discogs_consumer_secret    — Discogs OAuth Consumer Secret
+  ebay_client_id             — eBay App ID (primary key name)
+  ebay_app_id                — eBay App ID (alias)
+  telegram_bot_token         — Telegram bot token
+  telegram_chat_id           — Telegram chat/group ID
+  musicbrainz_contact_email  — MusicBrainz contact email
+  vinylvault_wallet          — Saved wallet address
+
+GitHub Spark KV keys (server-side Spark storage):
+  vinyl-vault-collection     — CollectionItem[] array
+  vinyl-vault-api-keys       — { pinataJwt, openaiApiKey, xaiApiKey,
+                                 deepseekApiKey, ebayClientId, ... }
+  vinyl-vault-minted-nfts    — MintedNFT[] array
+  vinyl-vault-images         — ItemImage[] array
+  vinyl-vault-watchlist      — WatchlistItem[] array
+  vinyl-vault-deals          — BargainCard[] array
+
+══════════════════════════════════════════════════════════════════════
+MISSING KEY UX BEHAVIOR
+══════════════════════════════════════════════════════════════════════
+
+When a user triggers a feature that requires a missing credential:
+
+1. The app checks for the key in localStorage / Spark KV
+2. If missing, an IntegrationGateDialog is shown with:
+   - Which key is missing
+   - Why it's needed
+   - Direct link to Settings → relevant section
+3. No silent failures — every gated action explains what's required
+4. The Settings tab provides fields for all credential inputs
+
+══════════════════════════════════════════════════════════════════════

@@ -40,6 +40,7 @@ export default function NFTView() {
   const [showListingDialog, setShowListingDialog] = useState(false)
   const [selectedNFT, setSelectedNFT] = useState<MintedNFT | null>(null)
   const [currentListingPackage, setCurrentListingPackage] = useState<EbayListingPackage | null>(null)
+  const [currentListingItemId, setCurrentListingItemId] = useState<string | null>(null)
   const [, setIsGeneratingListing] = useState(false)
 
   const safeCollectionItems = collectionItems || []
@@ -85,6 +86,7 @@ export default function NFTView() {
         htmlDescription: enhancedDescription,
         title: `${listingPackage.title} [NFT-Verified]`,
       })
+      setCurrentListingItemId(item.id)
       setShowListingDialog(true)
       
       toast.success('Listing generated!', {
@@ -389,7 +391,7 @@ export default function NFTView() {
           open={showListingDialog}
           onOpenChange={setShowListingDialog}
           listingPackage={currentListingPackage}
-          images={safeItemImages.filter(img => img.itemId === currentListingPackage.itemId)}
+          images={safeItemImages.filter(img => img.itemId === currentListingItemId)}
         />
       )}
     </div>
