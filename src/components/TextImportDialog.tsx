@@ -156,7 +156,7 @@ export function TextImportDialog({ open, onOpenChange, onItemsAdded }: TextImpor
         const top = candidates[0]
         updateItem(item.id, {
           country: top.country ?? item.country,
-          labelName: item.labelName,
+          labelName: top.labelName ?? item.labelName,
           catalogNumber: top.catalogNumber ?? item.catalogNumber,
           year: top.year ?? item.year,
           notes: item.notes
@@ -182,7 +182,9 @@ export function TextImportDialog({ open, onOpenChange, onItemsAdded }: TextImpor
   const handleAIAnalyseAll = async () => {
     setAnalysingAll(true)
     try {
-      await Promise.all(items.map((item) => handleAIAnalyse(item)))
+      for (const item of items) {
+        await handleAIAnalyse(item)
+      }
       toast.success('AI analysis complete for all items')
     } finally {
       setAnalysingAll(false)

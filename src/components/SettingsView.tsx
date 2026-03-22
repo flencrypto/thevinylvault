@@ -39,6 +39,29 @@ interface ConfidenceThresholds {
   bargainDetection: number
 }
 
+const VALID_API_KEY_NAMES: ReadonlySet<keyof APIKeys> = new Set([
+  'openaiKey', 'discogsKey', 'discogsSecret', 'discogsUserToken',
+  'ebayClientId', 'ebayClientSecret', 'ebayDevId',
+  'imgbbKey', 'xaiApiKey', 'deepseekApiKey',
+  'telegramBotToken', 'telegramChatId', 'pinataJwt',
+])
+
+const ENV_KEY_MAP: Record<string, keyof APIKeys> = {
+  OPENAI_API_KEY: 'openaiKey',
+  DISCOGS_USER_TOKEN: 'discogsUserToken',
+  DISCOGS_CONSUMER_KEY: 'discogsKey',
+  DISCOGS_CONSUMER_SECRET: 'discogsSecret',
+  EBAY_CLIENT_ID: 'ebayClientId',
+  EBAY_CLIENT_SECRET: 'ebayClientSecret',
+  EBAY_DEV_ID: 'ebayDevId',
+  IMGBB_API_KEY: 'imgbbKey',
+  XAI_API_KEY: 'xaiApiKey',
+  DEEPSEEK_API_KEY: 'deepseekApiKey',
+  TELEGRAM_BOT_TOKEN: 'telegramBotToken',
+  TELEGRAM_CHAT_ID: 'telegramChatId',
+  PINATA_JWT: 'pinataJwt',
+}
+
 export default function SettingsView() {
   const [apiKeys, setApiKeys] = useKV<APIKeys>('vinyl-vault-api-keys', {
     openaiKey: '',
@@ -268,13 +291,6 @@ export default function SettingsView() {
     toast.success('API keys exported as CSV')
   }
 
-  const VALID_API_KEY_NAMES: ReadonlySet<keyof APIKeys> = new Set([
-    'openaiKey', 'discogsKey', 'discogsSecret', 'discogsUserToken',
-    'ebayClientId', 'ebayClientSecret', 'ebayDevId',
-    'imgbbKey', 'xaiApiKey', 'deepseekApiKey',
-    'telegramBotToken', 'telegramChatId', 'pinataJwt',
-  ])
-
   const handleImportCSV = () => {
     const input = document.createElement('input')
     input.type = 'file'
@@ -315,21 +331,6 @@ export default function SettingsView() {
       reader.readAsText(file)
     }
     input.click()
-  }
-
-  const ENV_KEY_MAP: Record<string, keyof APIKeys> = {
-    OPENAI_API_KEY: 'openaiKey',
-    DISCOGS_USER_TOKEN: 'discogsUserToken',
-    DISCOGS_CONSUMER_KEY: 'discogsKey',
-    DISCOGS_CONSUMER_SECRET: 'discogsSecret',
-    EBAY_CLIENT_ID: 'ebayClientId',
-    EBAY_CLIENT_SECRET: 'ebayClientSecret',
-    IMGBB_API_KEY: 'imgbbKey',
-    XAI_API_KEY: 'xaiApiKey',
-    DEEPSEEK_API_KEY: 'deepseekApiKey',
-    TELEGRAM_BOT_TOKEN: 'telegramBotToken',
-    TELEGRAM_CHAT_ID: 'telegramChatId',
-    PINATA_JWT: 'pinataJwt',
   }
 
   const handleImportEnv = () => {
