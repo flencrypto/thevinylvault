@@ -1,7 +1,7 @@
-// Install the localStorage polyfill for window.spark FIRST, before anything
-// else runs. The real @github/spark/spark import below will overwrite
-// window.spark if we are inside the Spark runtime, and then installSparkPolyfill
-// will replace just the KV layer with localStorage afterwards.
+// Install the localStorage polyfill for window.spark before React renders.
+// The real @github/spark/spark import below may overwrite window.spark if we
+// are inside the Spark runtime, and then installSparkPolyfill will replace
+// just the KV layer with localStorage afterwards.
 import { installSparkPolyfill } from './lib/spark-polyfill'
 
 import { createRoot } from 'react-dom/client'
