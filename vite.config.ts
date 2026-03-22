@@ -11,6 +11,7 @@ const projectRoot = process.env.PROJECT_ROOT || import.meta.dirname
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: process.env.VITE_BASE || '/',
   plugins: [
     react(),
     tailwindcss(),
@@ -98,7 +99,9 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': resolve(projectRoot, 'src')
+      '@': resolve(projectRoot, 'src'),
+      // Redirect @github/spark/hooks to our localStorage polyfill
+      '@github/spark/hooks': resolve(projectRoot, 'src/lib/use-kv.ts'),
     }
   },
   define: {
