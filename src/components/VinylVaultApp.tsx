@@ -111,7 +111,7 @@ export default function VinylVaultApp() {
         <Tabs
           value={activeTab}
           onValueChange={(v) => setActiveTab(v as TabValue)}
-          className="flex h-screen w-screen overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"
+          className="flex h-screen w-screen overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex-row gap-0"
         >
           {/* Sidebar */}
           <aside className="flex flex-col w-56 flex-shrink-0 bg-slate-950/95 border-r border-slate-800 overflow-y-auto">
@@ -144,8 +144,10 @@ export default function VinylVaultApp() {
           </aside>
 
           {/* Main content */}
-          <main className="flex-1 overflow-y-auto">
-            {tabContent}
+          <main className="flex-1 overflow-y-auto min-h-0">
+            <div className="max-w-6xl w-full mx-auto p-6">
+              {tabContent}
+            </div>
           </main>
         </Tabs>
       </>
