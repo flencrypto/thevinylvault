@@ -72,8 +72,11 @@ export function useKV<T = string>(
     valueRef.current = value
   }, [value])
 
-  // On first mount only, persist the initial value if nothing is stored yet.
-  // Using a ref to ensure this runs exactly once regardless of StrictMode.
+  // On first mount of this component instance, persist the initial value if
+  // nothing is stored yet. The ref ensures this runs only once per mount
+  // (even with StrictMode's double-invocation in dev); a StrictMode remount
+  // will re-run the effect, but the readStorage check prevents overwriting
+  // an existing stored value.
   const initialised = useRef(false)
   useEffect(() => {
     if (!initialised.current) {
