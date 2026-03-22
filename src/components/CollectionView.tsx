@@ -12,6 +12,7 @@ import { MoodAnalysisDialog } from '@/components/MoodAnalysisDialog'
 import { QuantumAnalyticsDialog } from '@/components/QuantumAnalyticsDialog'
 import { BlockchainAuthDialog } from '@/components/BlockchainAuthDialog'
 import { VRPreviewDialog } from '@/components/VRPreviewDialog'
+import { TextImportDialog } from '@/components/TextImportDialog'
 import QuickActionsBar from '@/components/QuickActionsBar'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -19,7 +20,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Plus, MagnifyingGlass, FunnelSimple, SortAscending, Disc, Export, Bell, TrendUp, TrendDown, Lightning, Sparkle, MusicNote, Atom, ShieldCheck, VirtualReality } from '@phosphor-icons/react'
+import { Plus, MagnifyingGlass, FunnelSimple, SortAscending, Disc, Export, Bell, TrendUp, TrendDown, Lightning, Sparkle, MusicNote, Atom, ShieldCheck, VirtualReality, Upload } from '@phosphor-icons/react'
 import { calculateCollectionValue, formatCurrency, generatePriceEstimate } from '@/lib/helpers'
 import { TrendIndicator } from './TrendIndicator'
 import { generateTrendAlerts, getTrendAlertSummary } from '@/lib/trend-monitoring'
@@ -42,6 +43,7 @@ export default function CollectionView() {
   const [analyticsDialogOpen, setAnalyticsDialogOpen] = useState(false)
   const [blockchainAuthDialogOpen, setBlockchainAuthDialogOpen] = useState(false)
   const [vrPreviewDialogOpen, setVrPreviewDialogOpen] = useState(false)
+  const [textImportDialogOpen, setTextImportDialogOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<CollectionItem | null>(null)
   
   const [searchQuery, setSearchQuery] = useState('')
@@ -446,6 +448,15 @@ export default function CollectionView() {
           <Plus size={18} weight="bold" />
           <span>Add Item</span>
         </Button>
+
+        <Button
+          variant="outline"
+          onClick={() => setTextImportDialogOpen(true)}
+          className="gap-1.5 flex-1 sm:flex-none h-10 border-slate-700 text-slate-200 hover:bg-slate-800"
+        >
+          <Upload size={18} />
+          <span>Import Text</span>
+        </Button>
       </div>
 
       <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3 sm:items-center">
@@ -611,6 +622,14 @@ export default function CollectionView() {
       <VRPreviewDialog
         open={vrPreviewDialogOpen}
         onOpenChange={setVrPreviewDialogOpen}
+      />
+      <TextImportDialog
+        open={textImportDialogOpen}
+        onOpenChange={setTextImportDialogOpen}
+        onItemsAdded={(newItems) => {
+          newItems.forEach(item => handleAddItem(item))
+          toast.success(`Added ${newItems.length} record${newItems.length !== 1 ? 's' : ''} to collection`)
+        }}
       />
     </div>
     </div>
