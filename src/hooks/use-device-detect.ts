@@ -32,9 +32,18 @@ export function useDeviceDetect(): DeviceInfo {
 
   useEffect(() => {
     const updateDeviceInfo = () => setDeviceInfo(getDeviceInfo())
+
+    // Listen to viewport resizes so isMobile/isTablet/isDesktop stay in sync
+    window.addEventListener('resize', updateDeviceInfo)
+
+    // Keep existing media query listener for compatibility with prior behavior
     const mql = window.matchMedia('(max-width: 1023px)')
     mql.addEventListener('change', updateDeviceInfo)
-    return () => mql.removeEventListener('change', updateDeviceInfo)
+
+    return () => {
+      window.removeEventListener('resize', updateDeviceInfo)
+      mql.removeEventListener('change', updateDeviceInfo)
+    }
   }, [])
 
   return deviceInfo
