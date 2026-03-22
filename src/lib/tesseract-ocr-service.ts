@@ -142,7 +142,7 @@ class TesseractOCRService {
 
     // ── 2. Catalogue number ──────────────────────────────────────────────
     const catPatterns = [
-      /\b([A-Z]{1,5}[\s\-]?\d{4,8}(?:[\s\-][A-Z])?)\b/g,
+      /\b([A-Z]{1,5}[\s\-]?\d{3,8}(?:[\s\-][A-Z])?)\b/g,
       /\b(\d[A-Z]\s\d{3}-\d{4,6})\b/g,
     ]
     const catCandidates: string[] = []
@@ -187,7 +187,10 @@ class TesseractOCRService {
     else if (/\b33\s*(?:1\/3)?\s*RPM\b/i.test(text)) result.format = 'LP'
 
     // ── 7. Country ───────────────────────────────────────────────────────
-    const countryMatch = text.match(/Made\s+in\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i)
+    // Use explicit case for "Made/made" + "in/In" without the i-flag so that
+    // character classes [A-Z]/[a-z] retain strict case semantics — this
+    // prevents all-caps words like "OBI" from being swallowed into the country.
+    const countryMatch = text.match(/[Mm]ade\s+[Ii]n\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/)
     if (countryMatch) result.country = countryMatch[1]
     else if (/\bUK\b|\bU\.K\.\b|United\s+Kingdom/i.test(text)) result.country = 'UK'
     else if (/\bUSA?\b|\bU\.S\.A?\.\b|United\s+States/i.test(text)) result.country = 'US'

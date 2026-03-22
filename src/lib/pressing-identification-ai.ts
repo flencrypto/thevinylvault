@@ -31,26 +31,32 @@ export interface ScoredPressingCandidate extends PressingCandidate {
   confidenceBand: 'high' | 'medium' | 'low' | 'ambiguous'
 }
 
-function normalizeIdentifier(value: string): string {
+export function normalizeIdentifier(value: string): string {
+  if (!value) return ''
   return value
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, '')
-    .trim()
 }
 
-function calculateConfidenceBand(score: number): 'high' | 'medium' | 'low' | 'ambiguous' {
+export function calculateConfidenceBand(score: number): 'high' | 'medium' | 'low' | 'ambiguous' {
   if (score >= 0.80) return 'high'
   if (score >= 0.60) return 'medium'
   if (score >= 0.40) return 'low'
   return 'ambiguous'
 }
 
-function extractMatrixPatterns(text: string): string[] {
+export function extractMatrixPatterns(text: string): string[] {
   const patterns = [
+    // Simple side/stamper identifiers: A1, B2, A12
     /\b[A-Z]\d{1,2}\b/gi,
+    // Label-number-letter runouts: XEX-504-3N, CBS 1234-A
     /\b[A-Z]{2,4}[-\s]?\d{3,5}[-\s]?[A-Z]\b/gi,
+    // Extended runout with pressing digit: XEX 504-3N style
+    /\b[A-Z]{2,4}[-\s]?\d{3,5}[-\s]?\d[A-Z]\b/gi,
+    // Numeric-prefix runouts: 12345-AB-1
     /\b\d{5,6}[-\s]?[A-Z]{1,2}[-\s]?\d\b/gi,
-    /\b[A-Z]{3,5}\d{3,5}\b/gi,
+    // Catalogue-style identifiers with optional separator: SHVL 804, SHVL804
+    /\b[A-Z]{3,5}[-\s]?\d{3,5}\b/gi,
   ]
   
   const matches = new Set<string>()
@@ -65,7 +71,7 @@ function extractMatrixPatterns(text: string): string[] {
   return Array.from(matches)
 }
 
-function similarityScore(a: string, b: string): number {
+export function similarityScore(a: string, b: string): number {
   const normA = normalizeIdentifier(a)
   const normB = normalizeIdentifier(b)
   
