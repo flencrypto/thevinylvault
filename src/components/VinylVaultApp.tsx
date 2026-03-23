@@ -1,9 +1,8 @@
 import { useEffect, lazy, Suspense } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { Toaster } from '@/components/ui/sonner'
 import {
-  Disc,
   Sparkle,
   Eye,
   Cube,
@@ -14,6 +13,7 @@ import {
   Binoculars,
   Wrench,
   Robot,
+  Disc,
 } from '@phosphor-icons/react'
 import CollectionView from './CollectionView'
 import BargainsView from './BargainsView'
@@ -28,6 +28,9 @@ import PWAUpdatePrompt from './PWAUpdatePrompt'
 import ValuationAgentWorkflow from './ValuationAgentWorkflow'
 import { scanSchedulerService } from '@/lib/scan-scheduler-service'
 import { useDeviceDetect } from '@/hooks/use-device-detect'
+import DesktopSidebar from './layout/DesktopSidebar'
+import MobileHeader from './layout/MobileHeader'
+import MobileBottomNav from './layout/MobileBottomNav'
 
 const SetupView = lazy(() => import('./SetupView'))
 
@@ -109,39 +112,13 @@ export default function VinylVaultApp() {
         <Toaster />
         <PWAUpdatePrompt />
         <div className="flex h-screen w-screen overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-          {/* Sidebar */}
-          <aside className="flex flex-col w-56 flex-shrink-0 bg-slate-950/95 border-r border-slate-800 overflow-y-auto">
-            {/* Branding */}
-            <div className="flex items-center gap-3 px-4 py-5 border-b border-slate-800">
-              <div className="w-9 h-9 bg-gradient-to-br from-accent to-accent/60 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Disc className="w-5 h-5 text-accent-foreground" weight="bold" />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-base font-bold text-white leading-tight truncate">VinylVault</h1>
-                <p className="text-[10px] text-slate-400 truncate leading-tight">
-                  {envLabel} · {modeLabel}
-                </p>
-              </div>
-            </div>
-
-            {/* Nav items */}
-            <nav className="flex flex-col p-2 gap-0.5">
-              {navItems.map(({ value, icon: Icon, label }) => (
-                <button
-                  key={value}
-                  onClick={() => setActiveTab(value as TabValue)}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors w-full ${
-                    activeTab === value
-                      ? 'bg-slate-800/60 text-accent'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-                  }`}
-                >
-                  <Icon className="w-4 h-4 flex-shrink-0" weight="fill" />
-                  <span className="text-sm font-medium">{label}</span>
-                </button>
-              ))}
-            </nav>
-          </aside>
+          <DesktopSidebar
+            navItems={navItems}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            envLabel={envLabel}
+            modeLabel={modeLabel}
+          />
 
           {/* Main content */}
           <main className="flex-1 min-w-0 overflow-y-auto">
@@ -161,21 +138,7 @@ export default function VinylVaultApp() {
       <PWAUpdatePrompt />
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 pb-20">
         <div className="max-w-[1800px] mx-auto">
-          <header className="sticky top-0 z-40 backdrop-blur-lg bg-slate-950/90 border-b border-slate-800 safe-area-inset-top">
-            <div className="px-3 sm:px-4 py-3 sm:py-4">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-accent to-accent/60 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <Disc className="w-5 h-5 sm:w-6 sm:h-6 text-accent-foreground" weight="bold" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h1 className="text-lg sm:text-xl font-bold text-white truncate">VinylVault</h1>
-                  <p className="text-[10px] sm:text-xs text-slate-400 truncate">
-                    {envLabel} · {modeLabel}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </header>
+          <MobileHeader envLabel={envLabel} modeLabel={modeLabel} />
 
           <main className="pb-4">
             <Tabs value={activeTab} className="w-full">
@@ -183,22 +146,7 @@ export default function VinylVaultApp() {
             </Tabs>
           </main>
 
-          <nav className="fixed bottom-0 left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800 pb-safe-area-inset-bottom">
-            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)}>
-              <TabsList className="w-full min-h-[64px] grid grid-cols-11 bg-transparent border-0 p-0 gap-0">
-                {navItems.map(({ value, icon: Icon, label }) => (
-                  <TabsTrigger
-                    key={value}
-                    value={value}
-                    className="flex-col gap-0.5 h-full min-h-[64px] rounded-none data-[state=active]:bg-slate-800/50 data-[state=active]:text-accent border-0 px-0.5 sm:px-1 touch-manipulation active:scale-95 transition-transform"
-                  >
-                    <Icon className="w-5 h-5 sm:w-6 sm:h-6" weight="fill" />
-                    <span className="text-[9px] sm:text-[10px] leading-tight">{label}</span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-          </nav>
+          <MobileBottomNav navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} />
         </div>
       </div>
     </>
