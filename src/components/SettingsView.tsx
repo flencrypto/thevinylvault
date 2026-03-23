@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { Slider } from '@/components/ui/slider'
 import { Badge } from '@/components/ui/badge'
-import { Key, Check, Eye, EyeSlash, Info, Brain, Detective, Image, GraduationCap, Lightning, Database, CloudArrowUp, TestTube, Question, Robot, PaperPlaneTilt, BellRinging, Copy } from '@phosphor-icons/react'
+import { Key, Check, Eye, EyeSlash, Info, Brain, Detective, Image, GraduationCap, Lightning, Database, CloudArrowUp, TestTube, Question, Robot, PaperPlaneTilt, BellRinging, Copy, DownloadSimple, UploadSimple, FileArrowUp, Warning } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { testDiscogsConnection } from '@/lib/marketplace-discogs'
 import { uploadImageToImgBB } from '@/lib/imgbb-service'
@@ -37,6 +37,29 @@ interface ConfidenceThresholds {
   pressingIdentification: number
   conditionGrading: number
   bargainDetection: number
+}
+
+const VALID_API_KEY_NAMES: ReadonlySet<keyof APIKeys> = new Set([
+  'openaiKey', 'discogsKey', 'discogsSecret', 'discogsUserToken',
+  'ebayClientId', 'ebayClientSecret', 'ebayDevId',
+  'imgbbKey', 'xaiApiKey', 'deepseekApiKey',
+  'telegramBotToken', 'telegramChatId', 'pinataJwt',
+])
+
+const ENV_KEY_MAP: Record<string, keyof APIKeys> = {
+  OPENAI_API_KEY: 'openaiKey',
+  DISCOGS_USER_TOKEN: 'discogsUserToken',
+  DISCOGS_CONSUMER_KEY: 'discogsKey',
+  DISCOGS_CONSUMER_SECRET: 'discogsSecret',
+  EBAY_CLIENT_ID: 'ebayClientId',
+  EBAY_CLIENT_SECRET: 'ebayClientSecret',
+  EBAY_DEV_ID: 'ebayDevId',
+  IMGBB_API_KEY: 'imgbbKey',
+  XAI_API_KEY: 'xaiApiKey',
+  DEEPSEEK_API_KEY: 'deepseekApiKey',
+  TELEGRAM_BOT_TOKEN: 'telegramBotToken',
+  TELEGRAM_CHAT_ID: 'telegramChatId',
+  PINATA_JWT: 'pinataJwt',
 }
 
 export default function SettingsView() {
@@ -129,6 +152,7 @@ export default function SettingsView() {
   const [testingDiscogs, setTestingDiscogs] = useState(false)
   const [testingImgBB, setTestingImgBB] = useState(false)
   const [showDiscogsTestDialog, setShowDiscogsTestDialog] = useState(false)
+  const [showExportWarning, setShowExportWarning] = useState(false)
 
   const handleKeyChange = (key: keyof APIKeys, value: string) => {
     setApiKeys((current = {
@@ -232,6 +256,124 @@ export default function SettingsView() {
     } finally {
       setTestingImgBB(false)
     }
+  }
+
+  const handleExportCSV = () => {
+    if (!showExportWarning) {
+      setShowExportWarning(true)
+      return
+    }
+    setShowExportWarning(false)
+    if (!apiKeys) return
+    const rows: [string, string][] = [
+      ['openaiKey', apiKeys.openaiKey ?? ''],
+      ['discogsUserToken', apiKeys.discogsUserToken ?? ''],
+      ['discogsKey', apiKeys.discogsKey ?? ''],
+      ['discogsSecret', apiKeys.discogsSecret ?? ''],
+      ['ebayClientId', apiKeys.ebayClientId ?? ''],
+      ['ebayClientSecret', apiKeys.ebayClientSecret ?? ''],
+      ['ebayDevId', apiKeys.ebayDevId ?? ''],
+      ['imgbbKey', apiKeys.imgbbKey ?? ''],
+      ['xaiApiKey', apiKeys.xaiApiKey ?? ''],
+      ['deepseekApiKey', apiKeys.deepseekApiKey ?? ''],
+      ['telegramBotToken', apiKeys.telegramBotToken ?? ''],
+      ['telegramChatId', apiKeys.telegramChatId ?? ''],
+      ['pinataJwt', apiKeys.pinataJwt ?? ''],
+    ]
+    const escapeCsvValue = (v: string) => {
+      if (v.includes(',') || v.includes('"') || v.includes('\n')) {
+        return `"${v.replace(/"/g, '""')}"`
+      }
+      return v
+    }
+    const csv = ['key,value', ...rows.map(([k, v]) => `${k},${escapeCsvValue(v)}`)].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'vinylvault-api-keys.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success('API keys exported as CSV')
+  }
+
+  const handleImportCSV = () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.csv'
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (!file) return
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        const text = ev.target?.result as string
+        const lines = text.split('\n').map((l) => l.trim()).filter(Boolean)
+        const updates: Partial<APIKeys> = {}
+        let count = 0
+        // Skip header row (key,value)
+        for (const line of lines) {
+          if (line.startsWith('key,')) continue
+          const commaIdx = line.indexOf(',')
+          if (commaIdx === -1) continue
+          const key = line.slice(0, commaIdx).trim()
+          // Handle CSV-quoted values (e.g., "value with, comma")
+          let value = line.slice(commaIdx + 1).trim()
+          if (value.startsWith('"') && value.endsWith('"')) {
+            value = value.slice(1, -1).replace(/""/g, '"')
+          }
+          if (!value) continue
+          if (VALID_API_KEY_NAMES.has(key as keyof APIKeys)) {
+            (updates as Record<string, string>)[key] = value
+            count++
+          }
+        }
+        if (count > 0 && apiKeys) {
+          setApiKeys({ ...apiKeys, ...updates })
+          toast.success(`Imported ${count} API key${count !== 1 ? 's' : ''} from CSV`)
+        } else {
+          toast.error('No valid API keys found in CSV')
+        }
+      }
+      reader.readAsText(file)
+    }
+    input.click()
+  }
+
+  const handleImportEnv = () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.env,.txt'
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (!file) return
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        const text = ev.target?.result as string
+        const lines = text.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'))
+        const updates: Partial<APIKeys> = {}
+        let count = 0
+        for (const line of lines) {
+          const eqIdx = line.indexOf('=')
+          if (eqIdx === -1) continue
+          const envKey = line.slice(0, eqIdx).trim()
+          const value = line.slice(eqIdx + 1).trim().replace(/^["']|["']$/g, '')
+          if (!value) continue
+          const mappedKey = ENV_KEY_MAP[envKey]
+          if (mappedKey) {
+            (updates as Record<string, string>)[mappedKey] = value
+            count++
+          }
+        }
+        if (count > 0 && apiKeys) {
+          setApiKeys({ ...apiKeys, ...updates })
+          toast.success(`Imported ${count} API key${count !== 1 ? 's' : ''} from .env file`)
+        } else {
+          toast.error('No recognised API keys found in .env file')
+        }
+      }
+      reader.readAsText(file)
+    }
+    input.click()
   }
 
   const handleSave = () => {
@@ -886,6 +1028,63 @@ export default function SettingsView() {
                 <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
                 Receive deal alerts and notifications via Telegram. Create a bot with <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">@BotFather</a> and get your Chat ID from <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">@userinfobot</a>
               </p>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              {/* Import / Export API Keys */}
+              <div className="flex-1 flex flex-col gap-2 border border-slate-700 rounded-lg p-3">
+                <p className="text-xs text-slate-400 font-medium flex items-center gap-1">
+                  <FileArrowUp className="w-3.5 h-3.5" />
+                  Import / Export API Keys
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant={showExportWarning ? 'destructive' : 'outline'}
+                    onClick={handleExportCSV}
+                    className={`gap-1.5 text-xs h-8 ${showExportWarning ? '' : 'border-slate-600 text-slate-300 hover:bg-slate-800'}`}
+                  >
+                    <DownloadSimple className="w-3.5 h-3.5" />
+                    {showExportWarning ? 'Confirm Export (keys are plaintext)' : 'Export CSV'}
+                  </Button>
+                  {showExportWarning && (
+                    <button
+                      onClick={() => setShowExportWarning(false)}
+                      className="text-xs text-slate-400 hover:text-slate-200 px-2"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                  {!showExportWarning && (
+                    <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleImportCSV}
+                    className="gap-1.5 border-slate-600 text-slate-300 hover:bg-slate-800 text-xs h-8"
+                  >
+                    <UploadSimple className="w-3.5 h-3.5" />
+                    Import CSV
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleImportEnv}
+                    className="gap-1.5 border-slate-600 text-slate-300 hover:bg-slate-800 text-xs h-8"
+                  >
+                    <FileArrowUp className="w-3.5 h-3.5" />
+                    Import .env
+                  </Button>
+                    </>
+                  )}
+                </div>
+                {showExportWarning && (
+                  <p className="text-xs text-amber-400 flex items-start gap-1 mt-1">
+                    <Warning className="w-3 h-3 mt-0.5 flex-shrink-0" weight="fill" />
+                    The CSV file will contain your API keys in plain text. Store it securely and never share it.
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="flex gap-3 pt-4">
