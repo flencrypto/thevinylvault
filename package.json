@@ -13,7 +13,7 @@
         "lint": "eslint .",
         "optimize": "vite optimize",
         "preview": "vite preview",
-    "test": "vitest run"
+        "test": "vitest run"
     },
     "dependencies": {
         "@github/spark": ">=0.43.1 <1",
@@ -67,9 +67,9 @@
         "marked": "^15.0.7",
         "next-themes": "^0.4.6",
         "octokit": "^5.0.5",
-        "react": "^19.2.4",
+        "react": "19.2.4",
         "react-day-picker": "^9.14.0",
-        "react-dom": "^19.0.0",
+        "react-dom": "19.2.4",
         "react-error-boundary": "^6.1.1",
         "react-hook-form": "^7.54.2",
         "react-resizable-panels": "^2.1.7",

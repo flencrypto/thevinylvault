@@ -1,6 +1,6 @@
 import { Alert, AlertTitle, AlertDescription } from "./components/ui/alert";
 import { Button } from "./components/ui/button";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { Warning, ArrowsClockwise } from "@phosphor-icons/react";
 import { FallbackProps } from "react-error-boundary";
 
 export const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
@@ -11,7 +11,7 @@ export const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="max-w-2xl w-full space-y-4">
         <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
+          <Warning className="h-4 w-4" />
           <AlertTitle>Application Error</AlertTitle>
           <AlertDescription>
             Something unexpected happened while running the application. The error details are shown below.
@@ -31,7 +31,7 @@ export const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
             variant="outline"
             className="w-full"
           >
-            <RefreshCw className="h-4 w-4 mr-2" />
+            <ArrowsClockwise className="h-4 w-4 mr-2" />
             Try Again
           </Button>
         </div>

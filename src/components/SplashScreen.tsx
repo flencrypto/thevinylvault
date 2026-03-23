@@ -18,8 +18,17 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"
+      className="fixed inset-0 z-50 flex min-h-screen w-screen flex-col items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden"
       style={{
+        position: 'fixed',
+        inset: 0,
+        width: '100vw',
+        minHeight: '100dvh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 'clamp(24px, 4vw, 48px)',
         opacity: fading ? 0 : 1,
         transition: fading ? 'opacity 0.6s ease-out' : undefined,
       }}
@@ -36,12 +45,18 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
       />
 
       {/* Record + Tonearm wrapper */}
-      <div className="relative" style={{ width: '240px', height: '240px' }}>
+      <div
+        className="relative"
+        style={{
+          width: 'clamp(220px, 38vw, 320px)',
+          height: 'clamp(220px, 38vw, 320px)',
+        }}
+      >
         {/* Spinning Record */}
         <svg
           viewBox="0 0 200 200"
-          width="240"
-          height="240"
+          width="100%"
+          height="100%"
           style={{ animation: 'splashSpin 1.8s linear infinite' }}
         >
           {/* Drop shadow filter */}
@@ -130,8 +145,8 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
         {/* Tonearm */}
         <svg
           viewBox="0 0 200 200"
-          width="240"
-          height="240"
+          width="100%"
+          height="100%"
           className="absolute inset-0 pointer-events-none"
           style={{
             transformOrigin: '168px 28px',
