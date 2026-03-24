@@ -250,58 +250,58 @@ export default function DealScannerView() {
   }, [deals])
 
   return (
-    <div className="p-3 sm:p-4 pb-24 space-y-4">
+    <div className="p-4 sm:p-6 lg:p-8 pb-24 lg:pb-8 space-y-4 lg:space-y-6">
       {/* Header */}
       <div className="space-y-3">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-            <Binoculars className="w-6 h-6 sm:w-7 sm:h-7 text-accent" weight="fill" />
+          <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold flex items-center gap-2 lg:gap-3">
+            <Binoculars className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-accent" weight="fill" />
             Deal Scanner
           </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm lg:text-base text-muted-foreground mt-1">
             Scan marketplaces for undervalued vinyl — find deals before anyone else
           </p>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
         <Card className="bg-slate-900/50 border-slate-800">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
-              <Storefront size={14} />
+          <CardContent className="p-3 lg:p-5">
+            <div className="flex items-center gap-2 text-slate-400 text-xs lg:text-sm mb-1 lg:mb-2">
+              <Storefront className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
               Total Deals
             </div>
-            <div className="text-lg sm:text-xl font-bold text-white">{stats.totalDeals}</div>
+            <div className="text-lg sm:text-xl lg:text-3xl font-bold text-white">{stats.totalDeals}</div>
           </CardContent>
         </Card>
         <Card className="bg-slate-900/50 border-slate-800">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
+          <CardContent className="p-3 lg:p-5">
+            <div className="flex items-center gap-2 text-slate-400 text-xs lg:text-sm mb-1 lg:mb-2">
               <ArrowsClockwise size={14} className={autoScanActive ? 'animate-spin' : ''} />
               Active Scans
             </div>
-            <div className="text-lg sm:text-xl font-bold text-white">
+            <div className="text-lg sm:text-xl lg:text-3xl font-bold text-white">
               {autoScanActive ? '1' : '0'}
             </div>
           </CardContent>
         </Card>
         <Card className="bg-slate-900/50 border-slate-800">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
+          <CardContent className="p-3 lg:p-5">
+            <div className="flex items-center gap-2 text-slate-400 text-xs lg:text-sm mb-1 lg:mb-2">
               <TrendUp size={14} />
               Avg ROI
             </div>
-            <div className="text-lg sm:text-xl font-bold text-white">{stats.avgRoi}%</div>
+            <div className="text-lg sm:text-xl lg:text-3xl font-bold text-white">{stats.avgRoi}%</div>
           </CardContent>
         </Card>
         <Card className="bg-slate-900/50 border-slate-800">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
+          <CardContent className="p-3 lg:p-5">
+            <div className="flex items-center gap-2 text-slate-400 text-xs lg:text-sm mb-1 lg:mb-2">
               <Lightning size={14} />
               Best Deal
             </div>
-            <div className="text-lg sm:text-xl font-bold text-white truncate">
+            <div className="text-lg sm:text-xl lg:text-3xl font-bold text-white truncate">
               {stats.bestDeal ? `${stats.bestDeal.roi}% ROI` : '—'}
             </div>
           </CardContent>
@@ -310,17 +310,17 @@ export default function DealScannerView() {
 
       {/* Controls */}
       <Card className="bg-slate-900/50 border-slate-800">
-        <CardHeader className="pb-2 pt-3 px-3">
-          <CardTitle className="text-sm text-slate-300">Scan Controls</CardTitle>
+        <CardHeader className="pb-2 pt-3 px-3 lg:pt-4 lg:px-5 lg:pb-3">
+          <CardTitle className="text-sm lg:text-base text-slate-300">Scan Controls</CardTitle>
         </CardHeader>
-        <CardContent className="p-3 pt-0 space-y-3">
-          <div className="flex flex-wrap gap-2">
+        <CardContent className="p-3 lg:p-5 pt-0 space-y-3 lg:space-y-4">
+          <div className="flex flex-wrap gap-2 lg:gap-3">
             <Button
               variant="default"
               size="sm"
               onClick={handleScanNow}
               disabled={isScanning}
-              className="gap-1.5 text-xs"
+              className="gap-1.5 text-xs lg:text-sm lg:h-9 lg:px-4"
             >
               <ArrowsClockwise size={14} className={isScanning ? 'animate-spin' : ''} />
               {isScanning ? 'Scanning...' : 'Scan Now'}
@@ -329,7 +329,7 @@ export default function DealScannerView() {
               variant={autoScanActive ? 'destructive' : 'outline'}
               size="sm"
               onClick={toggleAutoScan}
-              className="gap-1.5 border-slate-700 text-xs"
+              className="gap-1.5 border-slate-700 text-xs lg:text-sm lg:h-9 lg:px-4"
             >
               {autoScanActive ? <Stop size={14} weight="fill" /> : <Play size={14} weight="fill" />}
               {autoScanActive ? 'Stop Auto-Scan' : 'Start Auto-Scan'}
@@ -338,7 +338,7 @@ export default function DealScannerView() {
               value={String(config.intervalMinutes)}
               onValueChange={handleIntervalChange}
             >
-              <SelectTrigger className="h-8 w-[130px] text-xs border-slate-700">
+              <SelectTrigger className="h-8 lg:h-9 w-[130px] lg:w-[150px] text-xs lg:text-sm border-slate-700">
                 <SelectValue placeholder="Interval" />
               </SelectTrigger>
               <SelectContent>
@@ -352,7 +352,7 @@ export default function DealScannerView() {
               variant="outline"
               size="sm"
               onClick={() => setProfitCalcOpen(true)}
-              className="gap-1.5 text-xs border-slate-700"
+              className="gap-1.5 text-xs lg:text-sm lg:h-9 lg:px-4 border-slate-700"
             >
               <Calculator size={14} />
               Profit Calculator
@@ -361,18 +361,18 @@ export default function DealScannerView() {
               variant="outline"
               size="sm"
               onClick={() => setIsMarketplaceSettingsOpen(true)}
-              className="gap-1.5 text-xs border-slate-700"
+              className="gap-1.5 text-xs lg:text-sm lg:h-9 lg:px-4 border-slate-700"
             >
               <GearSix size={14} />
               Marketplace
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
             <div>
-              <Label htmlFor="source-filter-select" className="text-xs text-slate-400 mb-1 block">Source Filter</Label>
+              <Label htmlFor="source-filter-select" className="text-xs lg:text-sm text-slate-400 mb-1 block">Source Filter</Label>
               <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as SourceFilter)}>
-                <SelectTrigger id="source-filter-select" className="h-8 text-xs border-slate-700">
+                <SelectTrigger id="source-filter-select" className="h-8 lg:h-9 text-xs lg:text-sm border-slate-700">
                   <Storefront size={14} className="mr-1 flex-shrink-0" />
                   <SelectValue />
                 </SelectTrigger>
@@ -385,10 +385,11 @@ export default function DealScannerView() {
               </Select>
             </div>
             <div>
-              <Label id="min-roi-label" className="text-xs text-slate-400 mb-1 block">
+              <Label id="min-roi-label" className="text-xs lg:text-sm text-slate-400 mb-1 block">
                 Minimum ROI: {minRoiFilter}%
               </Label>
               <Slider
+                aria-labelledby="min-roi-label"
                 value={[minRoiFilter]}
                 onValueChange={([v]) => setMinRoiFilter(v)}
                 min={0}
@@ -403,11 +404,11 @@ export default function DealScannerView() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <GlobeSimple size={14} className="text-slate-400" />
-              <Label htmlFor="web-scraper-toggle" className="text-xs text-slate-400 cursor-pointer">
+              <Label htmlFor="web-scraper-toggle" className="text-xs lg:text-sm text-slate-400 cursor-pointer">
                 Web Scraper
               </Label>
               {webScraperEnabled && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 h-4 bg-green-500/20 text-green-400">
+                <Badge variant="secondary" className="text-[10px] lg:text-xs px-1.5 h-4 lg:h-5 bg-green-500/20 text-green-400">
                   Active
                 </Badge>
               )}
@@ -423,14 +424,14 @@ export default function DealScannerView() {
 
       {/* Telegram Alert Status */}
       <Card className="bg-slate-900/50 border-slate-800">
-        <CardContent className="p-3 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${telegramService.isConfigured ? 'bg-green-500' : 'bg-red-500'}`} />
-            <span className="text-xs text-slate-400">
+        <CardContent className="p-3 lg:p-5 flex flex-wrap items-center justify-between gap-2 lg:gap-4">
+          <div className="flex items-center gap-2 lg:gap-3">
+            <div className={`w-2 h-2 lg:w-2.5 lg:h-2.5 rounded-full ${telegramService.isConfigured ? 'bg-green-500' : 'bg-red-500'}`} />
+            <span className="text-xs lg:text-sm text-slate-400">
               Telegram {telegramService.isConfigured ? 'Connected' : 'Not Configured'}
             </span>
             {alertCount > 0 && (
-              <Badge variant="secondary" className="text-[10px] px-1.5 h-4">
+              <Badge variant="secondary" className="text-[10px] lg:text-xs px-1.5 h-4 lg:h-5">
                 {alertCount} alert{alertCount !== 1 ? 's' : ''} sent
               </Badge>
             )}
@@ -440,7 +441,7 @@ export default function DealScannerView() {
               variant="outline"
               size="sm"
               onClick={handleTestTelegram}
-              className="gap-1.5 text-xs border-slate-700"
+              className="gap-1.5 text-xs lg:text-sm lg:h-9 lg:px-4 border-slate-700"
             >
               <Lightning size={14} />
               Test Notification
@@ -453,10 +454,10 @@ export default function DealScannerView() {
       {filteredDeals.length === 0 && (deals || []).length > 0 && (
         <Card className="p-12 bg-slate-900/50 border-slate-800">
           <div className="text-center space-y-3">
-            <Binoculars className="w-12 h-12 mx-auto text-muted-foreground" weight="light" />
+            <Binoculars className="w-12 h-12 lg:w-16 lg:h-16 mx-auto text-muted-foreground" weight="light" />
             <div>
-              <h3 className="font-semibold text-lg text-white">No matching deals</h3>
-              <p className="text-sm text-slate-400 mt-1">
+              <h3 className="font-semibold text-lg lg:text-xl text-white">No matching deals</h3>
+              <p className="text-sm lg:text-base text-slate-400 mt-1">
                 Try adjusting your source filter or lowering the minimum ROI
               </p>
             </div>
@@ -465,12 +466,12 @@ export default function DealScannerView() {
       )}
 
       {(deals || []).length === 0 && (
-        <Card className="p-12 bg-slate-900/50 border-slate-800">
-          <div className="text-center space-y-3">
-            <Binoculars className="w-16 h-16 mx-auto text-muted-foreground" weight="light" />
+        <Card className="p-12 lg:p-16 bg-slate-900/50 border-slate-800">
+          <div className="text-center space-y-3 lg:space-y-4">
+            <Binoculars className="w-16 h-16 lg:w-20 lg:h-20 mx-auto text-muted-foreground" weight="light" />
             <div>
-              <h3 className="font-semibold text-lg text-white">No deals found yet</h3>
-              <p className="text-sm text-slate-400 mt-1">
+              <h3 className="font-semibold text-lg lg:text-xl text-white">No deals found yet</h3>
+              <p className="text-sm lg:text-base text-slate-400 mt-1">
                 Hit "Scan Now" or enable auto-scan to discover undervalued vinyl across marketplaces
               </p>
             </div>
@@ -479,7 +480,7 @@ export default function DealScannerView() {
       )}
 
       <AnimatePresence mode="popLayout">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4">
           {filteredDeals.map((deal) => {
             const rec = deal.recommendation || getRecommendation(deal)
             const recColor = getRecommendationColor(rec)
@@ -494,19 +495,19 @@ export default function DealScannerView() {
                 transition={{ duration: 0.2 }}
               >
                 <Card className="bg-slate-900/50 border-slate-800 hover:border-slate-700 transition-colors">
-                  <CardContent className="p-3 space-y-2">
+                  <CardContent className="p-3 lg:p-4 space-y-2 lg:space-y-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <h4 className="font-semibold text-sm text-white truncate">{deal.artist}</h4>
-                        <p className="text-xs text-slate-400 truncate">{deal.title}</p>
+                        <h4 className="font-semibold text-sm lg:text-base text-white truncate">{deal.artist}</h4>
+                        <p className="text-xs lg:text-sm text-slate-400 truncate">{deal.title}</p>
                       </div>
-                      <Badge className={`text-[10px] px-1.5 shrink-0 border ${recColor}`}>
+                      <Badge className={`text-[10px] lg:text-xs px-1.5 lg:px-2 shrink-0 border ${recColor}`}>
                         {rec}
                       </Badge>
                     </div>
 
-                    <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                      <Storefront size={12} />
+                    <div className="flex items-center gap-1.5 text-xs lg:text-sm text-slate-400">
+                      <Storefront className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
                       <span>{deal.source}</span>
                       {deal.condition && (
                         <>
@@ -516,7 +517,7 @@ export default function DealScannerView() {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs lg:text-sm">
                       <div className="flex justify-between">
                         <span className="text-slate-400">Buy Price</span>
                         <span className="text-white font-medium">
@@ -551,7 +552,7 @@ export default function DealScannerView() {
                         href={deal.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block text-center text-xs text-accent hover:underline mt-1"
+                        className="block text-center text-xs lg:text-sm text-accent hover:underline mt-1"
                       >
                         View Listing →
                       </a>
