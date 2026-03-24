@@ -86,33 +86,37 @@ export function VinylReveal({ candidates, onRevealComplete, previewAudioUrl }: V
     const ctx = audioCtxRef.current
     if (!ctx) return
 
-    if (ctx.state === 'suspended') {
-      await ctx.resume()
-    }
-
-    if (crackleBufferRef.current) {
-      const src = ctx.createBufferSource()
-      src.buffer = crackleBufferRef.current
-      src.loop = true
-      src.connect(gainRef.current!)
-      src.start()
-      crackleSourceRef.current = src
-    }
-
-    if (previewAudioUrl) {
-      try {
-        const res = await fetch(previewAudioUrl)
-        if (res.ok) {
-          const buf = await res.arrayBuffer()
-          const decoded = await ctx.decodeAudioData(buf)
-          const src = ctx.createBufferSource()
-          src.buffer = decoded
-          src.connect(gainRef.current!)
-          src.start()
-        }
-      } catch {
-        // preview unavailable
+    try {
+      if (ctx.state === 'suspended') {
+        await ctx.resume()
       }
+
+      if (crackleBufferRef.current) {
+        const src = ctx.createBufferSource()
+        src.buffer = crackleBufferRef.current
+        src.loop = true
+        src.connect(gainRef.current!)
+        src.start()
+        crackleSourceRef.current = src
+      }
+
+      if (previewAudioUrl) {
+        try {
+          const res = await fetch(previewAudioUrl)
+          if (res.ok) {
+            const buf = await res.arrayBuffer()
+            const decoded = await ctx.decodeAudioData(buf)
+            const src = ctx.createBufferSource()
+            src.buffer = decoded
+            src.connect(gainRef.current!)
+            src.start()
+          }
+        } catch {
+          // preview unavailable
+        }
+      }
+    } catch {
+      // Autoplay policy or audio start failure — treat as silent no-op
     }
   }, [initAudio, previewAudioUrl])
 
@@ -131,33 +135,51 @@ export function VinylReveal({ candidates, onRevealComplete, previewAudioUrl }: V
   }, [springRotate])
 
   // ── Orchestration ──────────────────────────────────────────────────────────
+  // Tracks timers created inside needleDrop so they can be cleared on unmount
+  const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Flag set on unmount to bail out of async sequences and prevent state updates
+  const cancelledRef = useRef(false)
+
   const needleDrop = useCallback(async () => {
+    if (cancelledRef.current) return
     setPhase('needle')
     if (needleScope.current) {
       await animateNeedle(needleScope.current, { rotate: -38 }, { duration: 0.65, ease: 'easeInOut' })
     }
+    if (cancelledRef.current) return
     // Fire audio in the background — never block the reveal flow on audio state.
     // AudioContext.resume() requires a user gesture on Safari/iOS and can hang
     // indefinitely if called without one, which would prevent onRevealComplete.
     startAudio().catch(() => { /* silent */ })
 
-    setTimeout(() => {
-      // Fade out audio if it started
+    // Start the audio fade-out, then notify parent after the ramp completes so
+    // the AudioContext is still alive during the 1.2 s ramp duration.
+    revealTimerRef.current = setTimeout(() => {
+      if (cancelledRef.current) return
       if (gainRef.current && audioCtxRef.current) {
         gainRef.current.gain.linearRampToValueAtTime(0, audioCtxRef.current.currentTime + 1.2)
       }
-      setPhase('done')
-      onRevealComplete()
+      // Delay the parent notification until the fade-out ramp has played
+      revealTimerRef.current = setTimeout(() => {
+        if (cancelledRef.current) return
+        setPhase('done')
+        onRevealComplete()
+      }, 1300)
     }, 3200)
   }, [animateNeedle, needleScope, onRevealComplete, startAudio])
 
   useEffect(() => {
-    // Hard safety backstop: always call onRevealComplete after 8 s even if
+    cancelledRef.current = false
+
+    // Hard safety backstop: always call onRevealComplete after ~9.5 s even if
     // the animation sequence encounters an unexpected error.
     const safetyTimer = setTimeout(() => {
+      if (cancelledRef.current) return
       setPhase('done')
       onRevealComplete()
-    }, 8000)
+    }, 9500)
+
+    let rafId: number | null = null
 
     const run = async () => {
       // 3.5 full spins, then needle drops
@@ -167,28 +189,47 @@ export function VinylReveal({ candidates, onRevealComplete, previewAudioUrl }: V
         const duration = 3200
         const start = performance.now()
         const tick = (now: number) => {
+          if (cancelledRef.current) { resolve(); return }
           const t = Math.min(1, (now - start) / duration)
           const eased = 1 - Math.pow(1 - t, 3) // easeOut cubic
           rotate.set(eased * target)
-          if (t < 1) requestAnimationFrame(tick)
+          if (t < 1) { rafId = requestAnimationFrame(tick) }
           else resolve()
         }
-        requestAnimationFrame(tick)
+        rafId = requestAnimationFrame(tick)
       })
       await needleDrop()
     }
     run().catch(console.error)
 
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === ' ') {
-        e.preventDefault()
-        rotate.set(rotate.get() + 360)
+      // Only react to plain Space key presses not originating from interactive elements
+      if (e.code !== 'Space') return
+      if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
+
+      const target = e.target as HTMLElement | null
+      if (target) {
+        const tag = target.tagName
+        const isInteractive =
+          target.isContentEditable ||
+          tag === 'BUTTON' ||
+          tag === 'INPUT' ||
+          tag === 'TEXTAREA' ||
+          tag === 'SELECT' ||
+          (tag === 'A' && !!(target as HTMLAnchorElement).href)
+        if (isInteractive) return
       }
+
+      e.preventDefault()
+      rotate.set(rotate.get() + 360)
     }
     window.addEventListener('keydown', handleKey)
 
     return () => {
+      cancelledRef.current = true
       clearTimeout(safetyTimer)
+      if (revealTimerRef.current !== null) clearTimeout(revealTimerRef.current)
+      if (rafId !== null) cancelAnimationFrame(rafId)
       window.removeEventListener('keydown', handleKey)
       crackleSourceRef.current?.stop()
       audioCtxRef.current?.close()
