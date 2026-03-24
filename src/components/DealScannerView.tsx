@@ -385,11 +385,11 @@ export default function DealScannerView() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="min-roi-slider" className="text-xs lg:text-sm text-slate-400 mb-1 block">
+              <Label id="min-roi-label" className="text-xs lg:text-sm text-slate-400 mb-1 block">
                 Minimum ROI: {minRoiFilter}%
               </Label>
               <Slider
-                id="min-roi-slider"
+                aria-labelledby="min-roi-label"
                 value={[minRoiFilter]}
                 onValueChange={([v]) => setMinRoiFilter(v)}
                 min={0}
