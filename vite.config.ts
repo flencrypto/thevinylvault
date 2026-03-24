@@ -76,6 +76,7 @@ export default defineConfig({
         // any base path.
         navigateFallback: `${base}index.html`,
         navigateFallbackDenylist: [/^\/api\//, /^\/auth\//],
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4 MiB
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,

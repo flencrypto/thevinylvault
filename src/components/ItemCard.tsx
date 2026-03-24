@@ -1,6 +1,7 @@
 import { CollectionItem } from '@/lib/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { VinylDisc } from '@/components/ui/vinyl-disc'
 import { getGradeColor, getStatusColor, formatCurrency, generatePriceEstimate } from '@/lib/helpers'
 import { FORMAT_LABELS, STATUS_LABELS } from '@/lib/types'
 import { TrendBadge } from './TrendIndicator'
@@ -41,8 +42,18 @@ export const ItemCard = React.memo(function ItemCard({ item, onItemClick }: Item
     >
       <CardContent className="p-6">
         <div className="flex gap-4">
-          <div className="w-24 h-24 bg-secondary rounded flex items-center justify-center flex-shrink-0 border border-border">
-            <div className="text-4xl text-muted-foreground">♫</div>
+          <div className="w-24 h-24 bg-secondary rounded flex items-center justify-center flex-shrink-0 border border-border overflow-hidden">
+            <VinylDisc
+              size="md"
+              labelColor={
+                item.condition.mediaGrade === 'M' || item.condition.mediaGrade === 'NM'
+                  ? 'oklch(0.70 0.18 60)'
+                  : item.condition.mediaGrade === 'VG+'
+                  ? 'oklch(0.45 0.15 265)'
+                  : 'oklch(0.40 0.02 265)'
+              }
+              labelText={item.format === '7in' ? '7"' : item.format === '12in' ? '12"' : item.format}
+            />
           </div>
           
           <div className="flex-1 min-w-0">

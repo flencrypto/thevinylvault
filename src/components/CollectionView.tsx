@@ -14,6 +14,7 @@ import { BlockchainAuthDialog } from '@/components/BlockchainAuthDialog'
 import { VRPreviewDialog } from '@/components/VRPreviewDialog'
 import { TextImportDialog } from '@/components/TextImportDialog'
 import QuickActionsBar from '@/components/QuickActionsBar'
+import { CollectionHeroStats } from '@/components/CollectionHeroStats'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -263,46 +264,7 @@ export default function CollectionView() {
       <QuickActionsBar onBarcodeScanned={handleBarcodeScanned} />
       
       <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <Card className="p-3 sm:p-4 bg-gradient-to-br from-card to-card/50 border-border">
-            <div className="text-xs sm:text-sm text-muted-foreground mb-1">Total Items</div>
-            <div className="text-2xl sm:text-3xl font-bold">{stats.totalItems}</div>
-          </Card>
-        
-        <Card className="p-3 sm:p-4 bg-gradient-to-br from-card to-card/50 border-border">
-          <div className="text-xs sm:text-sm text-muted-foreground mb-1">In Collection</div>
-          <div className="text-2xl sm:text-3xl font-bold text-accent">{stats.ownedItems}</div>
-        </Card>
-        
-        <Card className="p-3 sm:p-4 bg-gradient-to-br from-card to-card/50 border-border">
-          <div className="text-xs sm:text-sm text-muted-foreground mb-1">Total Value</div>
-          <div className="text-xl sm:text-3xl font-bold">{formatCurrency(stats.totalValue)}</div>
-          {stats.avgTrend !== 0 && stats.itemsWithTrends > 0 && (
-            <div className="flex items-center gap-2 mt-2">
-              <TrendIndicator value={stats.avgTrend} showIcon showValue size="sm" />
-              <span className="text-[10px] sm:text-xs text-muted-foreground">avg. trend</span>
-            </div>
-          )}
-        </Card>
-        
-        <Card className="p-3 sm:p-4 bg-gradient-to-br from-card to-card/50 border-border">
-          <div className="text-xs sm:text-sm text-muted-foreground mb-1">Market Trends</div>
-          <div className="flex items-center gap-2 sm:gap-4 mt-2">
-            <div className="flex items-center gap-1">
-              <TrendIndicator value={10} showIcon={false} className="text-green-500" />
-              <span className="text-lg sm:text-2xl font-bold text-green-500">{stats.risingCount}</span>
-            </div>
-            <div className="text-muted-foreground">|</div>
-            <div className="flex items-center gap-1">
-              <TrendIndicator value={-10} showIcon={false} className="text-red-500" />
-              <span className="text-lg sm:text-2xl font-bold text-red-500">{stats.fallingCount}</span>
-            </div>
-          </div>
-          <div className="text-[10px] sm:text-xs text-muted-foreground mt-1">
-            rising / falling values
-          </div>
-        </Card>
-      </div>
+        <CollectionHeroStats items={items || []} />
 
       {alertSummary.unread > 0 && (
         <Alert className="border-accent/50 bg-accent/10">
