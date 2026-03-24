@@ -370,9 +370,9 @@ export default function DealScannerView() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Source Filter</label>
+              <Label htmlFor="source-filter-select" className="text-xs text-slate-400 mb-1 block">Source Filter</Label>
               <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as SourceFilter)}>
-                <SelectTrigger className="h-8 text-xs border-slate-700">
+                <SelectTrigger id="source-filter-select" className="h-8 text-xs border-slate-700">
                   <Storefront size={14} className="mr-1 flex-shrink-0" />
                   <SelectValue />
                 </SelectTrigger>
@@ -385,9 +385,9 @@ export default function DealScannerView() {
               </Select>
             </div>
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">
+              <Label id="min-roi-label" className="text-xs text-slate-400 mb-1 block">
                 Minimum ROI: {minRoiFilter}%
-              </label>
+              </Label>
               <Slider
                 value={[minRoiFilter]}
                 onValueChange={([v]) => setMinRoiFilter(v)}
@@ -395,6 +395,7 @@ export default function DealScannerView() {
                 max={200}
                 step={5}
                 className="mt-2"
+                aria-labelledby="min-roi-label"
               />
             </div>
           </div>
