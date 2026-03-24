@@ -180,13 +180,17 @@ export async function askAboutRecord(
 
       const userMatrix = extractUserMatrix(question)
       const releaseData: Record<string, unknown> = {
-        ...(item.discogsData ?? {}),
         artistName: item.artistName,
         releaseTitle: item.releaseTitle,
         catalogNumber: item.catalogNumber,
         year: item.year,
         country: item.country,
         format: item.format,
+        labelName: item.labelName,
+        discogsId: item.discogsId,
+        discogsReleaseId: item.discogsReleaseId,
+        matrixNumbers: item.matrixNumbers,
+        barcodes: item.barcodes,
       }
 
       const cycleResult = await intelligenceCoordinator.runFullCycle({
