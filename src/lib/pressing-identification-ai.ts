@@ -148,7 +148,37 @@ export async function identifyPressing(
     discogsReleases = await searchDiscogsDatabase(searchQuery, input.discogsApiToken)
   }
 
-  const prompt = spark.llmPrompt`You are an expert vinyl record pressing identification system. Your task is to analyze extracted image data, OCR runout values, manual hints, and Discogs database results to produce ranked pressing candidates with detailed evidence.
+  const prompt = spark.llmPrompt`You are the Pressing Identification Specialist for VinylVault. Your job is to identify the most probable pressing variant with the highest achievable precision given the available data. You MUST NOT output structural error messages such as "fail", "error", "unable to determine", or "unknown variant" as a top-level response — instead, represent uncertainty through low confidence scores (< 0.40) and honest reasoning text. Always return at least one candidate so the user has a starting point; never silently abort.
+
+Follow this exact workflow:
+
+STEP 1 — CONFIRM CATALOG NUMBER & LABEL
+Use the parent release data already found (Discogs matches below) to lock in the catalog number and label. If multiple labels are present, list all.
+
+STEP 2 — EXTRACT EVERY VISIBLE IDENTIFIER
+From the provided image data and listing text, extract ALL of the following without omitting any:
+- Matrix/runout etchings (full deadwax text, both sides)
+- Label colour and design (e.g. "red label with silver text", "orange/red Parlophone")
+- Stamper codes and pressing plant indicators (e.g. "1U", "2U", "Porky", "Pecko", "Sterling")
+- Inner sleeve type (e.g. "lyric inner", "plain white", "photo inner")
+- Gatefold or standard cover
+- Coloured vinyl, picture disc, clear vinyl
+- Insert, poster, booklet presence
+- Country codes on label or sleeve
+- Barcodes (barcode-era releases only)
+- Any handwritten or etched signatures
+- Promo markings (e.g. "NOT FOR SALE", "DEMONSTRATION COPY", hole punch)
+
+STEP 3 — CROSS-REFERENCE ALL KNOWN VARIANTS
+Using Discogs master release history and standard discography knowledge, enumerate ALL known variants for this catalog number. For each variant, state whether the extracted identifiers match, partially match, or do not match.
+
+STEP 4 — DECLARE MOST PROBABLE VARIANT
+If multiple variants are still possible after Step 3, list them ALL ranked by probability, then declare the SINGLE most probable with:
+- Confidence percentage (0–100%)
+- The decisive evidence that distinguishes this variant from all others
+
+STEP 5 — MISSING IDENTIFIERS
+If any identifier is missing from the provided data, explicitly name what is missing and state whether the variant is still determinable or not, and why.
 
 **IMAGE EXTRACTION DATA:**
 ${allExtractedText.length > 0 ? `- Visible text: ${allExtractedText.join(', ')}` : '- No extracted text'}
@@ -211,23 +241,17 @@ For Discogs matches:
 - Discogs matches with strong identifier matches should score 0.80+
 ` : ''}
 
-**TASK:**
-Generate 3-5 pressing candidates ranked by total score. For each candidate:
-1. Calculate a confidence score (0.0-1.0) based on the weighted scoring signals above
-2. Provide 3-5 specific evidence snippets explaining why this candidate matched
-3. List all matched identifiers with their sources and individual confidence scores
-4. Include detailed pressing information
-5. BE CONSERVATIVE with confidence scores - better to underestimate than overestimate
-6. For ambiguous matches with weak signals, assign confidence < 0.40
-
-For Discogs-based candidates:
-- Use format "discogs-{id}" for the id field
-- Include discogsId as a number
-- Include discogsUrl as "https://www.discogs.com/release/{id}"
-- If variant/pressing information is available in Discogs data, include it as discogsVariant
-- Include imageUrls array if available from Discogs (images array with uri fields)
-
-If the data is genuinely ambiguous or insufficient, DO NOT fabricate certainty. Return fewer candidates with honest confidence scores rather than padding with guesses. Include a "reasoning" field that explains the confidence level honestly.
+**OUTPUT RULES — MANDATORY:**
+- Do NOT use structural error strings ("fail", "error", "unable to determine", "unknown variant") as a substitute for a real candidate. Instead, express uncertainty via a low confidence score (< 0.40) and an honest "reasoning" field.
+- You MUST always return at least one candidate. If data is sparse, use all available context and discography knowledge to produce the best possible determination and assign it an appropriately low confidence score.
+- If identifiers are ambiguous, list every plausible variant, rank them, and declare the single most probable with the decisive distinguishing evidence.
+- The "reasoning" field MUST follow this exact structure:
+  1. Catalog number & label confirmed
+  2. Exact year & country of pressing
+  3. Matrix/runout etchings (if visible or standard for this issue)
+  4. Key identifiers (gatefold, inner sleeve, coloured vinyl, insert, label design, stampers)
+  5. Variant notes (1st press, 2nd press, reissue, UK-only, mispress, promo, etc.)
+  6. Known differences from other editions (e.g. "this is the red-label stereo UK original, not the later black-label reissue")
 
 Return JSON with this structure:
 {
@@ -249,11 +273,12 @@ Return JSON with this structure:
       "confidence": 0.92,
       "totalScore": 0.92,
       "matchedIdentifiers": ["PL 12030", "A1/B1", "RCA label"],
-      "reasoning": "Catalog number PL 12030 matches UK first pressing",
+      "reasoning": "1. Catalog number PL 12030 confirmed on RCA Victor label. 2. UK pressing, 1977. 3. Matrix A1/B1 visible in deadwax — first stamper on both sides. 4. Standard single sleeve, no gatefold on original UK issue. 5. 1st press: A1/B1 stampers are the earliest known UK run. 6. Distinguishable from later 2nd press (A2/B2 stampers) and US RCA AFL1-2030 by catalog number prefix and stamper generation.",
       "evidenceSnippets": [
-        "Catalog number 'PL 12030' is exact match for UK RCA 1st press",
-        "Matrix 'A1/B1' indicates first press stamper",
-        "RCA label confirmed from image analysis"
+        "Catalog number 'PL 12030' is exact match for UK RCA Victor 1st press",
+        "Matrix 'A1/B1' confirms first stamper generation — earliest known UK pressing",
+        "RCA label design confirmed from image analysis",
+        "No barcode present, consistent with pre-1983 original pressing"
       ],
       "matches": [
         {
@@ -459,7 +484,7 @@ async function searchDiscogsDatabaseFallback(
     year?: number
   }
 ): Promise<DiscogsRelease[]> {
-  const prompt = spark.llmPrompt`You are simulating a Discogs database search for vinyl records.
+  const prompt = spark.llmPrompt`You are simulating a Discogs database search for vinyl records. Use your knowledge of vinyl pressing history to generate accurate, realistic pressing records. Only return results you can reasonably derive from the search query; if the query is too vague to identify any specific release, return an empty candidates list rather than fabricating records.
 
 Generate 2-5 realistic pressing records that match this search query:
 ${query.artist ? `Artist: ${query.artist}` : ''}
@@ -470,7 +495,7 @@ ${query.format ? `Format: ${query.format}` : ''}
 ${query.country ? `Country: ${query.country}` : ''}
 ${query.year ? `Year: ${query.year}` : ''}
 
-Return realistic results based on your knowledge of vinyl pressing history. Include major pressings (UK, US, Japanese, German) and notable variants when relevant.
+Include major pressings (UK, US, Japanese, German) and notable variants. For each result, include accurate matrix/runout identifiers, label details, and pressing-specific notes based on known discography.
 
 Return JSON:
 {
