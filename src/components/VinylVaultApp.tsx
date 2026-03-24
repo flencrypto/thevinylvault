@@ -131,23 +131,21 @@ export default function VinylVaultApp() {
     )
   }
 
-  // Mobile / tablet layout: sticky header + bottom nav
+  // Mobile / tablet layout: flex column with header, scrollable content, and bottom nav
   return (
     <>
       <Toaster />
       <PWAUpdatePrompt />
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 pb-20">
-        <div className="max-w-[1800px] mx-auto">
-          <MobileHeader envLabel={envLabel} modeLabel={modeLabel} />
+      <div className="flex flex-col h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden">
+        <MobileHeader envLabel={envLabel} modeLabel={modeLabel} />
 
-          <main className="pb-4">
-            <Tabs value={activeTab} className="w-full">
-              {tabContent}
-            </Tabs>
-          </main>
+        <main className="flex-1 overflow-y-auto min-h-0">
+          <Tabs value={activeTab} className="w-full">
+            {tabContent}
+          </Tabs>
+        </main>
 
-          <MobileBottomNav navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} />
-        </div>
+        <MobileBottomNav navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
     </>
   )

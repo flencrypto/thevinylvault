@@ -19,7 +19,7 @@ interface DesktopSidebarProps {
 
 export default function DesktopSidebar({ navItems, activeTab, onTabChange, envLabel, modeLabel }: DesktopSidebarProps) {
   return (
-    <aside className="flex flex-col w-56 flex-shrink-0 bg-slate-950/95 border-r border-slate-800 overflow-y-auto">
+    <aside className="flex flex-col w-56 flex-shrink-0 h-screen bg-slate-950/95 border-r border-slate-800 overflow-y-auto">
       {/* Branding */}
       <div className="flex items-center gap-3 px-4 py-5 border-b border-slate-800">
         <div className="w-9 h-9 bg-gradient-to-br from-accent to-accent/60 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -33,8 +33,11 @@ export default function DesktopSidebar({ navItems, activeTab, onTabChange, envLa
         </div>
       </div>
 
-      {/* Nav items */}
-      <nav className="flex flex-col p-2 gap-0.5">
+      {/* Spacer pushes nav to bottom */}
+      <div className="flex-1" />
+
+      {/* Nav items pinned to bottom */}
+      <nav className="flex flex-col p-2 gap-0.5 border-t border-slate-800">
         {navItems.map(({ value, icon: Icon, label }) => (
           <button
             key={value}

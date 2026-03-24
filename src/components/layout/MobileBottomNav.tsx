@@ -17,7 +17,7 @@ interface MobileBottomNavProps {
 
 export default function MobileBottomNav({ navItems, activeTab, onTabChange }: MobileBottomNavProps) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800 pb-safe-area-inset-bottom">
+    <nav className="flex-shrink-0 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800 pb-safe-area-inset-bottom">
       <Tabs value={activeTab} onValueChange={(value) => onTabChange(value as TabValue)}>
         <TabsList className="w-full min-h-[64px] grid grid-cols-11 bg-transparent border-0 p-0 gap-0">
           {navItems.map(({ value, icon: Icon, label }) => (
