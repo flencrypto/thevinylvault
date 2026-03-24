@@ -396,6 +396,7 @@ export default function DealScannerView() {
                 max={200}
                 step={5}
                 className="mt-2"
+                aria-labelledby="min-roi-label"
               />
             </div>
           </div>
