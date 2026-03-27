@@ -13,7 +13,7 @@
  * Uses GlassCard for the frosted glass aesthetic.
  */
 
-import { useMemo } from 'react'
+import { useId, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Area, AreaChart, ResponsiveContainer, Tooltip } from 'recharts'
 import { TrendUp, TrendDown, Disc, Lightning, Star, MusicNote } from '@phosphor-icons/react'
@@ -21,6 +21,7 @@ import { GlassCard, GlassCardContent } from '@/components/ui/glass-card'
 import { VinylDisc } from '@/components/ui/vinyl-disc'
 import { Badge } from '@/components/ui/badge'
 import { formatCurrency } from '@/lib/helpers'
+import { components } from '@/lib/design-tokens'
 import type { CollectionItem } from '@/lib/types'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -100,21 +101,25 @@ function AnimatedNumber({ value, prefix = '', suffix = '' }: { value: number; pr
 // ─── Sub: Mini sparkline ─────────────────────────────────────────────────────
 
 function MiniSparkline({ data, positive }: { data: Array<{ v: number }>; positive: boolean }) {
+  const uid = useId().replace(/:/g, '')
+  const gradId = `sparkGrad-${uid}`
+  const strokeColor = positive ? 'oklch(0.70 0.18 60)' : 'oklch(0.55 0.22 25)'
+
   return (
     <ResponsiveContainer width="100%" height={32}>
       <AreaChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 2 }}>
         <defs>
-          <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"   stopColor={positive ? 'oklch(0.70 0.18 60)' : 'oklch(0.55 0.22 25)'} stopOpacity={0.5} />
-            <stop offset="100%" stopColor={positive ? 'oklch(0.70 0.18 60)' : 'oklch(0.55 0.22 25)'} stopOpacity={0} />
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor={strokeColor} stopOpacity={0.5} />
+            <stop offset="100%" stopColor={strokeColor} stopOpacity={0} />
           </linearGradient>
         </defs>
         <Area
           type="monotone"
           dataKey="v"
-          stroke={positive ? 'oklch(0.70 0.18 60)' : 'oklch(0.55 0.22 25)'}
+          stroke={strokeColor}
           strokeWidth={1.5}
-          fill="url(#sparkGrad)"
+          fill={`url(#${gradId})`}
           dot={false}
           isAnimationActive
         />
@@ -145,29 +150,50 @@ export function CollectionHeroStats({ items, className }: CollectionHeroStatsPro
       }
     }
 
-    // Total value
+    // Total value — multiply by quantity so multi-copy items are counted correctly
     const currency = items[0].purchaseCurrency ?? 'GBP'
-    const totalValue = items.reduce((sum, i) => sum + (i.estimatedValue?.estimateMid ?? 0), 0)
+    const totalValue = items.reduce(
+      (sum, i) => sum + (i.estimatedValue?.estimateMid ?? 0) * (i.quantity ?? 1),
+      0
+    )
 
-    // Value trend: compare last 30 days to 30-60 days ago
+    // Value trend: compare last 30 days to 30-60 days ago.
+    // Single pass per item avoids sorting intermediate arrays.
     const now = Date.now()
-    const recent30 = items.reduce((sum, i) => {
-      const latest = [...(i.priceHistory ?? [])].sort(
-        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      )
-      const entry = latest.find(e => now - new Date(e.timestamp).getTime() < 30 * MS_PER_DAY)
-      return sum + (entry?.estimatedValue ?? 0)
-    }, 0)
-    const prev30 = items.reduce((sum, i) => {
-      const sorted = [...(i.priceHistory ?? [])].sort(
-        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      )
-      const entry = sorted.find(e => {
-        const age = now - new Date(e.timestamp).getTime()
-        return age >= 30 * MS_PER_DAY && age < 60 * MS_PER_DAY
-      })
-      return sum + (entry?.estimatedValue ?? 0)
-    }, 0)
+    const { recent30, prev30 } = items.reduce(
+      (acc, item) => {
+        const history = item.priceHistory ?? []
+
+        let latestRecentTs = -1
+        let latestRecentVal = 0
+        let latestPrevTs = -1
+        let latestPrevVal = 0
+
+        for (const entry of history) {
+          const ts  = new Date(entry.timestamp).getTime()
+          const age = now - ts
+          if (age < 0) continue
+
+          if (age < 30 * MS_PER_DAY) {
+            if (ts > latestRecentTs) {
+              latestRecentTs  = ts
+              latestRecentVal = entry.estimatedValue ?? 0
+            }
+          } else if (age < 60 * MS_PER_DAY) {
+            if (ts > latestPrevTs) {
+              latestPrevTs  = ts
+              latestPrevVal = entry.estimatedValue ?? 0
+            }
+          }
+        }
+
+        return {
+          recent30: acc.recent30 + latestRecentVal,
+          prev30:   acc.prev30   + latestPrevVal,
+        }
+      },
+      { recent30: 0, prev30: 0 }
+    )
     const valueTrend = prev30 > 0 ? ((recent30 - prev30) / prev30) * 100 : 0
 
     // Format breakdown
@@ -254,7 +280,7 @@ export function CollectionHeroStats({ items, className }: CollectionHeroStatsPro
             <div className="shrink-0">
               <VinylDisc
                 size="md"
-                labelColor="oklch(0.70 0.18 60)"
+                labelColor={components.vinylDisc.colorLabel}
                 labelText={String(stats.total)}
                 playing={stats.recentCount > 0}
               />

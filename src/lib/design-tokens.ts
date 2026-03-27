@@ -1,9 +1,16 @@
 /**
  * VinylVault Design Tokens
  *
- * Single source of truth that mirrors both:
+ * Typed, curated design tokens derived from:
  *   - src/index.css CSS variables (runtime)
  *   - public/figma-tokens.json (Figma Tokens Studio)
+ *
+ * This file does not strictly mirror the raw Figma tokens JSON schema. It
+ * exposes the subset and shape of tokens that the app uses, and may:
+ *   - omit some token groups (for example, certain component-specific sets),
+ *   - regroup or rename tokens for easier consumption in TypeScript, and
+ *   - normalize values (for example, convert duration strings like "200ms"
+ *     / "3000ms" into numeric millisecond values).
  *
  * Import this file anywhere in the codebase to reference tokens
  * programmatically (e.g. in canvas/SVG rendering or Recharts themes).
@@ -11,8 +18,9 @@
  * To sync with Figma:
  *   1. Install the "Tokens Studio for Figma" plugin in Figma.
  *   2. Point the plugin at `public/figma-tokens.json` (URL or local file).
- *   3. Changes in Figma can be exported back to that file; run a one-liner
- *      to regenerate this TypeScript file from the JSON.
+ *   3. Changes in Figma can be exported back to that file; then regenerate
+ *      or update this TypeScript representation, applying any intentional
+ *      curation/normalization steps as needed.
  */
 
 // ─── Color Palette ────────────────────────────────────────────────────────────

@@ -16,6 +16,7 @@
  * <VinylDisc size="md" labelText="Dark Side" />
  */
 
+import { useId } from 'react'
 import { components } from '@/lib/design-tokens'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
@@ -74,11 +75,18 @@ export interface VinylDiscProps extends VariantProps<typeof vinylDiscVariants> {
 export function VinylDisc({
   size = 'md',
   playing = false,
-  labelColor = 'oklch(0.70 0.18 60)',
+  labelColor = components.vinylDisc.colorLabel,
   labelText,
   className,
   'aria-label': ariaLabel,
 }: VinylDiscProps) {
+  // Unique IDs prevent gradient/clip-path collisions when multiple instances
+  // of the same size are rendered on the same page.
+  const uid = useId().replace(/:/g, '')
+  const gradBase  = `vd-base-${uid}`
+  const gradSheen = `vd-sheen-${uid}`
+  const clipId    = `vd-clip-${uid}`
+
   const px  = SIZE_PX[size ?? 'md'] ?? 96
   const r   = px / 2            // disc radius
   const cx  = r                 // SVG viewBox centre
@@ -132,14 +140,14 @@ export function VinylDisc({
       >
         <defs>
           {/* Radial gradient: simulate vinyl's slight sheen from edge to centre */}
-          <radialGradient id={`vd-base-${size}`} cx="50%" cy="50%" r="50%">
+          <radialGradient id={gradBase} cx="50%" cy="50%" r="50%">
             <stop offset="0%"   stopColor="oklch(0.18 0.015 265)" />
             <stop offset="55%"  stopColor="oklch(0.10 0.012 265)" />
             <stop offset="100%" stopColor="oklch(0.14 0.018 265)" />
           </radialGradient>
 
           {/* Slight rainbow shimmer overlay */}
-          <linearGradient id={`vd-sheen-${size}`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id={gradSheen} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%"   stopColor="rgba(255,255,255,0)"    />
             <stop offset="45%"  stopColor="rgba(255,255,255,0.04)" />
             <stop offset="50%"  stopColor="rgba(255,255,255,0.12)" />
@@ -148,13 +156,13 @@ export function VinylDisc({
           </linearGradient>
 
           {/* Clip: full circle */}
-          <clipPath id={`vd-clip-${size}`}>
+          <clipPath id={clipId}>
             <circle cx={cx} cy={cy} r={r} />
           </clipPath>
         </defs>
 
         {/* ── Base disc ──────────────────────────────────────────────────── */}
-        <circle cx={cx} cy={cy} r={r} fill={`url(#vd-base-${size})`} />
+        <circle cx={cx} cy={cy} r={r} fill={`url(#${gradBase})`} />
 
         {/* ── Groove rings ───────────────────────────────────────────────── */}
         {grooves.map((gr, i) => (
@@ -174,8 +182,8 @@ export function VinylDisc({
           cx={cx}
           cy={cy}
           r={r}
-          fill={`url(#vd-sheen-${size})`}
-          clipPath={`url(#vd-clip-${size})`}
+          fill={`url(#${gradSheen})`}
+          clipPath={`url(#${clipId})`}
         />
 
         {/* ── Centre label ───────────────────────────────────────────────── */}
@@ -194,7 +202,7 @@ export function VinylDisc({
             fontSize={labelFontSize}
             fontFamily="Poppins, sans-serif"
             fontWeight={600}
-            clipPath={`url(#vd-clip-${size})`}
+            clipPath={`url(#${clipId})`}
             style={{ userSelect: 'none' }}
           >
             {labelText.length > 8 ? `${labelText.slice(0, 7)}…` : labelText}

@@ -2,10 +2,18 @@ import { CollectionItem } from '@/lib/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { VinylDisc } from '@/components/ui/vinyl-disc'
+import { colors } from '@/lib/design-tokens'
 import { getGradeColor, getStatusColor, formatCurrency, generatePriceEstimate } from '@/lib/helpers'
 import { FORMAT_LABELS, STATUS_LABELS } from '@/lib/types'
 import { TrendBadge } from './TrendIndicator'
 import React, { useMemo } from 'react'
+
+/** Maps a vinyl media grade to the VinylDisc label colour token. */
+function gradeToLabelColor(grade: string): string {
+  if (grade === 'M' || grade === 'NM') return colors.amber[500]
+  if (grade === 'VG+') return colors.purple[500]
+  return colors.slate[600]
+}
 
 interface ItemCardProps {
   item: CollectionItem
@@ -45,13 +53,7 @@ export const ItemCard = React.memo(function ItemCard({ item, onItemClick }: Item
           <div className="w-24 h-24 bg-secondary rounded flex items-center justify-center flex-shrink-0 border border-border overflow-hidden">
             <VinylDisc
               size="md"
-              labelColor={
-                item.condition.mediaGrade === 'M' || item.condition.mediaGrade === 'NM'
-                  ? 'oklch(0.70 0.18 60)'
-                  : item.condition.mediaGrade === 'VG+'
-                  ? 'oklch(0.45 0.15 265)'
-                  : 'oklch(0.40 0.02 265)'
-              }
+              labelColor={gradeToLabelColor(item.condition.mediaGrade)}
               labelText={item.format === '7in' ? '7"' : item.format === '12in' ? '12"' : item.format}
             />
           </div>
