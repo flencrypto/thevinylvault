@@ -3,7 +3,7 @@ import { intelligenceCoordinator, CycleResult } from './intelligence/intelligenc
 
 // ── System prompt for the Vinyl Valuation & Pressing Agent ────────────────
 
-const VINYL_AGENT_SYSTEM_PROMPT = `You are Vinylaysis's expert Vinyl Valuation & Pressing Identification Agent.
+const VINYL_AGENT_SYSTEM_PROMPT = `You are Vinylasis's expert Vinyl Valuation & Pressing Identification Agent.
 
 When the user asks anything about value, worth, pressing identification, matrix, price, or "what's my copy worth?", base your entire response on the intelligence data provided below.
 
@@ -206,7 +206,7 @@ export async function askAboutRecord(
 
   const systemSection = needsIntelligence
     ? `${VINYL_AGENT_SYSTEM_PROMPT}\n\n${cycleContext}\n\n`
-    : 'You are a vinyl record expert assistant for Vinylaysis, a professional record collection management system.\n\n'
+    : 'You are a vinyl record expert assistant for Vinylasis, a professional record collection management system.\n\n'
 
   const contextPrompt = spark.llmPrompt`${systemSection}Context about this record:
 - Artist: ${item.artistName}
@@ -283,7 +283,7 @@ export async function askGeneralQuestion(
       .map(([artist, count]) => `${artist} (${count})`),
   }
 
-  const contextPrompt = spark.llmPrompt`You are a vinyl record expert assistant for Vinylaysis.
+  const contextPrompt = spark.llmPrompt`You are a vinyl record expert assistant for Vinylasis.
 
 User's collection overview:
 - Total records: ${stats.totalRecords}
@@ -314,7 +314,7 @@ export async function generateRecordInsights(
     ld => ld.context.artistName === item.artistName || ld.context.releaseTitle === item.releaseTitle
   )
 
-  const contextPrompt = spark.llmPrompt`You are analyzing a vinyl record in Vinylaysis.
+  const contextPrompt = spark.llmPrompt`You are analyzing a vinyl record in Vinylasis.
 
 Record details:
 - Artist: ${item.artistName}
