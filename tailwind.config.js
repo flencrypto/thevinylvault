@@ -22,6 +22,13 @@ const defaultTheme = {
       'xs': '480px',
     },
     colors: {
+      vf: {
+        primary: "#c8973f",
+        accent: "#e8c06a",
+        surface: "#0e0c0b",
+        text: "#f5ede2",
+        groove: "rgba(232, 192, 106, 0.15)",
+      },
       neutral: {
         1: "var(--color-neutral-1)",
         2: "var(--color-neutral-2)",
@@ -97,6 +104,17 @@ const defaultTheme = {
       xl: "var(--radius-xl)",
       "2xl": "var(--radius-2xl)",
       full: "var(--radius-full)",
+    },
+    fontFamily: {
+      heading: ["Cormorant Garamond", "serif"],
+      body: ["Inter", "sans-serif"],
+    },
+    backgroundImage: {
+      "groove-texture": "linear-gradient(rgba(232,192,106,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(232,192,106,0.03) 1px, transparent 1px)",
+    },
+    boxShadow: {
+      "glass": "0 20px 40px -15px rgba(232, 192, 106, 0.3)",
+      "gold-glow": "0 0 25px #e8c06a",
     },
   },
   spacing: {
