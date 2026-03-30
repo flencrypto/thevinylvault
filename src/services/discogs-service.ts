@@ -1,7 +1,7 @@
 // src/services/discogs-service.ts
 // Vinylasis Discogs API Client — Production Grade
 
-import { toast } from 'sonner'; // Shadcn toast (luxury gold styling)
+import { toast } from 'sonner'; // Sonner toast (Shadcn-style luxury gold styling)
 
 const BASE_URL = 'https://api.discogs.com';
 const USER_AGENT = 'Vinylasis/1.2 +https://github.com/flencrypto/Vinylasis';
@@ -212,7 +212,7 @@ class DiscogsService {
   private cache = new Map<string, CacheEntry<unknown>>();
 
   constructor(token = '') {
-    this.token = token;
+    this.token = token.trim();
   }
 
   // ─── Token management ──────────────────────────────────────────────────
@@ -237,9 +237,18 @@ class DiscogsService {
     const remaining = headers.get('X-Discogs-Ratelimit-Remaining');
     const reset = headers.get('X-Discogs-Ratelimit-Reset');
 
-    if (limit) RATE_LIMIT.limit = parseInt(limit, 10);
-    if (remaining) RATE_LIMIT.remaining = parseInt(remaining, 10);
-    if (reset) RATE_LIMIT.reset = parseInt(reset, 10) * 1000;
+    if (limit !== null) {
+      const parsedLimit = parseInt(limit, 10);
+      if (Number.isFinite(parsedLimit)) RATE_LIMIT.limit = parsedLimit;
+    }
+    if (remaining !== null) {
+      const parsedRemaining = parseInt(remaining, 10);
+      if (Number.isFinite(parsedRemaining)) RATE_LIMIT.remaining = parsedRemaining;
+    }
+    if (reset !== null) {
+      const parsedResetSeconds = parseInt(reset, 10);
+      if (Number.isFinite(parsedResetSeconds)) RATE_LIMIT.reset = parsedResetSeconds * 1000;
+    }
   }
 
   getRateLimitStatus(): { limit: number; remaining: number; reset: number } {
@@ -259,15 +268,25 @@ class DiscogsService {
   }
 
   private cacheSet<T>(key: string, data: T, ttlMs: number): void {
-    // Prune up to 100 expired entries when the cache grows large,
-    // avoiding a full O(n) scan on every write.
-    if (this.cache.size > 500) {
+    // Enforce a hard ceiling: when the cache reaches or exceeds 500 entries, first
+    // try to prune expired items.  If that frees fewer than 10 slots (all live entries),
+    // evict the oldest 50 by insertion order so the Map never grows unboundedly.
+    if (this.cache.size >= 500) {
       const now = Date.now();
       let pruned = 0;
       for (const [k, v] of this.cache) {
         if (now > v.expiresAt) {
           this.cache.delete(k);
           if (++pruned >= 100) break;
+        }
+      }
+      // 490 = 500 - 10: if expiry pruning brought us below 490, we're fine;
+      // otherwise fall back to evicting oldest 50 entries by insertion order.
+      if (this.cache.size >= 490) {
+        let evicted = 0;
+        for (const k of this.cache.keys()) {
+          this.cache.delete(k);
+          if (++evicted >= 50) break;
         }
       }
     }
@@ -323,15 +342,30 @@ class DiscogsService {
 
         if (response.status === 429) {
           const retryAfterHeader = response.headers.get('Retry-After');
-          const delay = retryAfterHeader
-            ? parseInt(retryAfterHeader, 10) * 1000
-            : 1000 * Math.pow(2, attempt);
+          let delayMs = 1000 * Math.pow(2, attempt);
 
-          toast.warning(
-            `Discogs rate limit reached — retrying in ${Math.round(delay / 1000)}s (${attempt + 1}/${maxRetries})`,
-          );
+          if (retryAfterHeader) {
+            // Retry-After can be a delta-seconds integer or an HTTP-date string.
+            const seconds = parseInt(retryAfterHeader, 10);
+            if (Number.isFinite(seconds) && seconds > 0) {
+              delayMs = seconds * 1000;
+            } else {
+              const targetTime = Date.parse(retryAfterHeader);
+              if (Number.isFinite(targetTime)) {
+                const diff = targetTime - Date.now();
+                if (diff > 0) delayMs = diff;
+              }
+            }
+          }
 
-          await new Promise((resolve) => setTimeout(resolve, delay));
+          const willRetry = attempt < maxRetries - 1;
+          if (willRetry) {
+            toast.warning(
+              `Discogs rate limit reached — retrying in ${Math.round(delayMs / 1000)}s (${attempt + 1}/${maxRetries})`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+          }
+
           lastError = new Error(`Discogs rate limit exceeded (429)`);
           continue;
         }
@@ -451,28 +485,45 @@ class DiscogsService {
   }
 
   /**
-   * Fetch marketplace statistics for a release (lowest price, num for sale, etc.).
+   * Fetch marketplace price statistics for a release via Discogs' dedicated
+   * `/marketplace/stats/:releaseId` endpoint, which provides lowest, median,
+   * and highest prices along with the correct currency.
    *
    * Results are cached for 15 minutes.
    */
   async getReleasePriceStats(releaseId: number): Promise<DiscogsPriceStats> {
+    // Discogs /marketplace/stats/{release_id} response shape (relevant fields only)
+    interface DiscogsMarketplaceStatsApiResponse {
+      num_for_sale?: number;
+      lowest_price?: { value: number | null; currency: string };
+      median_price?: { value: number | null; currency: string };
+      highest_price?: { value: number | null; currency: string };
+    }
+
+    const url = `${BASE_URL}/marketplace/stats/${releaseId}`;
     const cacheKey = `price:${releaseId}`;
-    const cached = this.cacheGet<DiscogsPriceStats>(cacheKey);
-    if (cached !== null) return cached;
 
-    const release = await this.getRelease(releaseId);
+    const apiStats = await this.fetchWithRetry<DiscogsMarketplaceStatsApiResponse>(
+      url,
+      3,
+      15 * 60 * 1000,
+      cacheKey,
+    );
 
-    const stats: DiscogsPriceStats = {
-      lowestPrice: release.lowest_price ?? null,
-      highestPrice: null,
-      medianPrice: null,
-      averagePrice: null,
-      numForSale: release.num_for_sale ?? 0,
-      currency: 'USD',
+    const currency =
+      apiStats.lowest_price?.currency ??
+      apiStats.median_price?.currency ??
+      apiStats.highest_price?.currency ??
+      'USD';
+
+    return {
+      lowestPrice: apiStats.lowest_price?.value ?? null,
+      highestPrice: apiStats.highest_price?.value ?? null,
+      medianPrice: apiStats.median_price?.value ?? null,
+      averagePrice: null, // Not provided by /marketplace/stats; retained for interface compatibility
+      numForSale: apiStats.num_for_sale ?? 0,
+      currency,
     };
-
-    this.cacheSet(cacheKey, stats, 15 * 60 * 1000);
-    return stats;
   }
 
   /**
@@ -533,7 +584,10 @@ class DiscogsService {
     }
 
     try {
-      const data = await this.searchDatabase({ query: 'vinyl', type: 'release', per_page: 1 });
+      // Bypass the searchDatabase() cache so testConnection() always verifies
+      // live connectivity and current token validity.
+      const url = `${BASE_URL}/database/search?q=vinyl&type=release&per_page=1`;
+      const data = await this.fetchWithRetry<DiscogsSearchResponse>(url, 2);
       const total = data.pagination?.items ?? 0;
 
       return {
