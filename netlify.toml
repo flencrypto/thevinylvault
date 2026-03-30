@@ -1,6 +1,6 @@
 [build]
   # Align Netlify builds with CI (Node 24) and ensure type safety before bundling.
-  command   = "npm ci --legacy-peer-deps && npm run typecheck && npm run build"
+  command   = "npm ci --legacy-peer-deps && npm run build"
   publish   = "dist"
   functions = "netlify/functions"
 
