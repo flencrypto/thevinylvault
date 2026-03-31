@@ -1,7 +1,3 @@
-// v2/lib/ai-valuation-agent.ts
-'use server';
-
-import { DiscogsService } from '@/components/discogs-service';
 import { ValuationService } from './valuation-service';
 import { VinylAppraiser } from './vinyl-appraiser';
 import type { CollectionItem } from './types';

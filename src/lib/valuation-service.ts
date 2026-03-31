@@ -1,8 +1,7 @@
-// v2/lib/valuation-service.ts
-'use server'; // Mark as server-only (Phase 1 broker enforcement)
+// valuation-service.ts
 
-import { DiscogsService } from '@/components/discogs-service'; // existing service (rate-limit aware)
-import { CollectionItem, MediaGrade, SleeveGrade } from './types'; // adjust path as needed
+import { DiscogsService } from '@/components/discogs-service';
+import { CollectionItem, MediaGrade, SleeveGrade } from './types';
 
 // ── Public interfaces (unchanged but fully documented) ──
 export interface ComparableSale {
@@ -288,6 +287,20 @@ export class ValuationService {
     }
     return Math.abs(hash);
   }
+}
+
+// Convenience function exports so callers can use them without instantiating the class.
+const defaultService = new ValuationService();
+
+export function fetchComparableSales(
+  item: CollectionItem,
+  options?: { maxResults?: number; recencyDays?: number; includeInternal?: boolean },
+) {
+  return defaultService.fetchComparableSales(item, options);
+}
+
+export function generateDetailedValuation(item: CollectionItem, comps?: ComparableSale[]) {
+  return defaultService.generateDetailedValuation(item, comps);
 }
 
 // Optional React hook for easy consumption in v2 pages
