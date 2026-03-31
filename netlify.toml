@@ -1,6 +1,19 @@
 [build]
-  command         = "npm run build"
-  publish         = "dist"
+  # Align Netlify builds with CI (Node 24) and ensure type safety before bundling.
+  command   = "npm ci --legacy-peer-deps && npm run build"
+  publish   = "dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "24"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24 = "true"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https:; frame-ancestors 'none'"
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
 
 # eBay Marketplace Account Deletion/Closure Notification endpoint.
 # Must appear before the SPA catch-all redirect below.
