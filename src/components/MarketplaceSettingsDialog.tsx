@@ -22,10 +22,14 @@ interface MarketplaceSettingsDialogProps {
 /** Read Discogs credentials from global settings (localStorage). */
 function getGlobalDiscogsCredentials(): { userToken: string; consumerKey: string; consumerSecret: string } {
   if (typeof localStorage === 'undefined') return { userToken: '', consumerKey: '', consumerSecret: '' }
-  return {
-    userToken: localStorage.getItem('discogs_personal_token') ?? '',
-    consumerKey: localStorage.getItem('discogs_consumer_key') ?? '',
-    consumerSecret: localStorage.getItem('discogs_consumer_secret') ?? '',
+  try {
+    return {
+      userToken: localStorage.getItem('discogs_personal_token') ?? '',
+      consumerKey: localStorage.getItem('discogs_consumer_key') ?? '',
+      consumerSecret: localStorage.getItem('discogs_consumer_secret') ?? '',
+    }
+  } catch {
+    return { userToken: '', consumerKey: '', consumerSecret: '' }
   }
 }
 
