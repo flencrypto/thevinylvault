@@ -53,12 +53,14 @@ export function MarketplaceSettingsDialog({ open, onOpenChange }: MarketplaceSet
 
   useEffect(() => {
     if (open) {
+      setTempConfig(config || getDefaultMarketplaceConfig())
+
       const discogs = getGlobalDiscogsCredentials()
       const ebay = getGlobalEbayCredentials()
       setGlobalDiscogs(discogs)
       setGlobalEbay(ebay)
     }
-  }, [open])
+  }, [open, config])
 
   const hasGlobalDiscogs =
     !!globalDiscogs.userToken || (!!globalDiscogs.consumerKey && !!globalDiscogs.consumerSecret)
