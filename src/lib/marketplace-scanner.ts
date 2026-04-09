@@ -158,6 +158,79 @@ function safeLS(key: string): string {
   }
 }
 
+function resolveDiscogsConfig(config?: DiscogsApiConfig): DiscogsApiConfig | undefined {
+  if (!config) {
+    const globalDiscogsToken = safeLS('discogs_personal_token')
+    if (globalDiscogsToken) {
+      return {
+        userToken: globalDiscogsToken,
+        consumerKey: undefined,
+        consumerSecret: undefined,
+      }
+    }
+
+    const globalDiscogsKey = safeLS('discogs_consumer_key')
+    const globalDiscogsSecret = safeLS('discogs_consumer_secret')
+    if (globalDiscogsKey && globalDiscogsSecret) {
+      return {
+        userToken: undefined,
+        consumerKey: globalDiscogsKey,
+        consumerSecret: globalDiscogsSecret,
+      }
+    }
+
+    return undefined
+  }
+
+  const {
+    userToken,
+    consumerKey,
+    consumerSecret,
+    ...rest
+  } = config
+
+  if (userToken) {
+    return {
+      ...rest,
+      userToken,
+      consumerKey: undefined,
+      consumerSecret: undefined,
+    }
+  }
+
+  if (consumerKey && consumerSecret) {
+    return {
+      ...rest,
+      userToken: undefined,
+      consumerKey,
+      consumerSecret,
+    }
+  }
+
+  const globalDiscogsToken = safeLS('discogs_personal_token')
+  if (globalDiscogsToken) {
+    return {
+      ...rest,
+      userToken: globalDiscogsToken,
+      consumerKey: undefined,
+      consumerSecret: undefined,
+    }
+  }
+
+  const globalDiscogsKey = safeLS('discogs_consumer_key')
+  const globalDiscogsSecret = safeLS('discogs_consumer_secret')
+  if (globalDiscogsKey && globalDiscogsSecret) {
+    return {
+      ...rest,
+      userToken: undefined,
+      consumerKey: globalDiscogsKey,
+      consumerSecret: globalDiscogsSecret,
+    }
+  }
+
+  return config
+}
+
 /**
  * Reads Discogs and eBay credentials from localStorage (set by the global
  * Settings view) and merges them into the given marketplace config as
@@ -170,22 +243,11 @@ function safeLS(key: string): string {
 export function resolveMarketplaceConfig(config: MarketplaceConfig): MarketplaceConfig {
   let resolved = { ...config }
 
-  // Resolve Discogs credentials from global settings
-  const globalDiscogsToken = safeLS('discogs_personal_token')
-  const globalDiscogsKey = safeLS('discogs_consumer_key')
-  const globalDiscogsSecret = safeLS('discogs_consumer_secret')
-
-  const hasGlobalDiscogs =
-    !!globalDiscogsToken || (!!globalDiscogsKey && !!globalDiscogsSecret)
-
-  if (hasGlobalDiscogs) {
+  const resolvedDiscogs = resolveDiscogsConfig(resolved.discogs)
+  if (resolvedDiscogs) {
     resolved = {
       ...resolved,
-      discogs: {
-        userToken: resolved.discogs?.userToken || globalDiscogsToken || undefined,
-        consumerKey: resolved.discogs?.consumerKey || globalDiscogsKey || undefined,
-        consumerSecret: resolved.discogs?.consumerSecret || globalDiscogsSecret || undefined,
-      },
+      discogs: resolvedDiscogs,
     }
   }
 
