@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Card } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { MarketplaceConfig, getDefaultMarketplaceConfig, validateMarketplaceConfig } from '@/lib/marketplace-scanner'
+import { MarketplaceConfig, getDefaultMarketplaceConfig, validateMarketplaceConfig, isDiscogsConfigured, isEbayConfigured } from '@/lib/marketplace-scanner'
 import { testEbayConnection } from '@/lib/marketplace-ebay'
 import { testDiscogsConnection } from '@/lib/marketplace-discogs'
 import { Info, CheckCircle, Warning, Lightning } from '@phosphor-icons/react'
@@ -19,11 +19,62 @@ interface MarketplaceSettingsDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
+/** Read Discogs credentials from global settings (localStorage). */
+function getGlobalDiscogsCredentials(): { userToken: string; consumerKey: string; consumerSecret: string } {
+  if (typeof localStorage === 'undefined') return { userToken: '', consumerKey: '', consumerSecret: '' }
+  try {
+    return {
+      userToken: localStorage.getItem('discogs_personal_token') ?? '',
+      consumerKey: localStorage.getItem('discogs_consumer_key') ?? '',
+      consumerSecret: localStorage.getItem('discogs_consumer_secret') ?? '',
+    }
+  } catch {
+    return { userToken: '', consumerKey: '', consumerSecret: '' }
+  }
+}
+
+/** Read eBay credentials from global settings (localStorage). */
+function getGlobalEbayCredentials(): { appId: string } {
+  if (typeof localStorage === 'undefined') return { appId: '' }
+  try {
+    return {
+      appId: localStorage.getItem('ebay_client_id') || localStorage.getItem('ebay_app_id') || '',
+    }
+  } catch {
+    return { appId: '' }
+  }
+}
+
 export function MarketplaceSettingsDialog({ open, onOpenChange }: MarketplaceSettingsDialogProps) {
   const [config, setConfig] = useKV<MarketplaceConfig>('marketplace-config', getDefaultMarketplaceConfig())
   const [tempConfig, setTempConfig] = useState<MarketplaceConfig>(config || getDefaultMarketplaceConfig())
   const [testingEbay, setTestingEbay] = useState(false)
   const [testingDiscogs, setTestingDiscogs] = useState(false)
+
+  // Track whether global API settings supply credentials for each marketplace.
+  const [globalDiscogs, setGlobalDiscogs] = useState({ userToken: '', consumerKey: '', consumerSecret: '' })
+  const [globalEbay, setGlobalEbay] = useState({ appId: '' })
+
+  useEffect(() => {
+    if (open) {
+      setTempConfig(config || getDefaultMarketplaceConfig())
+
+      const discogs = getGlobalDiscogsCredentials()
+      const ebay = getGlobalEbayCredentials()
+      setGlobalDiscogs(discogs)
+      setGlobalEbay(ebay)
+    }
+  }, [open, config])
+
+  const hasGlobalDiscogs =
+    !!globalDiscogs.userToken || (!!globalDiscogs.consumerKey && !!globalDiscogs.consumerSecret)
+  const hasGlobalEbay = !!globalEbay.appId
+
+  // A "complete" local credential set: either a personal token OR a full key+secret pair.
+  const hasLocalDiscogs = !!(
+    tempConfig.discogs?.userToken?.trim() ||
+    (tempConfig.discogs?.consumerKey?.trim() && tempConfig.discogs?.consumerSecret?.trim())
+  )
 
   const validation = validateMarketplaceConfig(tempConfig)
 
@@ -74,13 +125,14 @@ export function MarketplaceSettingsDialog({ open, onOpenChange }: MarketplaceSet
   }
 
   const handleTestEbay = async () => {
-    if (!tempConfig.ebay?.appId) {
+    const appId = tempConfig.ebay?.appId || globalEbay.appId
+    if (!appId) {
       toast.error('Please enter an eBay App ID first')
       return
     }
 
     setTestingEbay(true)
-    const result = await testEbayConnection(tempConfig.ebay)
+    const result = await testEbayConnection({ appId, marketplaceId: tempConfig.ebay?.marketplaceId })
     setTestingEbay(false)
 
     if (result.success) {
@@ -95,13 +147,35 @@ export function MarketplaceSettingsDialog({ open, onOpenChange }: MarketplaceSet
   }
 
   const handleTestDiscogs = async () => {
-    if (!tempConfig.discogs?.userToken && (!tempConfig.discogs?.consumerKey || !tempConfig.discogs?.consumerSecret)) {
+    const localDiscogs = tempConfig.discogs
+    const hasLocalUserToken = !!localDiscogs?.userToken
+    const hasLocalConsumerPair = !!localDiscogs?.consumerKey && !!localDiscogs?.consumerSecret
+    const hasGlobalUserToken = !!globalDiscogs.userToken
+    const hasGlobalConsumerPair = !!globalDiscogs.consumerKey && !!globalDiscogs.consumerSecret
+
+    const discogsToTest = hasLocalUserToken
+      ? { userToken: localDiscogs!.userToken }
+      : hasLocalConsumerPair
+        ? {
+            consumerKey: localDiscogs!.consumerKey,
+            consumerSecret: localDiscogs!.consumerSecret,
+          }
+        : hasGlobalUserToken
+          ? { userToken: globalDiscogs.userToken }
+          : hasGlobalConsumerPair
+            ? {
+                consumerKey: globalDiscogs.consumerKey,
+                consumerSecret: globalDiscogs.consumerSecret,
+              }
+            : null
+
+    if (!discogsToTest) {
       toast.error('Please enter Discogs credentials first')
       return
     }
 
     setTestingDiscogs(true)
-    const result = await testDiscogsConnection(tempConfig.discogs!)
+    const result = await testDiscogsConnection(discogsToTest)
     setTestingDiscogs(false)
 
     if (result.success) {
@@ -153,23 +227,35 @@ export function MarketplaceSettingsDialog({ open, onOpenChange }: MarketplaceSet
               </Label>
             </div>
 
+            {hasGlobalEbay && !tempConfig.ebay?.appId && (
+              <Alert className="bg-green-500/10 border-green-500/30">
+                <CheckCircle size={16} weight="fill" className="text-green-400" />
+                <AlertDescription className="text-sm">
+                  <span className="font-semibold text-green-400">eBay connected via API Settings.</span>{' '}
+                  Your eBay credentials are already configured in Settings and will be used automatically. You can optionally override them below.
+                </AlertDescription>
+              </Alert>
+            )}
+
             {tempConfig.enabledSources.includes('ebay') && (
               <>
-                <Alert>
-                  <Info size={16} />
-                  <AlertDescription className="text-sm">
-                    You need an eBay Developer account to get an App ID. Visit{' '}
-                    <a
-                      href="https://developer.ebay.com/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline text-accent"
-                    >
-                      developer.ebay.com
-                    </a>{' '}
-                    to create one.
-                  </AlertDescription>
-                </Alert>
+                {!hasGlobalEbay && (
+                  <Alert>
+                    <Info size={16} />
+                    <AlertDescription className="text-sm">
+                      You need an eBay Developer account to get an App ID. Visit{' '}
+                      <a
+                        href="https://developer.ebay.com/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline text-accent"
+                      >
+                        developer.ebay.com
+                      </a>{' '}
+                      to create one.
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 <Card className="p-4 space-y-4">
                   <div className="space-y-2">
@@ -177,12 +263,14 @@ export function MarketplaceSettingsDialog({ open, onOpenChange }: MarketplaceSet
                     <Input
                       id="ebay-app-id"
                       type="password"
-                      placeholder="Enter your eBay App ID"
+                      placeholder={hasGlobalEbay && !tempConfig.ebay?.appId ? 'Using credentials from Settings' : 'Enter your eBay App ID'}
                       value={tempConfig.ebay?.appId || ''}
                       onChange={(e) => updateEbayConfig('appId', e.target.value)}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Your eBay application client ID for Finding API access
+                      {hasGlobalEbay && !tempConfig.ebay?.appId
+                        ? 'Leave blank to use the eBay credentials from your API Settings.'
+                        : 'Your eBay application client ID for Finding API access'}
                     </p>
                   </div>
 
@@ -203,7 +291,7 @@ export function MarketplaceSettingsDialog({ open, onOpenChange }: MarketplaceSet
                     type="button"
                     variant="outline"
                     onClick={handleTestEbay}
-                    disabled={!tempConfig.ebay?.appId || testingEbay}
+                    disabled={!isEbayConfigured(tempConfig.ebay) || testingEbay}
                     className="w-full gap-2"
                   >
                     <Lightning size={16} />
@@ -226,23 +314,35 @@ export function MarketplaceSettingsDialog({ open, onOpenChange }: MarketplaceSet
               </Label>
             </div>
 
+            {hasGlobalDiscogs && !hasLocalDiscogs && (
+              <Alert className="bg-green-500/10 border-green-500/30">
+                <CheckCircle size={16} weight="fill" className="text-green-400" />
+                <AlertDescription className="text-sm">
+                  <span className="font-semibold text-green-400">Discogs connected via API Settings.</span>{' '}
+                  Your Discogs credentials are already configured in Settings and will be used automatically. You can optionally override them below.
+                </AlertDescription>
+              </Alert>
+            )}
+
             {tempConfig.enabledSources.includes('discogs') && (
               <>
-                <Alert>
-                  <Info size={16} />
-                  <AlertDescription className="text-sm">
-                    Get a Personal Access Token from{' '}
-                    <a
-                      href="https://www.discogs.com/settings/developers"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline text-accent"
-                    >
-                      Discogs Developer Settings
-                    </a>
-                    . For OAuth apps, use Consumer Key/Secret instead.
-                  </AlertDescription>
-                </Alert>
+                {!hasGlobalDiscogs && (
+                  <Alert>
+                    <Info size={16} />
+                    <AlertDescription className="text-sm">
+                      Get a Personal Access Token from{' '}
+                      <a
+                        href="https://www.discogs.com/settings/developers"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline text-accent"
+                      >
+                        Discogs Developer Settings
+                      </a>
+                      . For OAuth apps, use Consumer Key/Secret instead.
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 <Card className="p-4 space-y-4">
                   <div className="space-y-2">
@@ -250,12 +350,14 @@ export function MarketplaceSettingsDialog({ open, onOpenChange }: MarketplaceSet
                     <Input
                       id="discogs-token"
                       type="password"
-                      placeholder="Enter your Discogs personal token"
+                      placeholder={hasGlobalDiscogs && !hasLocalDiscogs ? 'Using credentials from Settings' : 'Enter your Discogs personal token'}
                       value={tempConfig.discogs?.userToken || ''}
                       onChange={(e) => updateDiscogsConfig('userToken', e.target.value)}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Easiest method - get this from your Discogs account settings
+                      {hasGlobalDiscogs && !hasLocalDiscogs
+                        ? 'Leave blank to use the Discogs credentials from your API Settings.'
+                        : 'Easiest method - get this from your Discogs account settings'}
                     </p>
                   </div>
 
@@ -289,7 +391,7 @@ export function MarketplaceSettingsDialog({ open, onOpenChange }: MarketplaceSet
                     type="button"
                     variant="outline"
                     onClick={handleTestDiscogs}
-                    disabled={(!tempConfig.discogs?.userToken && (!tempConfig.discogs?.consumerKey || !tempConfig.discogs?.consumerSecret)) || testingDiscogs}
+                    disabled={!isDiscogsConfigured(tempConfig.discogs) || testingDiscogs}
                     className="w-full gap-2"
                   >
                     <Lightning size={16} />
