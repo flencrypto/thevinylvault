@@ -210,7 +210,10 @@ export default function NewListingView() {
   }, [images, analysisStep, analysisResult, conditionResult, listingContent, manualOverride, manualData])
 
   const handleAnalyze = async () => {
-    if (!['idle', 'complete'].includes(analysisStep)) return
+    if (!['idle', 'complete'].includes(analysisStep)) {
+      toast.info('Analysis already in progress')
+      return
+    }
 
     if (images.length === 0) {
       toast.error('Please upload at least one image')
