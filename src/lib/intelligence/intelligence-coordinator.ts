@@ -848,8 +848,6 @@ Rules:
       const model = typeof parsed.xaiModel === 'string' ? parsed.xaiModel : 'grok-4-1-fast-reasoning'
       if (!apiKey) return null
 
-      localStorage.setItem('xai_api_key', apiKey)
-      localStorage.setItem('xai_model', model)
       return { apiKey, model }
     } catch {
       return null
@@ -885,9 +883,11 @@ Rules:
   }
 
   private _normalizeConfidence(value: unknown): number {
+    const PERCENT_SCALE = 100
     const numeric = Number(value)
     if (!Number.isFinite(numeric)) return 0.5
-    const normalized = numeric > 1 ? numeric / 100 : numeric
+    // Grok may return confidence as either a decimal (0-1) or a percentage (0-100).
+    const normalized = numeric > 1 ? numeric / PERCENT_SCALE : numeric
     return Math.round(Math.max(0, Math.min(1, normalized)) * 100) / 100
   }
 
