@@ -144,7 +144,8 @@ function sanitizeErrorMessage(message: string): string {
   if (!singleLine) return ''
 
   const hasSensitiveContent =
-    /(api[\s_-]*key|token|secret|authorization|bearer)/i.test(singleLine) ||
+    /(api[\s_-]*key|secret|authorization|bearer|access[\s_-]*token|refresh[\s_-]*token|id[\s_-]*token)/i.test(singleLine) ||
+    /bearer\s+[a-z0-9\-._~+/]+=*/i.test(singleLine) ||
     /sk-[a-z0-9_-]+/i.test(singleLine)
 
   if (hasSensitiveContent) {
