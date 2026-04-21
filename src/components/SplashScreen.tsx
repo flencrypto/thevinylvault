@@ -4,12 +4,20 @@ interface SplashScreenProps {
   onComplete: () => void
 }
 
+/**
+ * SplashScreen — Vinylasis intro animation.
+ *
+ * Uses the app's luxury oklch charcoal/gold palette so the first frame a user
+ * sees already feels consistent with the main UI (see `BrandMark` and
+ * `DesktopSidebar` for the same tokens). A single SVG draws the vinyl record
+ * and tonearm so the whole scene is vector-crisp on every display.
+ */
 export default function SplashScreen({ onComplete }: SplashScreenProps) {
   const [loaded, setLoaded] = useState(false)
   const [fading, setFading] = useState(false)
 
   useEffect(() => {
-    // Ensure DOM is ready and animations can start
+    // Ensure DOM is ready and animations can start on the next paint.
     requestAnimationFrame(() => {
       setLoaded(true)
     })
@@ -36,23 +44,42 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
         alignItems: 'center',
         justifyContent: 'center',
         padding: 'clamp(24px, 4vw, 48px)',
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)',
+        // Deep charcoal radial backdrop matching app chrome
+        background:
+          'radial-gradient(ellipse at 50% 35%, oklch(0.14 0.01 35) 0%, oklch(0.09 0.01 30) 55%, oklch(0.06 0.005 30) 100%)',
         opacity: fading ? 0 : 1,
         transition: fading ? 'opacity 0.7s ease-out' : 'none',
         pointerEvents: fading ? 'none' : 'auto',
       }}
+      role="status"
+      aria-live="polite"
+      aria-label="Vinylasis is loading"
     >
-      {/* Ambient glow behind record */}
+      {/* Subtle groove/noise texture overlay to add depth */}
       <div
-        className="absolute rounded-full"
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-[0.04]"
         style={{
-          width: '380px',
-          height: '380px',
-          background: 'radial-gradient(circle, rgba(251,191,36,0.2) 0%, rgba(139,92,246,0.12) 40%, rgba(59,130,246,0.08) 60%, transparent 75%)',
-          animation: loaded ? 'splashPulse 2.5s ease-in-out infinite' : 'none',
+          backgroundImage:
+            'repeating-radial-gradient(circle at 50% 50%, transparent 0px, transparent 6px, oklch(0.65 0.13 60) 6px, oklch(0.65 0.13 60) 7px)',
+          backgroundSize: '140px 140px',
+        }}
+      />
+
+      {/* Ambient gold glow behind record */}
+      <div
+        aria-hidden="true"
+        className="splash-glow absolute rounded-full"
+        style={{
+          width: 'clamp(320px, 55vw, 560px)',
+          height: 'clamp(320px, 55vw, 560px)',
+          background:
+            'radial-gradient(circle, oklch(0.65 0.13 60 / 0.28) 0%, oklch(0.55 0.10 55 / 0.14) 35%, oklch(0.40 0.08 50 / 0.06) 60%, transparent 78%)',
+          animation: loaded ? 'splashPulse 2.8s ease-in-out infinite' : 'none',
           opacity: loaded ? 1 : 0,
-          transform: loaded ? 'scale(1)' : 'scale(0.8)',
-          transition: 'opacity 0.6s ease-out, transform 0.6s ease-out',
+          transform: loaded ? 'scale(1)' : 'scale(0.85)',
+          transition: 'opacity 0.7s ease-out, transform 0.7s ease-out',
+          filter: 'blur(2px)',
         }}
       />
 
@@ -69,42 +96,67 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
           viewBox="0 0 200 200"
           width="100%"
           height="100%"
+          className="splash-record"
           style={{
-            animation: loaded ? 'splashSpin 2s linear infinite' : 'none',
+            animation: loaded ? 'splashSpin 2.4s linear infinite' : 'none',
             opacity: loaded ? 1 : 0,
             transform: loaded ? 'scale(1)' : 'scale(0.85)',
             transition: 'opacity 0.5s ease-out 0.2s, transform 0.5s ease-out 0.2s',
           }}
         >
-          {/* Drop shadow filter */}
           <defs>
             <filter id="recordShadow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="4" stdDeviation="8" floodColor="rgba(0,0,0,0.6)" />
+              <feDropShadow dx="0" dy="6" stdDeviation="10" floodColor="rgba(0,0,0,0.65)" />
             </filter>
-            <radialGradient id="vinylGrad" cx="35%" cy="30%" r="70%">
-              <stop offset="0%" stopColor="#2a2a2a" />
-              <stop offset="100%" stopColor="#0a0a0a" />
+
+            {/* Vinyl body — off-center radial for subtle illumination */}
+            <radialGradient id="vinylGrad" cx="32%" cy="28%" r="78%">
+              <stop offset="0%" stopColor="oklch(0.18 0.005 30)" />
+              <stop offset="55%" stopColor="oklch(0.09 0.005 30)" />
+              <stop offset="100%" stopColor="oklch(0.05 0.002 30)" />
             </radialGradient>
-            <radialGradient id="labelGrad" cx="40%" cy="35%" r="70%">
-              <stop offset="0%" stopColor="#fbbf24" />
-              <stop offset="60%" stopColor="#d97706" />
-              <stop offset="100%" stopColor="#92400e" />
+
+            {/* Gold label — matches BrandMark disc gradient */}
+            <radialGradient id="labelGrad" cx="38%" cy="32%" r="72%">
+              <stop offset="0%" stopColor="oklch(0.88 0.09 75)" />
+              <stop offset="45%" stopColor="oklch(0.72 0.13 65)" />
+              <stop offset="100%" stopColor="oklch(0.50 0.10 58)" />
             </radialGradient>
-            <radialGradient id="shineGrad" cx="30%" cy="25%" r="60%">
-              <stop offset="0%" stopColor="rgba(255,255,255,0.12)" />
+
+            {/* Thin gold rim stroke */}
+            <linearGradient id="rimGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="oklch(0.78 0.12 70 / 0.85)" />
+              <stop offset="50%" stopColor="oklch(0.55 0.10 58 / 0.50)" />
+              <stop offset="100%" stopColor="oklch(0.78 0.12 70 / 0.85)" />
+            </linearGradient>
+
+            {/* Static light sweep across the vinyl */}
+            <linearGradient id="sweepGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="rgba(255,255,255,0)" />
+              <stop offset="45%" stopColor="rgba(255,255,255,0.10)" />
+              <stop offset="55%" stopColor="rgba(255,255,255,0.16)" />
+              <stop offset="65%" stopColor="rgba(255,255,255,0.06)" />
               <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-            </radialGradient>
+            </linearGradient>
           </defs>
 
-          {/* Outer vinyl body */}
+          {/* Drop-shadowed vinyl body */}
           <circle cx="100" cy="100" r="96" fill="url(#vinylGrad)" filter="url(#recordShadow)" />
 
-          {/* Groove band outer edge highlight */}
-          <circle cx="100" cy="100" r="96" fill="none" stroke="#333" strokeWidth="1" />
+          {/* Gold outer rim — premium edge */}
+          <circle
+            cx="100"
+            cy="100"
+            r="95.25"
+            fill="none"
+            stroke="url(#rimGrad)"
+            strokeWidth="0.75"
+          />
 
-          {/* Vinyl grooves — concentric rings */}
-          {Array.from({ length: 22 }, (_, i) => {
-            const r = 52 + i * 2
+          {/* Vinyl grooves — concentric rings with alternating highlight */}
+          {Array.from({ length: 24 }, (_, i) => {
+            const r = 48 + i * 2
+            const isHighlight = i % 2 === 0
             return (
               <circle
                 key={i}
@@ -112,59 +164,73 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
                 cy="100"
                 r={r}
                 fill="none"
-                stroke={i % 2 === 0 ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.3)'}
-                strokeWidth="1"
+                stroke={isHighlight ? 'rgba(255,255,255,0.045)' : 'rgba(0,0,0,0.35)'}
+                strokeWidth={isHighlight ? 0.6 : 0.8}
               />
             )
           })}
 
+          {/* Light sweep reflection (rotates with record) */}
+          <circle cx="100" cy="100" r="96" fill="url(#sweepGrad)" />
+
           {/* Label background */}
-          <circle cx="100" cy="100" r="36" fill="url(#labelGrad)" />
+          <circle cx="100" cy="100" r="34" fill="url(#labelGrad)" />
 
-          {/* Label inner ring */}
-          <circle cx="100" cy="100" r="36" fill="none" stroke="rgba(0,0,0,0.3)" strokeWidth="1.5" />
-          <circle cx="100" cy="100" r="28" fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="1" />
+          {/* Label inner rings */}
+          <circle
+            cx="100"
+            cy="100"
+            r="34"
+            fill="none"
+            stroke="rgba(0,0,0,0.35)"
+            strokeWidth="1.25"
+          />
+          <circle
+            cx="100"
+            cy="100"
+            r="27"
+            fill="none"
+            stroke="rgba(0,0,0,0.22)"
+            strokeWidth="0.75"
+          />
 
-          {/* Label text - VA monogram */}
+          {/* Label wordmark — VINYLASIS, split across the spindle */}
           <text
             x="100"
-            y="96"
+            y="93"
             textAnchor="middle"
-            fill="rgba(0,0,0,0.7)"
-            fontSize="13"
-            fontWeight="bold"
-            fontFamily="ui-sans-serif, system-ui, sans-serif"
-            letterSpacing="1"
+            fill="oklch(0.15 0.02 35)"
+            fontSize="10"
+            fontWeight="700"
+            fontFamily='"Cormorant Garamond", Georgia, serif'
+            letterSpacing="3"
           >
             VINYL
           </text>
           <text
             x="100"
-            y="110"
+            y="116"
             textAnchor="middle"
-            fill="rgba(0,0,0,0.7)"
-            fontSize="11"
+            fill="oklch(0.15 0.02 35)"
+            fontSize="8"
             fontWeight="600"
-            fontFamily="ui-sans-serif, system-ui, sans-serif"
-            letterSpacing="2"
+            fontFamily='"Cormorant Garamond", Georgia, serif'
+            letterSpacing="4"
           >
-            AYSIS
+            ASIS
           </text>
 
           {/* Spindle hole */}
-          <circle cx="100" cy="100" r="4" fill="#080808" />
-          <circle cx="100" cy="100" r="2" fill="#1a1a1a" />
-
-          {/* Vinyl shine overlay */}
-          <circle cx="100" cy="100" r="96" fill="url(#shineGrad)" />
+          <circle cx="100" cy="100" r="3.5" fill="oklch(0.04 0.002 30)" />
+          <circle cx="100" cy="100" r="1.75" fill="oklch(0.14 0.005 30)" />
         </svg>
 
-        {/* Tonearm */}
+        {/* Tonearm — static overlay so it doesn't spin with the record */}
         <svg
           viewBox="0 0 200 200"
           width="100%"
           height="100%"
-          className="absolute inset-0 pointer-events-none"
+          className="splash-tonearm pointer-events-none absolute inset-0"
           style={{
             transformOrigin: '168px 28px',
             transformBox: 'view-box',
@@ -175,39 +241,63 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
         >
           <defs>
             <linearGradient id="armGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#94a3b8" />
-              <stop offset="100%" stopColor="#64748b" />
+              <stop offset="0%" stopColor="oklch(0.82 0.02 70)" />
+              <stop offset="55%" stopColor="oklch(0.58 0.015 55)" />
+              <stop offset="100%" stopColor="oklch(0.40 0.01 50)" />
             </linearGradient>
+            <radialGradient id="pivotGrad" cx="35%" cy="30%" r="80%">
+              <stop offset="0%" stopColor="oklch(0.75 0.02 65)" />
+              <stop offset="100%" stopColor="oklch(0.32 0.01 45)" />
+            </radialGradient>
+            <filter id="armShadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="1.5" stdDeviation="2" floodColor="rgba(0,0,0,0.55)" />
+            </filter>
           </defs>
 
-          {/* Pivot base circle */}
-          <circle cx="168" cy="28" r="7" fill="#334155" stroke="#475569" strokeWidth="1.5" />
-          <circle cx="168" cy="28" r="3.5" fill="#64748b" />
+          <g filter="url(#armShadow)">
+            {/* Counterweight */}
+            <rect x="170" y="18" width="18" height="10" rx="2.5" fill="url(#armGrad)" />
+            <rect
+              x="170"
+              y="18"
+              width="18"
+              height="10"
+              rx="2.5"
+              fill="none"
+              stroke="oklch(0.25 0.01 45)"
+              strokeWidth="0.6"
+            />
 
-          {/* Arm body — from pivot to headshell */}
-          <line
-            x1="168"
-            y1="28"
-            x2="122"
-            y2="88"
-            stroke="url(#armGrad)"
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
+            {/* Pivot base */}
+            <circle cx="168" cy="28" r="7.5" fill="url(#pivotGrad)" stroke="oklch(0.30 0.01 45)" strokeWidth="1" />
+            <circle cx="168" cy="28" r="3.25" fill="oklch(0.65 0.13 60)" />
 
-          {/* Headshell / cartridge angled section */}
-          <line
-            x1="122"
-            y1="88"
-            x2="114"
-            y2="99"
-            stroke="#94a3b8"
-            strokeWidth="3.5"
-            strokeLinecap="round"
-          />
+            {/* Arm body — pivot → headshell */}
+            <line
+              x1="168"
+              y1="28"
+              x2="122"
+              y2="88"
+              stroke="url(#armGrad)"
+              strokeWidth="3.25"
+              strokeLinecap="round"
+            />
 
-          {/* Stylus tip */}
-          <circle cx="113" cy="100" r="2.5" fill="#fbbf24" />
+            {/* Headshell / cartridge */}
+            <line
+              x1="122"
+              y1="88"
+              x2="114"
+              y2="99"
+              stroke="oklch(0.78 0.02 65)"
+              strokeWidth="4"
+              strokeLinecap="round"
+            />
+
+            {/* Stylus tip — gold */}
+            <circle cx="113" cy="100" r="2.75" fill="oklch(0.80 0.11 70)" />
+            <circle cx="113" cy="100" r="1" fill="oklch(0.95 0.04 80)" />
+          </g>
         </svg>
       </div>
 
@@ -221,42 +311,49 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
         }}
       >
         <h1
-          className="text-5xl md:text-6xl font-bold tracking-tight"
+          className="gold-foil-text text-5xl md:text-6xl font-bold"
           style={{
-            background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #fbbf24 100%)',
-            backgroundSize: '200% auto',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-            animation: loaded ? 'goldShimmer 3s linear infinite' : 'none',
+            fontFamily: '"Cormorant Garamond", Georgia, serif',
+            letterSpacing: '0.04em',
           }}
         >
-          Vinyl<span style={{ color: '#fff' }}>aysis</span>
+          Vinylasis
         </h1>
-        <p className="mt-3 text-sm md:text-base text-slate-300 tracking-[0.25em] uppercase font-medium">
+        <p
+          className="mt-3 text-[11px] md:text-xs font-semibold uppercase"
+          style={{
+            color: 'oklch(0.60 0.04 55)',
+            letterSpacing: '0.35em',
+          }}
+        >
           Premium Collection Manager
         </p>
       </div>
 
-      {/* Loading dots */}
+      {/* Progress bar — replaces bouncing dots for a more premium finish */}
       <div
-        className="mt-8 flex gap-2.5"
+        className="mt-8 relative overflow-hidden rounded-full"
         style={{
+          width: 'clamp(140px, 22vw, 200px)',
+          height: '2px',
+          background: 'oklch(0.20 0.01 35)',
           opacity: loaded ? 1 : 0,
           transform: loaded ? 'translateY(0)' : 'translateY(12px)',
           transition: 'opacity 0.6s ease-out 0.8s, transform 0.6s ease-out 0.8s',
         }}
+        role="progressbar"
+        aria-label="Loading Vinylasis"
       >
-        {[0, 1, 2].map((i) => (
-          <span
-            key={i}
-            className="block w-2 h-2 rounded-full bg-amber-400"
-            style={{
-              animation: loaded ? `splashDot 1.4s ease-in-out ${i * 0.25}s infinite` : 'none',
-              boxShadow: '0 0 8px rgba(251, 191, 36, 0.6)',
-            }}
-          />
-        ))}
+        <span
+          aria-hidden="true"
+          className="splash-progress-bar absolute inset-y-0 w-1/2 rounded-full"
+          style={{
+            background:
+              'linear-gradient(90deg, transparent 0%, oklch(0.65 0.13 60) 40%, oklch(0.88 0.09 75) 50%, oklch(0.65 0.13 60) 60%, transparent 100%)',
+            boxShadow: '0 0 10px oklch(0.65 0.13 60 / 0.6)',
+            animation: loaded ? 'splashProgress 1.6s ease-in-out infinite' : 'none',
+          }}
+        />
       </div>
     </div>
   )

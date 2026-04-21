@@ -23,6 +23,21 @@
   40%            { transform: scale(1.2); opacity: 1; }
 }
 
+@keyframes splashProgress {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Freeze splash animations for users who prefer reduced motion */
+  .splash-record,
+  .splash-tonearm,
+  .splash-glow,
+  .splash-progress-bar {
+    animation: none !important;
+  }
+}
+
 @keyframes vinylSpin {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
