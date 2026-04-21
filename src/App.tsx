@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Analytics } from '@vercel/analytics/react'
-import VinylalyisApp from '@/components/VinylVaultApp'
+import VinylasisApp from '@/components/VinylVaultApp'
 import SplashScreen from '@/components/SplashScreen'
 
 function App() {
@@ -11,7 +11,7 @@ function App() {
       {showSplash ? (
         <SplashScreen onComplete={() => setShowSplash(false)} />
       ) : (
-        <VinylalyisApp />
+        <VinylasisApp />
       )}
       <Analytics />
     </>

@@ -1,6 +1,6 @@
-import { Disc } from '@phosphor-icons/react'
 import type { ElementType } from 'react'
 import type { TabValue } from '@/lib/types'
+import BrandMark from './BrandMark'
 
 interface NavItem {
   value: TabValue
@@ -35,37 +35,15 @@ export default function DesktopSidebar({ navItems, activeTab, onTabChange, envLa
           backgroundImage: 'repeating-radial-gradient(circle at 50% 50%, transparent 0px, transparent 8px, oklch(0.65 0.13 60) 8px, oklch(0.65 0.13 60) 9px)',
           backgroundSize: '120px 120px',
         }}
+        aria-hidden="true"
       />
 
       {/* Branding */}
       <div
-        className="relative flex items-center gap-3 px-4 py-5"
+        className="relative px-4 py-5"
         style={{ borderBottom: '1px solid oklch(0.65 0.13 60 / 0.12)' }}
       >
-        {/* Vinyl disc logo with gold glow */}
-        <div className="relative flex-shrink-0">
-          <div
-            className="absolute inset-0 rounded-xl blur-md"
-            style={{ background: 'oklch(0.65 0.13 60 / 0.3)' }}
-          />
-          <div
-            className="relative w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"
-            style={{
-              background: 'linear-gradient(135deg, oklch(0.65 0.13 60) 0%, oklch(0.50 0.10 58) 100%)',
-              boxShadow: '0 0 16px oklch(0.65 0.13 60 / 0.35)',
-            }}
-          >
-            <Disc className="w-5 h-5" weight="bold" style={{ color: 'oklch(0.08 0.01 35)' }} />
-          </div>
-        </div>
-        <div className="min-w-0">
-          <h1 className="text-base font-bold leading-tight truncate gold-foil-text" style={{ fontFamily: '"Cormorant Garamond", Georgia, serif', fontSize: '1.125rem', letterSpacing: '0.04em' }}>
-            Vinylasis
-          </h1>
-          <p className="text-[10px] truncate leading-tight" style={{ color: 'oklch(0.50 0.04 55)' }}>
-            {envLabel} · {modeLabel}
-          </p>
-        </div>
+        <BrandMark size="sm" subtitle={`${envLabel} · ${modeLabel}`} />
       </div>
 
       {/* Spacer */}

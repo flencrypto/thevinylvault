@@ -45,7 +45,7 @@ const TabFallback = () => (
   />
 )
 
-export default function VinylalyisApp() {
+export default function VinylasisApp() {
   const [activeTab, setActiveTab] = useKV<TabValue>('vinyl-vault-active-tab', 'new-listing')
   const { isPWA, isIOS, isAndroid } = useDeviceDetect()
 
