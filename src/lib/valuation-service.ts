@@ -145,10 +145,10 @@ export class ValuationService {
       item.condition.sleeveGrade
     );
 
-    let baseValue = 0;
     let confidenceScore = 0.3;
     const explanations: ValuationExplanation[] = [];
 
+    let baseValue: number;
     if (comparableSales.length > 0) {
       const recentComps = comparableSales.filter((c) => {
         const days = (Date.now() - new Date(c.soldAt).getTime()) / (86400000);

@@ -90,7 +90,7 @@ class WebScrapingService {
   }
 
   private _loadConfig(): ScrapingConfig {
-    let proxyList: string[] = []
+    let proxyList: string[];
     try {
       proxyList = JSON.parse(localStorage.getItem('web_scraping_proxy_list') || '[]')
     } catch {
@@ -222,11 +222,12 @@ class WebScrapingService {
       return result.results as RawScrapedItem[]
     } catch (error: unknown) {
       if (error instanceof DOMException && error.name === 'AbortError') {
-        throw new Error(`API request timed out after ${timeoutMs / 1000} seconds`)
+        throw new Error(`API request timed out after ${timeoutMs / 1000} seconds`, { cause: error })
       }
       if (error instanceof TypeError && error.message.includes('fetch')) {
         throw new Error(
           'API server not reachable. Make sure the Python server is running on port 5000.',
+          { cause: error }
         )
       }
       throw error

@@ -282,7 +282,7 @@ export async function analyzeMarketTrend(
     velocity = 'slow'
   }
 
-  let analysis = ''
+  let analysis: string;
   if (trend === 'rising') {
     analysis = `Prices have increased by ${priceChangePercent30d.toFixed(1)}% over the last 30 days. `
     if (velocity === 'fast') {

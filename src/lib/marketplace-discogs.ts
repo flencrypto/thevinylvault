@@ -225,11 +225,11 @@ export async function searchDiscogsMarketplace(
       return results
     } catch (error) {
       clearTimeout(timeoutId)
-      
+
       if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Discogs search timed out after 30 seconds. Please try again with more specific search criteria.')
+        throw new Error('Discogs search timed out after 30 seconds. Please try again with more specific search criteria.', { cause: error })
       }
-      
+
       throw error
     }
   })

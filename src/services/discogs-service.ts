@@ -414,6 +414,7 @@ class DiscogsService {
         if (err instanceof Error && err.name === 'AbortError') {
           throw new Error(
             `Discogs request timed out after ${REQUEST_TIMEOUT_MS / 1000} seconds. Please try again.`,
+            { cause: err }
           );
         }
 

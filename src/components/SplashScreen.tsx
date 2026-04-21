@@ -5,11 +5,18 @@ interface SplashScreenProps {
 }
 
 export default function SplashScreen({ onComplete }: SplashScreenProps) {
+  const [loaded, setLoaded] = useState(false)
   const [fading, setFading] = useState(false)
 
   useEffect(() => {
-    const fadeTimer = setTimeout(() => setFading(true), 2500)
-    const completeTimer = setTimeout(() => onComplete(), 3100)
+    // Ensure DOM is ready and animations can start
+    requestAnimationFrame(() => {
+      setLoaded(true)
+    })
+
+    const fadeTimer = setTimeout(() => setFading(true), 2800)
+    const completeTimer = setTimeout(() => onComplete(), 3500)
+
     return () => {
       clearTimeout(fadeTimer)
       clearTimeout(completeTimer)
@@ -18,7 +25,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex min-h-screen w-screen flex-col items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden"
+      className="fixed inset-0 z-50 flex min-h-screen w-screen flex-col items-center justify-center overflow-hidden"
       style={{
         position: 'fixed',
         inset: 0,
@@ -29,18 +36,23 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
         alignItems: 'center',
         justifyContent: 'center',
         padding: 'clamp(24px, 4vw, 48px)',
+        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)',
         opacity: fading ? 0 : 1,
-        transition: fading ? 'opacity 0.6s ease-out' : undefined,
+        transition: fading ? 'opacity 0.7s ease-out' : 'none',
+        pointerEvents: fading ? 'none' : 'auto',
       }}
     >
       {/* Ambient glow behind record */}
       <div
         className="absolute rounded-full"
         style={{
-          width: '320px',
-          height: '320px',
-          background: 'radial-gradient(circle, rgba(251,191,36,0.15) 0%, rgba(139,92,246,0.08) 50%, transparent 70%)',
-          animation: 'splashPulse 2s ease-in-out infinite',
+          width: '380px',
+          height: '380px',
+          background: 'radial-gradient(circle, rgba(251,191,36,0.2) 0%, rgba(139,92,246,0.12) 40%, rgba(59,130,246,0.08) 60%, transparent 75%)',
+          animation: loaded ? 'splashPulse 2.5s ease-in-out infinite' : 'none',
+          opacity: loaded ? 1 : 0,
+          transform: loaded ? 'scale(1)' : 'scale(0.8)',
+          transition: 'opacity 0.6s ease-out, transform 0.6s ease-out',
         }}
       />
 
@@ -57,7 +69,12 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
           viewBox="0 0 200 200"
           width="100%"
           height="100%"
-          style={{ animation: 'splashSpin 1.8s linear infinite' }}
+          style={{
+            animation: loaded ? 'splashSpin 2s linear infinite' : 'none',
+            opacity: loaded ? 1 : 0,
+            transform: loaded ? 'scale(1)' : 'scale(0.85)',
+            transition: 'opacity 0.5s ease-out 0.2s, transform 0.5s ease-out 0.2s',
+          }}
         >
           {/* Drop shadow filter */}
           <defs>
@@ -151,7 +168,9 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
           style={{
             transformOrigin: '168px 28px',
             transformBox: 'view-box',
-            animation: 'tonearmSwing 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s both',
+            animation: loaded ? 'tonearmSwing 1.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s both' : 'none',
+            opacity: loaded ? 1 : 0,
+            transition: 'opacity 0.4s ease-out 0.3s',
           }}
         >
           <defs>
@@ -194,30 +213,47 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
 
       {/* Branding */}
       <div
-        className="mt-8 text-center"
+        className="mt-10 text-center"
         style={{
-          animation: 'splashFadeUp 0.6s ease-out 0.4s both',
+          opacity: loaded ? 1 : 0,
+          transform: loaded ? 'translateY(0)' : 'translateY(16px)',
+          transition: 'opacity 0.7s ease-out 0.5s, transform 0.7s ease-out 0.5s',
         }}
       >
-        <h1 className="text-4xl font-bold tracking-tight text-white">
-          Vinyl<span className="text-amber-400">aysis</span>
+        <h1
+          className="text-5xl md:text-6xl font-bold tracking-tight"
+          style={{
+            background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #fbbf24 100%)',
+            backgroundSize: '200% auto',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            animation: loaded ? 'goldShimmer 3s linear infinite' : 'none',
+          }}
+        >
+          Vinyl<span style={{ color: '#fff' }}>aysis</span>
         </h1>
-        <p className="mt-2 text-sm text-slate-400 tracking-widest uppercase">
-          Record Management
+        <p className="mt-3 text-sm md:text-base text-slate-300 tracking-[0.25em] uppercase font-medium">
+          Premium Collection Manager
         </p>
       </div>
 
       {/* Loading dots */}
       <div
-        className="mt-6 flex gap-2"
-        style={{ animation: 'splashFadeUp 0.6s ease-out 0.7s both' }}
+        className="mt-8 flex gap-2.5"
+        style={{
+          opacity: loaded ? 1 : 0,
+          transform: loaded ? 'translateY(0)' : 'translateY(12px)',
+          transition: 'opacity 0.6s ease-out 0.8s, transform 0.6s ease-out 0.8s',
+        }}
       >
         {[0, 1, 2].map((i) => (
           <span
             key={i}
-            className="block w-1.5 h-1.5 rounded-full bg-amber-400"
+            className="block w-2 h-2 rounded-full bg-amber-400"
             style={{
-              animation: `splashDot 1.2s ease-in-out ${i * 0.2}s infinite`,
+              animation: loaded ? `splashDot 1.4s ease-in-out ${i * 0.25}s infinite` : 'none',
+              boxShadow: '0 0 8px rgba(251, 191, 36, 0.6)',
             }}
           />
         ))}
