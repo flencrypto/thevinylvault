@@ -112,7 +112,6 @@ export function useKV<T = string>(
         return next
       })
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [key]
   )
 

@@ -142,7 +142,7 @@ class TesseractOCRService {
 
     // ── 2. Catalogue number ──────────────────────────────────────────────
     const catPatterns = [
-      /\b([A-Z]{1,5}[\s\-]?\d{3,8}(?:[\s\-][A-Z])?)\b/g,
+      /\b([A-Z]{1,5}[\s-]?\d{3,8}(?:[\s-][A-Z])?)\b/g,
       /\b(\d[A-Z]\s\d{3}-\d{4,6})\b/g,
     ]
     const catCandidates: string[] = []
@@ -245,7 +245,7 @@ class TesseractOCRService {
   }
 
   private _extractMatrixLines(lines: string[]): string[] {
-    const matrixPattern = /^[A-Z0-9]{2,6}[\s\-][A-Z0-9]{2,8}(?:[\s\-][A-Z0-9]{1,4})*$/
+    const matrixPattern = /^[A-Z0-9]{2,6}[\s-][A-Z0-9]{2,8}(?:[\s-][A-Z0-9]{1,4})*$/
     const results: string[] = []
 
     for (const line of lines) {
@@ -346,7 +346,7 @@ class TesseractOCRService {
         l.length >= 3 &&
         l.length <= 80 &&
         /[A-Za-z]{2}/.test(l) &&
-        !/^[\d\s\-\/\\|]+$/.test(l) &&
+        !/^[\d\s\-/\\|]+$/.test(l) &&
         !/^(side|track|stereo|mono|℗|©|\(c\))/i.test(l)
     )
 
@@ -369,7 +369,7 @@ class TesseractOCRService {
     const stripped = normalized
       .replace(/^(?:side\s*[AB12]\s*[-:.]?\s*)/i, '')
       .replace(/^(?:track\s*\d+\s*[-:.]?\s*)/i, '')
-      .replace(/^\d{1,2}[\).:-]?\s*/, '')
+      .replace(/^\d{1,2}[).:-]?\s*/, '')
       .trim()
 
     if (stripped.length < 3 || stripped.length > 60) return false

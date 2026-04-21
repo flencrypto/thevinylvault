@@ -15,23 +15,35 @@ import {
   Robot,
   Disc,
 } from '@phosphor-icons/react'
-import CollectionView from './CollectionView'
-import BargainsView from './BargainsView'
-import WatchlistView from './WatchlistView'
-import NFTView from './NFTView'
-import EbayDeletionChecklist from './ebay/EbayDeletionChecklist'
-import NewListingView from './NewListingView'
-import SettingsView from './SettingsView'
-import MarketplaceComparisonView from './MarketplaceComparisonView'
-import DealScannerView from './DealScannerView'
 import PWAUpdatePrompt from './PWAUpdatePrompt'
-import ValuationAgentWorkflow from './ValuationAgentWorkflow'
 import { scanSchedulerService } from '@/lib/scan-scheduler-service'
 import { useDeviceDetect } from '@/hooks/use-device-detect'
 import AppLayout from './layout/AppLayout'
 import type { TabValue } from '@/lib/types'
 
+// Code-split every top-level tab view. Only the active tab is mounted
+// (Tabs renders one TabsContent at a time), so this reduces the initial
+// JS bundle significantly without any behavior change.
+const NewListingView = lazy(() => import('./NewListingView'))
+const CollectionView = lazy(() => import('./CollectionView'))
+const BargainsView = lazy(() => import('./BargainsView'))
+const WatchlistView = lazy(() => import('./WatchlistView'))
+const MarketplaceComparisonView = lazy(() => import('./MarketplaceComparisonView'))
+const NFTView = lazy(() => import('./NFTView'))
+const DealScannerView = lazy(() => import('./DealScannerView'))
+const EbayDeletionChecklist = lazy(() => import('./ebay/EbayDeletionChecklist'))
+const ValuationAgentWorkflow = lazy(() => import('./ValuationAgentWorkflow'))
+const SettingsView = lazy(() => import('./SettingsView'))
 const SetupView = lazy(() => import('./SetupView'))
+
+const TabFallback = () => (
+  <div
+    role="status"
+    aria-live="polite"
+    aria-label="Loading view"
+    className="flex items-center justify-center min-h-[60vh] bg-slate-950"
+  />
+)
 
 export default function VinylalyisApp() {
   const [activeTab, setActiveTab] = useKV<TabValue>('vinyl-vault-active-tab', 'new-listing')
@@ -78,41 +90,41 @@ export default function VinylalyisApp() {
           onValueChange={(v) => setActiveTab(v as TabValue)}
           className="w-full"
         >
-          <TabsContent value="new-listing" className="m-0 p-0">
-            <NewListingView />
-          </TabsContent>
-          <TabsContent value="collection" className="m-0 p-0">
-            <CollectionView />
-          </TabsContent>
-          <TabsContent value="bargains" className="m-0 p-0">
-            <BargainsView />
-          </TabsContent>
-          <TabsContent value="watchlist" className="m-0 p-0">
-            <WatchlistView />
-          </TabsContent>
-          <TabsContent value="comparison" className="m-0 p-0">
-            <MarketplaceComparisonView />
-          </TabsContent>
-          <TabsContent value="nfts" className="m-0 p-0">
-            <NFTView />
-          </TabsContent>
-          <TabsContent value="deals" className="m-0 p-0">
-            <DealScannerView />
-          </TabsContent>
-          <TabsContent value="ebay-dev" className="m-0 p-0">
-            <EbayDeletionChecklist />
-          </TabsContent>
-          <TabsContent value="agents" className="m-0 p-0">
-            <ValuationAgentWorkflow />
-          </TabsContent>
-          <TabsContent value="settings" className="m-0 p-0">
-            <SettingsView />
-          </TabsContent>
-          <TabsContent value="setup" className="m-0 p-0">
-            <Suspense fallback={<div className="flex items-center justify-center min-h-screen bg-slate-950" />}>
+          <Suspense fallback={<TabFallback />}>
+            <TabsContent value="new-listing" className="m-0 p-0">
+              <NewListingView />
+            </TabsContent>
+            <TabsContent value="collection" className="m-0 p-0">
+              <CollectionView />
+            </TabsContent>
+            <TabsContent value="bargains" className="m-0 p-0">
+              <BargainsView />
+            </TabsContent>
+            <TabsContent value="watchlist" className="m-0 p-0">
+              <WatchlistView />
+            </TabsContent>
+            <TabsContent value="comparison" className="m-0 p-0">
+              <MarketplaceComparisonView />
+            </TabsContent>
+            <TabsContent value="nfts" className="m-0 p-0">
+              <NFTView />
+            </TabsContent>
+            <TabsContent value="deals" className="m-0 p-0">
+              <DealScannerView />
+            </TabsContent>
+            <TabsContent value="ebay-dev" className="m-0 p-0">
+              <EbayDeletionChecklist />
+            </TabsContent>
+            <TabsContent value="agents" className="m-0 p-0">
+              <ValuationAgentWorkflow />
+            </TabsContent>
+            <TabsContent value="settings" className="m-0 p-0">
+              <SettingsView />
+            </TabsContent>
+            <TabsContent value="setup" className="m-0 p-0">
               <SetupView onGoToSettings={() => setActiveTab('settings')} />
-            </Suspense>
-          </TabsContent>
+            </TabsContent>
+          </Suspense>
         </Tabs>
       </AppLayout>
     </>
