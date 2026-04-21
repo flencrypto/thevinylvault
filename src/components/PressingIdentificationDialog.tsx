@@ -35,15 +35,6 @@ export function PressingIdentificationDialog({
   existingImages,
 }: PressingIdentificationDialogProps) {
   const [images, setImages] = useState<ItemImage[]>(existingImages ?? [])
-
-  // When the dialog is (re)opened, seed its image state with any images the
-  // caller has already collected so the user doesn't have to re-upload them
-  // after running image analysis or other AI flows.
-  useEffect(() => {
-    if (open && existingImages && existingImages.length > 0) {
-      setImages(prev => (prev.length === 0 ? existingImages : prev))
-    }
-  }, [open, existingImages])
   const [manualHints, setManualHints] = useState({
     artist: '',
     title: '',
@@ -63,6 +54,41 @@ export function PressingIdentificationDialog({
   const [discogsEnabled, setDiscogsEnabled] = useState(true)
   const [apiKeys] = useKV<{ discogsUserToken?: string }>('vinyl-vault-api-keys', {})
   const { getThreshold, shouldAutoMatch } = useConfidenceThresholds()
+
+  // Reset transient dialog state whenever it closes so a subsequent open
+  // reliably reseeds from `existingImages` and doesn't show stale candidates
+  // or images. This covers closes via the Dialog "X", overlay click, and Esc,
+  // which bypass the explicit reset buttons.
+  useEffect(() => {
+    if (!open) {
+      setImages([])
+      setManualHints({
+        artist: '',
+        title: '',
+        catalogNumber: '',
+        country: '',
+        year: '',
+        format: '',
+        labelName: '',
+      })
+      setOcrRunoutValues('')
+      setIsAnalyzing(false)
+      setAnalysisProgress(0)
+      setCandidates([])
+      setShowReveal(false)
+      setSelectedCandidate(null)
+      setAutoMatchedCandidate(null)
+    }
+  }, [open])
+
+  // When the dialog is (re)opened, seed its image state with any images the
+  // caller has already collected so the user doesn't have to re-upload them
+  // after running image analysis or other AI flows.
+  useEffect(() => {
+    if (open && existingImages && existingImages.length > 0) {
+      setImages(prev => (prev.length === 0 ? existingImages : prev))
+    }
+  }, [open, existingImages])
 
   useEffect(() => {
     if (candidates.length > 0) {
