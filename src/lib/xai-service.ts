@@ -121,6 +121,15 @@ export class XAIService {
     return !!this.apiKey
   }
 
+  async getRuntimeConfig(): Promise<{ apiKey: string | null; model: string; baseUrl: string }> {
+    await this._syncFromKv()
+    return {
+      apiKey: this.apiKey,
+      model: this.model,
+      baseUrl: this.baseUrl,
+    }
+  }
+
   isVisionModel(modelName: string): boolean {
     if (!modelName) return false
     const name = modelName.toLowerCase()

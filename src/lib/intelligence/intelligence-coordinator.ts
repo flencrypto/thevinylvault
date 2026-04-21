@@ -7,6 +7,7 @@
 import { tesseractOCRService } from '../tesseract-ocr-service'
 import { identifyPressing } from '../pressing-identification-ai'
 import type { ScoredPressingCandidate } from '../pressing-identification-ai'
+import { xaiService } from '../xai-service'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -734,8 +735,8 @@ class VinylIntelligenceCoordinator {
     sold: SoldPricesResult,
     discogsMarket: DiscogsMarketResult
   ): Promise<ValuationResult | null> {
-    const creds = await this._resolveXaiCredentials()
-    if (!creds?.apiKey) return null
+    const { apiKey, model, baseUrl } = await xaiService.getRuntimeConfig()
+    if (!apiKey) return null
 
     const systemPrompt = `You are Vinylasis's valuation model. Return only valid JSON with:
 {
@@ -756,14 +757,14 @@ Rules:
     const payload = this._buildGrokValuationPayload(pressing, sold, discogsMarket)
 
     try {
-      const response = await fetch('https://api.x.ai/v1/chat/completions', {
+      const response = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${creds.apiKey}`,
+          Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: creds.model,
+          model,
           response_format: { type: 'json_object' },
           temperature: 0.1,
           max_tokens: 600,
@@ -802,6 +803,9 @@ Rules:
       }
 
       const sorted = [estimateLow, estimateMid, estimateHigh].sort((a, b) => a - b)
+      if (sorted.some((estimate) => estimate <= 0)) {
+        return null
+      }
       const currency =
         typeof parsed.currency === 'string' && parsed.currency.trim()
           ? parsed.currency.trim().toUpperCase()
@@ -823,32 +827,6 @@ Rules:
       }
     } catch (err) {
       console.warn('Grok value identification failed:', err)
-      return null
-    }
-  }
-
-  private async _resolveXaiCredentials(): Promise<{ apiKey: string; model: string } | null> {
-    const directApiKey = localStorage.getItem('xai_api_key')
-    const directModel = localStorage.getItem('xai_model') || 'grok-4-1-fast-reasoning'
-    if (directApiKey) {
-      return { apiKey: directApiKey, model: directModel }
-    }
-
-    const sparkKv = (globalThis as { spark?: { kv?: { get?: (key: string) => Promise<unknown> } } })?.spark?.kv
-    if (!sparkKv?.get) return null
-
-    try {
-      const raw = await sparkKv.get('vinyl-vault-api-keys')
-      if (!raw) return null
-      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
-      if (!parsed || typeof parsed !== 'object') return null
-
-      const apiKey = typeof parsed.xaiApiKey === 'string' ? parsed.xaiApiKey : null
-      const model = typeof parsed.xaiModel === 'string' ? parsed.xaiModel : 'grok-4-1-fast-reasoning'
-      if (!apiKey) return null
-
-      return { apiKey, model }
-    } catch {
       return null
     }
   }
