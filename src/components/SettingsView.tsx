@@ -676,7 +676,7 @@ export default function SettingsView() {
               </div>
               <p className="text-xs text-slate-500 flex items-start gap-1">
                 <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                Required for uploading photos to eBay listings. Get your free API key at <a href="https://api.imgbb.com" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">api.imgbb.com</a>. Images are hosted externally and embedded in marketplace HTML descriptions.
+                Required for uploading photos to eBay listings. Get your free API key at <a href="https://api.imgbb.com" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">https://api.imgbb.com</a>. Uploaded images are hosted externally and embedded in marketplace HTML descriptions.
               </p>
             </div>
 

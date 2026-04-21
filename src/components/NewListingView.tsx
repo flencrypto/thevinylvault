@@ -178,6 +178,8 @@ export default function NewListingView() {
   // immediately overwrite the draft with blank state before we've had a chance
   // to restore it.
   const draftRestoredRef = useRef(false)
+  const analysisRunIdRef = useRef(0)
+  const analysisInFlightRef = useRef(false)
 
   // Restore draft on mount
   useEffect(() => {
@@ -209,16 +211,31 @@ export default function NewListingView() {
   }, [images, analysisStep, analysisResult, conditionResult, listingContent, manualOverride, manualData])
 
   const handleAnalyze = async () => {
+    if (analysisInFlightRef.current) {
+      toast.info('Analysis already in progress')
+      return
+    }
+
     if (images.length === 0) {
       toast.error('Please upload at least one image')
       return
     }
 
+    analysisInFlightRef.current = true
+    const runId = ++analysisRunIdRef.current
+    const isCancelled = () => runId !== analysisRunIdRef.current
+
     try {
+      setAnalysisResult(null)
+      setConditionResult(null)
+      setListingContent(null)
+      setPricingRecommendation(null)
+      setUsedPatternOptimization(false)
       setAnalysisStep('analyzing_images')
       const imageAnalysisResults = await Promise.all(
         images.map(img => analyzeVinylImage(img.dataUrl, img.type))
       )
+      if (isCancelled()) return
       
       setAnalysisStep('identifying_pressing')
       const [pressingCandidates, conditionAnalysis] = await Promise.all([
@@ -228,6 +245,7 @@ export default function NewListingView() {
         }),
         analyzeConditionFromImages(images),
       ])
+      if (isCancelled()) return
       
       const bestCandidate = pressingCandidates[0]
       
@@ -248,6 +266,7 @@ export default function NewListingView() {
       
       setAnalysisStep('grading_condition')
       const gradingNotes = await suggestGradingNotes(conditionAnalysis.defects)
+      if (isCancelled()) return
       
       setConditionResult({
         mediaGrade: conditionAnalysis.mediaGrade || 'VG+',
@@ -283,10 +302,12 @@ export default function NewListingView() {
       }
       
       const keywords = await generateSEOKeywords(tempItem, 'ebay')
+      if (isCancelled()) return
       const listingCopy = await generateListingCopy(tempItem, 'ebay', keywords, {
         autoOptimizeEnabled: autoOptimize,
         completedABTests: (abTests || []).filter(t => t.status === 'completed')
       })
+      if (isCancelled()) return
       const priceEstimate = generatePriceEstimate(tempItem)
       const suggestedPrice = suggestListingPrice(priceEstimate, tempItem.condition.mediaGrade)
       
@@ -310,10 +331,42 @@ export default function NewListingView() {
       
       toast.success('Analysis complete! Review the results below.')
     } catch (error) {
+      if (isCancelled()) return
       console.error('Analysis failed:', error)
       toast.error('Analysis failed. Please try again or enter details manually.')
       setAnalysisStep('idle')
+    } finally {
+      if (runId === analysisRunIdRef.current) {
+        analysisInFlightRef.current = false
+      }
     }
+  }
+
+  const cancelCurrentAnalysis = () => {
+    ++analysisRunIdRef.current
+    analysisInFlightRef.current = false
+    setAnalysisStep('idle')
+  }
+
+  const handleCancelAndResetImages = () => {
+    cancelCurrentAnalysis()
+    setImages([])
+    setAnalysisResult(null)
+    setConditionResult(null)
+    setListingContent(null)
+    setPricingRecommendation(null)
+    setUsedPatternOptimization(false)
+    toast.info('Image analysis cancelled and images reset.')
+  }
+
+  const handleCancelReleaseAnalysis = () => {
+    cancelCurrentAnalysis()
+    setAnalysisResult(null)
+    setConditionResult(null)
+    setListingContent(null)
+    setPricingRecommendation(null)
+    setUsedPatternOptimization(false)
+    toast.info('Release analysis cancelled. Uploaded images were kept.')
   }
 
   const handleAddToCollection = () => {
@@ -500,6 +553,23 @@ export default function NewListingView() {
                   label="Generating listing"
                   status={analysisStep === 'generating_listing' ? 'active' : analysisStep === 'complete' ? 'complete' : 'pending'}
                 />
+              </div>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <Button
+                  variant="destructive"
+                  onClick={handleCancelAndResetImages}
+                  size="sm"
+                >
+                  Cancel & Reset Images
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleCancelReleaseAnalysis}
+                  size="sm"
+                  className="border-slate-600/80 bg-slate-900/70 hover:bg-slate-800/80"
+                >
+                  Cancel Release Analysis
+                </Button>
               </div>
             </Card>
           )}

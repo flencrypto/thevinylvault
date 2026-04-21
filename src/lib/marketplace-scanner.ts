@@ -23,6 +23,10 @@ export async function scanMarketplaces(
   config: MarketplaceConfig,
   options?: MarketplaceScanOptions
 ): Promise<MarketListing[]> {
+  // Merge marketplace-specific credentials with global settings so that
+  // credentials entered in the Settings view are used automatically.
+  config = resolveMarketplaceConfig(config)
+
   const allListings: MarketListing[] = []
   
   const searchTerms: string[] = watchlistItems.map(item => {
@@ -83,6 +87,10 @@ export async function searchAllMarketplaces(
   config: MarketplaceConfig,
   options?: MarketplaceScanOptions
 ): Promise<MarketListing[]> {
+  // Merge marketplace-specific credentials with global settings so that
+  // credentials entered in the Settings view are used automatically.
+  config = resolveMarketplaceConfig(config)
+
   const allListings: MarketListing[] = []
 
   if (config.enabledSources.includes('ebay') && config.ebay) {
@@ -141,6 +149,147 @@ export function getDefaultMarketplaceConfig(): MarketplaceConfig {
   }
 }
 
+/** Safe localStorage read that returns a trimmed string or '' in environments without localStorage. */
+function safeLS(key: string): string {
+  try {
+    return (typeof localStorage !== 'undefined' && localStorage.getItem(key)?.trim()) || ''
+  } catch {
+    return ''
+  }
+}
+
+function resolveDiscogsConfig(config?: DiscogsApiConfig): DiscogsApiConfig | undefined {
+  if (!config) {
+    const globalDiscogsToken = safeLS('discogs_personal_token')
+    if (globalDiscogsToken) {
+      return {
+        userToken: globalDiscogsToken,
+        consumerKey: undefined,
+        consumerSecret: undefined,
+      }
+    }
+
+    const globalDiscogsKey = safeLS('discogs_consumer_key')
+    const globalDiscogsSecret = safeLS('discogs_consumer_secret')
+    if (globalDiscogsKey && globalDiscogsSecret) {
+      return {
+        userToken: undefined,
+        consumerKey: globalDiscogsKey,
+        consumerSecret: globalDiscogsSecret,
+      }
+    }
+
+    return undefined
+  }
+
+  const {
+    userToken,
+    consumerKey,
+    consumerSecret,
+    ...rest
+  } = config
+
+  if (userToken) {
+    return {
+      ...rest,
+      userToken,
+      consumerKey: undefined,
+      consumerSecret: undefined,
+    }
+  }
+
+  if (consumerKey && consumerSecret) {
+    return {
+      ...rest,
+      userToken: undefined,
+      consumerKey,
+      consumerSecret,
+    }
+  }
+
+  const globalDiscogsToken = safeLS('discogs_personal_token')
+  if (globalDiscogsToken) {
+    return {
+      ...rest,
+      userToken: globalDiscogsToken,
+      consumerKey: undefined,
+      consumerSecret: undefined,
+    }
+  }
+
+  const globalDiscogsKey = safeLS('discogs_consumer_key')
+  const globalDiscogsSecret = safeLS('discogs_consumer_secret')
+  if (globalDiscogsKey && globalDiscogsSecret) {
+    return {
+      ...rest,
+      userToken: undefined,
+      consumerKey: globalDiscogsKey,
+      consumerSecret: globalDiscogsSecret,
+    }
+  }
+
+  return config
+}
+
+/**
+ * Reads Discogs and eBay credentials from localStorage (set by the global
+ * Settings view) and merges them into the given marketplace config as
+ * fallbacks for any fields that are not already explicitly set.
+ *
+ * This allows the marketplace scanner to work automatically once credentials
+ * are entered in the app's Settings section, without requiring the user to
+ * re-enter them in the marketplace configuration dialog.
+ */
+export function resolveMarketplaceConfig(config: MarketplaceConfig): MarketplaceConfig {
+  let resolved = { ...config }
+
+  const resolvedDiscogs = resolveDiscogsConfig(resolved.discogs)
+  if (resolvedDiscogs) {
+    resolved = {
+      ...resolved,
+      discogs: resolvedDiscogs,
+    }
+  }
+
+  // Resolve eBay credentials from global settings
+  const globalEbayAppId = safeLS('ebay_client_id') || safeLS('ebay_app_id')
+
+  if (globalEbayAppId) {
+    resolved = {
+      ...resolved,
+      ebay: {
+        appId: resolved.ebay?.appId || globalEbayAppId,
+        marketplaceId: resolved.ebay?.marketplaceId,
+      },
+    }
+  }
+
+  return resolved
+}
+
+/**
+ * Returns true when Discogs credentials are available either from the
+ * marketplace config itself or from the global settings (localStorage).
+ */
+export function isDiscogsConfigured(config?: MarketplaceConfig['discogs']): boolean {
+  if (config?.userToken?.trim()) return true
+  if (config?.consumerKey?.trim() && config?.consumerSecret?.trim()) return true
+  const token = safeLS('discogs_personal_token')
+  if (token) return true
+  const key = safeLS('discogs_consumer_key')
+  const secret = safeLS('discogs_consumer_secret')
+  return !!(key && secret)
+}
+
+/**
+ * Returns true when eBay credentials are available either from the
+ * marketplace config itself or from the global settings (localStorage).
+ */
+export function isEbayConfigured(config?: MarketplaceConfig['ebay']): boolean {
+  if (config?.appId?.trim()) return true
+  return !!(safeLS('ebay_client_id') || safeLS('ebay_app_id'))
+}
+
 export function validateMarketplaceConfig(config: MarketplaceConfig): {
   valid: boolean
   errors: string[]
@@ -151,14 +300,12 @@ export function validateMarketplaceConfig(config: MarketplaceConfig): {
     errors.push('At least one marketplace source must be enabled')
   }
 
-  if (config.enabledSources.includes('ebay') && !config.ebay?.appId) {
+  if (config.enabledSources.includes('ebay') && !isEbayConfigured(config.ebay)) {
     errors.push('eBay App ID is required when eBay is enabled')
   }
 
-  if (config.enabledSources.includes('discogs')) {
-    if (!config.discogs?.userToken && (!config.discogs?.consumerKey || !config.discogs?.consumerSecret)) {
-      errors.push('Discogs authentication is required (either user token or consumer key/secret)')
-    }
+  if (config.enabledSources.includes('discogs') && !isDiscogsConfigured(config.discogs)) {
+    errors.push('Discogs authentication is required (either user token or consumer key/secret)')
   }
 
   return {

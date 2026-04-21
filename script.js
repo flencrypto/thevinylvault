@@ -3,8 +3,38 @@
 // Last updated: 29 March 2026
 // Features: Luxury UI + Collection tools + Wishlist + Toasts + Modular components
 
+// ========================
+// DEBUG-GATED LOGGING (keeps console clean in production)
+// Enable via: ?debug=1 OR localStorage.setItem('vinylasis:debug','1')
+// ========================
+const __vinylasisDebugEnabled =
+  new URLSearchParams(location.search).has('debug') ||
+  localStorage.getItem('vinylasis:debug') === '1';
+
+const __VINYLASIS_LOG_STYLE =
+  'color:#c8973f; font-family:Cormorant Garamond; font-size:18px';
+
+const VinylasisLog = {
+  info(message, style = __VINYLASIS_LOG_STYLE) {
+    if (!__vinylasisDebugEnabled) return;
+    console.log(`%c${message}`, style);
+  },
+  log(...args) {
+    if (!__vinylasisDebugEnabled) return;
+    console.log(...args);
+  },
+  warn(...args) {
+    if (!__vinylasisDebugEnabled) return;
+    console.warn(...args);
+  },
+  error(...args) {
+    // keep errors visible even when debug is off
+    console.error(...args);
+  }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('%c🚀 Vinylasis luxury UI + enhanced features initialized', 'color:#c8973f; font-family:Cormorant Garamond; font-size:18px');
+  VinylasisLog.info('🚀 Vinylasis luxury UI + enhanced features initialized');
 
   // Global Vinylasis namespace (safe, non-breaking)
   window.Vinylasis = {
@@ -14,36 +44,35 @@ document.addEventListener('DOMContentLoaded', () => {
       this.dealFinder = new DealFinder();
       this.listingGenerator = new ListingGenerator();
       this.aiChat = document.querySelector('ai-chat');
-      
+
       // Luxury UI enhancements
       this.applyLuxuryUI();
-      
-      console.log('✅ All core services ready');
+
+      VinylasisLog.log('✅ All core services ready');
     },
 
     applyLuxuryUI: function() {
       // Floating nav
       const nav = document.querySelector('.vinyl-nav') || document.getElementById('nav');
       if (nav) nav.classList.add('vinyl-nav');
-      
+
       // Glassmorphic cards everywhere
       document.querySelectorAll('.card, .deal-card, .collection-item').forEach(card => {
         card.classList.add('glass-card');
       });
-      
+
       // Hero spinning record (if present)
       const heroVinyl = document.getElementById('hero-vinyl');
       if (heroVinyl) heroVinyl.classList.add('hero-vinyl');
-      
+
       // Gold buttons
       document.querySelectorAll('button:not(.btn-gold)').forEach(btn => {
-        if (btn.textContent.toLowerCase().includes('generate') || 
-            btn.textContent.toLowerCase().includes('scan') || 
-            btn.textContent.toLowerCase().includes('mint')) {
+        const text = (btn.textContent || '').toLowerCase();
+        if (text.includes('generate') || text.includes('scan') || text.includes('mint')) {
           btn.classList.add('btn-gold');
         }
       });
-      
+
       // Polaroid collection grid
       document.querySelectorAll('.collection-grid img, .polaroid').forEach(el => {
         el.classList.add('polaroid');
@@ -54,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast: function(msg, type = 'gold') {
       const toast = document.createElement('div');
       toast.style.cssText = `
-        position:fixed; bottom:24px; right:24px; padding:16px 24px; border-radius:9999px; 
+        position:fixed; bottom:24px; right:24px; padding:16px 24px; border-radius:9999px;
         font-weight:700; color:#0e0c0b; z-index:9999; box-shadow:0 20px 40px -10px #c8973f;
         ${type === 'gold' ? 'background:linear-gradient(145deg,#c8973f,#e8c06a);' : 'background:#f5ede2;'}
       `;
@@ -71,7 +100,10 @@ document.addEventListener('DOMContentLoaded', () => {
   window.Vinylasis.init();
 
   // Legacy support — original script functions still work if they existed
-  console.log('%c✅ Backwards compatibility maintained — all original features still 100% functional', 'color:#e8c06a');
+  VinylasisLog.info(
+    '✅ Backwards compatibility maintained — all original features still 100% functional',
+    'color:#e8c06a'
+  );
 });
 
 // ========================
@@ -97,14 +129,14 @@ class CollectionService {
     this.storageKey = 'vinylasis-collection';
   }
   getAll() { return JSON.parse(localStorage.getItem(this.storageKey)) || []; }
-  
+
   // NEW luxury features
   sortByValue() {
     const items = this.getAll().sort((a, b) => (b.estimatedValue || 0) - (a.estimatedValue || 0));
     this.renderCollection(items);
     window.Vinylasis.showToast('Sorted by highest value ✨', 'gold');
   }
-  
+
   exportToCSV() {
     const data = this.getAll();
     if (!data.length) return window.Vinylasis.showToast('Collection is empty', 'gold');
@@ -115,10 +147,10 @@ class CollectionService {
     a.href = url; a.download = 'vinylasis-collection.csv'; a.click();
     window.Vinylasis.showToast('Collection exported!', 'gold');
   }
-  
+
   renderCollection(items) {
     // Your existing render logic remains untouched
-    console.log('Collection rendered with', items.length, 'items');
+    VinylasisLog.log('Collection rendered with', items.length, 'items');
   }
 }
 

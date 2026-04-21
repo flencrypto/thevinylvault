@@ -26,6 +26,7 @@ import {
   DefectType 
 } from '@/lib/openai-vision-service'
 import { useConfidenceThresholds } from '@/hooks/use-confidence-thresholds'
+import { toast } from 'sonner'
 
 interface ImageAnalysisDialogProps {
   open: boolean
@@ -68,6 +69,7 @@ export function ImageAnalysisDialog({
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [progress, setProgress] = useState(0)
   const [results, setResults] = useState<Map<string, ImageAnalysisOutput>>(new Map())
+  const [analysisErrors, setAnalysisErrors] = useState<Array<{ imageId: string; imageType: ItemImage['type']; message: string }>>([])
   const [currentStep, setCurrentStep] = useState('')
   const [showRawOutput, setShowRawOutput] = useState<string | null>(null)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -79,25 +81,42 @@ export function ImageAnalysisDialog({
     setIsAnalyzing(true)
     setProgress(0)
     setCurrentStep('Starting analysis...')
+    setAnalysisErrors([])
     const analysisResults = new Map<string, ImageAnalysisOutput>()
+    const errors: Array<{ imageId: string; imageType: ItemImage['type']; message: string }> = []
 
     for (let i = 0; i < images.length; i++) {
       const image = images[i]
       setCurrentStep(`Analyzing image ${i + 1} of ${images.length}: ${IMAGE_TYPE_LABELS[image.type]}`)
-      setProgress(((i) / images.length) * 100)
 
       try {
         const analysis = await analyzeImageComplete(image.dataUrl, image.type)
         analysisResults.set(image.id, analysis)
       } catch (error) {
         console.error(`Failed to analyze image ${image.id}:`, error)
+        const message = error instanceof Error ? error.message : 'Unknown analysis error'
+        errors.push({ imageId: image.id, imageType: image.type, message })
       }
+
+      setProgress(((i + 1) / images.length) * 100)
     }
 
-    setProgress(100)
     setCurrentStep('Analysis complete!')
     setResults(analysisResults)
+    setAnalysisErrors(errors)
     setIsAnalyzing(false)
+
+    if (analysisResults.size > 0) {
+      toast.success('AI analysis completed', {
+        description: errors.length > 0
+          ? `${analysisResults.size} image${analysisResults.size !== 1 ? 's' : ''} analyzed, ${errors.length} failed.`
+          : `${analysisResults.size} image${analysisResults.size !== 1 ? 's' : ''} analyzed successfully.`,
+      })
+    } else if (errors.length > 0) {
+      toast.error('AI analysis failed', {
+        description: `Could not analyze ${errors.length} image${errors.length !== 1 ? 's' : ''}.`,
+      })
+    }
   }
 
   const handleApplyResults = () => {
@@ -125,6 +144,26 @@ export function ImageAnalysisDialog({
       return { variant: 'secondary' as const, label: 'Review Needed', icon: <Warning size={14} /> }
     }
     return { variant: 'destructive' as const, label: 'Low Confidence', icon: <Warning size={14} weight="fill" /> }
+  }
+
+  const renderAnalysisErrors = (className?: string) => {
+    if (analysisErrors.length === 0) return null
+
+    return (
+      <Alert variant="destructive" className={className}>
+        <Warning size={16} />
+        <AlertDescription className="space-y-1">
+          <p className="font-medium">Analysis errors detected while analyzing images:</p>
+          <ul className="list-disc pl-4 text-xs">
+            {analysisErrors.map((entry) => (
+              <li key={entry.imageId}>
+                {IMAGE_TYPE_LABELS[entry.imageType]}: {entry.message}
+              </li>
+            ))}
+          </ul>
+        </AlertDescription>
+      </Alert>
+    )
   }
 
   return (
@@ -166,6 +205,7 @@ export function ImageAnalysisDialog({
                   <span>Condition defects</span>
                 </div>
               </div>
+              {renderAnalysisErrors('mt-6 w-full max-w-2xl text-left')}
             </div>
           ) : isAnalyzing ? (
             <div className="flex flex-col items-center justify-center h-full py-12">
@@ -188,6 +228,7 @@ export function ImageAnalysisDialog({
           ) : (
             <ScrollArea className="h-full pr-4">
               <div className="space-y-6 py-4">
+                {renderAnalysisErrors()}
                 {Array.from(results.entries()).map(([imageId, analysis]) => {
                   const image = images.find(img => img.id === imageId)
                   if (!image) return null

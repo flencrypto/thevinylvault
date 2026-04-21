@@ -7,6 +7,7 @@
 import { tesseractOCRService } from '../tesseract-ocr-service'
 import { identifyPressing } from '../pressing-identification-ai'
 import type { ScoredPressingCandidate } from '../pressing-identification-ai'
+import { xaiService } from '../xai-service'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -178,7 +179,7 @@ class VinylIntelligenceCoordinator {
       result.steps!.push({ step: 'Discogs Market', success: discogsMarket.success })
 
       // 6. Final valuation
-      const valuation = this._synthesizeValuation(pressing.data, sold, discogsMarket)
+      const valuation = await this._synthesizeValuation(pressing.data, sold, discogsMarket)
 
       result = {
         status: 'complete',
@@ -626,11 +627,16 @@ class VinylIntelligenceCoordinator {
 
   // ── Final Valuation Synthesis ───────────────────────────────────────────
 
-  _synthesizeValuation(
+  async _synthesizeValuation(
     pressing: PressingResult['data'],
     sold: SoldPricesResult,
     discogsMarket: DiscogsMarketResult
-  ): ValuationResult {
+  ): Promise<ValuationResult> {
+    const grokValuation = await this._identifyValueWithGrok(pressing, sold, discogsMarket)
+    if (grokValuation) {
+      return grokValuation
+    }
+
     const currency = sold.data.currency || discogsMarket.data.currency || 'USD'
     let baseMid = 0
     let confidence = 0.3
@@ -723,6 +729,182 @@ class VinylIntelligenceCoordinator {
   }
 
   // ── Private helpers ─────────────────────────────────────────────────────
+
+  private async _identifyValueWithGrok(
+    pressing: PressingResult['data'],
+    sold: SoldPricesResult,
+    discogsMarket: DiscogsMarketResult
+  ): Promise<ValuationResult | null> {
+    const { apiKey, model, baseUrl } = await xaiService.getRuntimeConfig()
+    if (!apiKey) return null
+
+    const systemPrompt = `You are Vinylasis's valuation model. Return only valid JSON with:
+{
+  "estimateLow": number,
+  "estimateMid": number,
+  "estimateHigh": number,
+  "currency": "USD",
+  "confidence": 0.0,
+  "momentumSignal": "strong_buy|buy|hold|sell",
+  "rationale": "short explanation"
+}
+Rules:
+- Use only provided sold and market signals
+- Keep confidence between 0 and 1
+- Ensure estimateLow <= estimateMid <= estimateHigh
+- If market data is sparse, lower confidence`
+
+    const payload = this._buildGrokValuationPayload(pressing, sold, discogsMarket)
+
+    try {
+      const response = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          response_format: { type: 'json_object' },
+          temperature: 0.1,
+          max_tokens: 600,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            {
+              role: 'user',
+              content: `Identify realistic valuation from this intelligence data:\n${JSON.stringify(payload)}`,
+            },
+          ],
+        }),
+      })
+
+      if (!response.ok) {
+        console.warn('Grok valuation request failed:', response.status)
+        return null
+      }
+
+      const data = await response.json()
+      const content = data?.choices?.[0]?.message?.content
+      if (typeof content !== 'string' || !content.trim()) return null
+
+      let parsed: Record<string, unknown>
+      try {
+        parsed = JSON.parse(this._extractJsonObject(content)) as Record<string, unknown>
+      } catch {
+        return null
+      }
+
+      const estimateLow = Number(parsed.estimateLow)
+      const estimateMid = Number(parsed.estimateMid)
+      const estimateHigh = Number(parsed.estimateHigh)
+
+      if (!Number.isFinite(estimateLow) || !Number.isFinite(estimateMid) || !Number.isFinite(estimateHigh)) {
+        return null
+      }
+
+      const sorted = [estimateLow, estimateMid, estimateHigh].sort((a, b) => a - b)
+      if (sorted.some((estimate) => estimate <= 0)) {
+        return null
+      }
+      const currency =
+        typeof parsed.currency === 'string' && parsed.currency.trim()
+          ? parsed.currency.trim().toUpperCase()
+          : sold.data.currency || discogsMarket.data.currency || 'USD'
+
+      const rationale =
+        typeof parsed.rationale === 'string' && parsed.rationale.trim()
+          ? parsed.rationale.trim()
+          : 'Grok valuation generated from sold and market intelligence signals.'
+
+      return {
+        estimateLow: Math.round(sorted[0] * 100) / 100,
+        estimateMid: Math.round(sorted[1] * 100) / 100,
+        estimateHigh: Math.round(sorted[2] * 100) / 100,
+        currency,
+        confidence: this._normalizeConfidence(parsed.confidence),
+        momentumSignal: this._normalizeMomentumSignal(parsed.momentumSignal),
+        rationale,
+      }
+    } catch (err) {
+      console.warn('Grok value identification failed:', err)
+      return null
+    }
+  }
+
+  private _extractJsonObject(content: string): string {
+    const fenced = content.match(/```json\s*([\s\S]*?)\s*```/)
+    if (fenced) return fenced[1].trim()
+
+    const start = content.indexOf('{')
+    if (start === -1) return content.trim()
+
+    let depth = 0
+    for (let i = start; i < content.length; i++) {
+      if (content[i] === '{') depth++
+      else if (content[i] === '}') depth--
+      if (depth === 0) {
+        return content.substring(start, i + 1).trim()
+      }
+    }
+
+    return content.substring(start).trim()
+  }
+
+  private _normalizeMomentumSignal(
+    signal: unknown
+  ): ValuationResult['momentumSignal'] {
+    if (signal === 'strong_buy' || signal === 'buy' || signal === 'hold' || signal === 'sell') {
+      return signal
+    }
+    return 'hold'
+  }
+
+  private _normalizeConfidence(value: unknown): number {
+    const PERCENTAGE_TO_DECIMAL_DIVISOR = 100
+    const numeric = Number(value)
+    if (!Number.isFinite(numeric)) return 0.5
+    // Grok may return confidence as either a decimal (0-1) or a percentage (0-100).
+    const normalized = numeric > 1 ? numeric / PERCENTAGE_TO_DECIMAL_DIVISOR : numeric
+    return Math.round(Math.max(0, Math.min(1, normalized)) * 100) / 100
+  }
+
+  private _buildGrokValuationPayload(
+    pressing: PressingResult['data'],
+    sold: SoldPricesResult,
+    discogsMarket: DiscogsMarketResult
+  ): Record<string, unknown> {
+    return {
+      pressing: {
+        matchScore: pressing.matchScore,
+        artistName: pressing.artistName ?? null,
+        releaseTitle: pressing.releaseTitle ?? null,
+        catalogNumber: pressing.catalogNumber ?? null,
+        year: pressing.year ?? null,
+        country: pressing.country ?? null,
+        matrix: (pressing.matrix ?? []).slice(0, 8),
+      },
+      soldSuccess: sold.success,
+      sold: {
+        averagePrice: sold.data.averagePrice,
+        medianPrice: sold.data.medianPrice,
+        trend30d: sold.data.trend30d,
+        trend60d: sold.data.trend60d,
+        currency: sold.data.currency,
+        listingsCount: sold.data.listings.length,
+      },
+      discogsSuccess: discogsMarket.success,
+      discogsMarket: {
+        lowestPrice: discogsMarket.data.lowestPrice,
+        medianPrice: discogsMarket.data.medianPrice,
+        numForSale: discogsMarket.data.numForSale,
+        want: discogsMarket.data.want,
+        have: discogsMarket.data.have,
+        demandTrend: discogsMarket.data.demandTrend,
+        demandScore: discogsMarket.data.demandScore,
+        currency: discogsMarket.data.currency,
+      },
+    }
+  }
 
   private _normalizeMatrix(raw: string): string[] {
     if (!raw?.trim()) return []
