@@ -343,6 +343,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
         }}
         role="progressbar"
         aria-label="Loading Vinylasis"
+        aria-valuetext="Loading"
       >
         <span
           aria-hidden="true"
