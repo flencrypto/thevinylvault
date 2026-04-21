@@ -363,6 +363,7 @@ class TesseractOCRService {
   private _isLikelyTracklistLine(line: string): boolean {
     const normalized = line.trim()
     if (!normalized) return false
+    if (normalized === '---IMAGE BREAK---') return false
     if (normalized.length < 4 || normalized.length > 80) return false
 
     const stripped = normalized
