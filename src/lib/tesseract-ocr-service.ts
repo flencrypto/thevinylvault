@@ -387,7 +387,7 @@ class TesseractOCRService {
       /^\d+'\d{2}$/.test(stripped)
     const looksLikeCatalogCode =
       /^[A-Z]{1,5}[-/]?\d{2,}[A-Z0-9/-]*$/i.test(compact) ||
-      /^[A-Z0-9-]{6,}$/.test(compact)
+      (/^[A-Z0-9-]{6,}$/.test(compact) && /\d/.test(compact))
 
     if (looksLikeCatalogCode && !isNumericTitle) return false
 

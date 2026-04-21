@@ -118,6 +118,43 @@ function hasManualData(data: ManualData | undefined): boolean {
   )
 }
 
+function getErrorMessage(error: unknown): string | null {
+  if (error instanceof Error) {
+    const trimmed = error.message.trim()
+    if (trimmed) return trimmed
+  }
+  if (typeof error === 'string') {
+    const trimmed = error.trim()
+    if (trimmed) return trimmed
+  }
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof (error as { message?: unknown }).message === 'string'
+  ) {
+    const trimmed = (error as { message: string }).message.trim()
+    if (trimmed) return trimmed
+  }
+  return null
+}
+
+function sanitizeErrorMessage(message: string): string {
+  const singleLine = message.replace(/\s+/g, ' ').trim()
+  if (!singleLine) return ''
+
+  const hasSensitiveContent =
+    /(api[\s_-]*key|secret|authorization|bearer|access[\s_-]*token|refresh[\s_-]*token|id[\s_-]*token)/i.test(singleLine) ||
+    /bearer\s+[a-z0-9\-._~+/]+=*/i.test(singleLine) ||
+    /sk-[a-z0-9_-]+/i.test(singleLine)
+
+  if (hasSensitiveContent) {
+    return 'A provider configuration or authentication error occurred.'
+  }
+
+  return singleLine.length > 180 ? `${singleLine.slice(0, 177)}...` : singleLine
+}
+
 function loadListingDraft(): ListingDraft | null {
   try {
     const saved = localStorage.getItem(LISTING_DRAFT_KEY)
@@ -332,8 +369,18 @@ export default function NewListingView() {
       toast.success('Analysis complete! Review the results below.')
     } catch (error) {
       if (isCancelled()) return
-      console.error('Analysis failed:', error)
-      toast.error('Analysis failed. Please try again or enter details manually.')
+      const toastMessage = 'AI analysis failed. Please try again or enter details manually.'
+      const rawErrorMessage = getErrorMessage(error)
+      const errorMessage = rawErrorMessage ? sanitizeErrorMessage(rawErrorMessage) : null
+      if (errorMessage) {
+        console.error('Analysis failed:', errorMessage)
+        toast.error(toastMessage, {
+          description: `Error: ${errorMessage}`
+        })
+      } else {
+        console.error('Analysis failed')
+        toast.error(toastMessage)
+      }
       setAnalysisStep('idle')
     } finally {
       if (runId === analysisRunIdRef.current) {

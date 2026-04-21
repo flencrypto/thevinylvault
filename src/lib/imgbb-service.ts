@@ -51,7 +51,8 @@ export interface ImgBBUploadedImage {
 export async function uploadImageToImgBB(
   dataUrl: string,
   apiKey: string,
-  name?: string
+  name?: string,
+  expiration?: number
 ): Promise<ImgBBUploadedImage> {
   if (!apiKey || apiKey.trim() === '') {
     throw new Error('imgBB API key is required. Please configure it in Settings.')
@@ -68,7 +69,13 @@ export async function uploadImageToImgBB(
     formData.append('name', name)
   }
 
-  const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+  // Build URL with key parameter and optional expiration (in seconds, 60-15552000)
+  let url = `https://api.imgbb.com/1/upload?key=${apiKey}`
+  if (expiration !== undefined && expiration >= 60 && expiration <= 15552000) {
+    url += `&expiration=${expiration}`
+  }
+
+  const response = await fetch(url, {
     method: 'POST',
     body: formData,
   })
@@ -99,11 +106,12 @@ export async function uploadImageToImgBB(
 export async function uploadMultipleImagesToImgBB(
   dataUrls: string[],
   apiKey: string,
-  namePrefix?: string
+  namePrefix?: string,
+  expiration?: number
 ): Promise<ImgBBUploadedImage[]> {
   const uploadPromises = dataUrls.map((dataUrl, index) => {
     const name = namePrefix ? `${namePrefix}-${index + 1}` : undefined
-    return uploadImageToImgBB(dataUrl, apiKey, name)
+    return uploadImageToImgBB(dataUrl, apiKey, name, expiration)
   })
 
   return Promise.all(uploadPromises)
