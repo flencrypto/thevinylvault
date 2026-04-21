@@ -178,7 +178,7 @@ class VinylIntelligenceCoordinator {
       result.steps!.push({ step: 'Discogs Market', success: discogsMarket.success })
 
       // 6. Final valuation
-      const valuation = this._synthesizeValuation(pressing.data, sold, discogsMarket)
+      const valuation = await this._synthesizeValuation(pressing.data, sold, discogsMarket)
 
       result = {
         status: 'complete',
@@ -626,11 +626,16 @@ class VinylIntelligenceCoordinator {
 
   // ── Final Valuation Synthesis ───────────────────────────────────────────
 
-  _synthesizeValuation(
+  async _synthesizeValuation(
     pressing: PressingResult['data'],
     sold: SoldPricesResult,
     discogsMarket: DiscogsMarketResult
-  ): ValuationResult {
+  ): Promise<ValuationResult> {
+    const grokValuation = await this._identifyValueWithGrok(pressing, sold, discogsMarket)
+    if (grokValuation) {
+      return grokValuation
+    }
+
     const currency = sold.data.currency || discogsMarket.data.currency || 'USD'
     let baseMid = 0
     let confidence = 0.3
@@ -723,6 +728,168 @@ class VinylIntelligenceCoordinator {
   }
 
   // ── Private helpers ─────────────────────────────────────────────────────
+
+  private async _identifyValueWithGrok(
+    pressing: PressingResult['data'],
+    sold: SoldPricesResult,
+    discogsMarket: DiscogsMarketResult
+  ): Promise<ValuationResult | null> {
+    const creds = await this._resolveXaiCredentials()
+    if (!creds?.apiKey) return null
+
+    const systemPrompt = `You are Vinylasis's valuation model. Return only valid JSON with:
+{
+  "estimateLow": number,
+  "estimateMid": number,
+  "estimateHigh": number,
+  "currency": "USD",
+  "confidence": 0.0,
+  "momentumSignal": "strong_buy|buy|hold|sell",
+  "rationale": "short explanation"
+}
+Rules:
+- Use only provided sold and market signals
+- Keep confidence between 0 and 1
+- Ensure estimateLow <= estimateMid <= estimateHigh
+- If market data is sparse, lower confidence`
+
+    const payload = {
+      pressing,
+      sold: sold.data,
+      soldSuccess: sold.success,
+      discogsMarket: discogsMarket.data,
+      discogsSuccess: discogsMarket.success,
+    }
+
+    try {
+      const response = await fetch('https://api.x.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${creds.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: creds.model,
+          response_format: { type: 'json_object' },
+          temperature: 0.1,
+          max_tokens: 600,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            {
+              role: 'user',
+              content: `Identify realistic valuation from this intelligence data:\n${JSON.stringify(payload)}`,
+            },
+          ],
+        }),
+      })
+
+      if (!response.ok) {
+        console.warn('Grok valuation request failed:', response.status)
+        return null
+      }
+
+      const data = await response.json()
+      const content = data?.choices?.[0]?.message?.content
+      if (typeof content !== 'string' || !content.trim()) return null
+
+      const parsed = JSON.parse(this._extractJsonObject(content)) as Record<string, unknown>
+
+      const estimateLow = Number(parsed.estimateLow)
+      const estimateMid = Number(parsed.estimateMid)
+      const estimateHigh = Number(parsed.estimateHigh)
+
+      if (!Number.isFinite(estimateLow) || !Number.isFinite(estimateMid) || !Number.isFinite(estimateHigh)) {
+        return null
+      }
+
+      const sorted = [estimateLow, estimateMid, estimateHigh].sort((a, b) => a - b)
+      const currency =
+        typeof parsed.currency === 'string' && parsed.currency.trim()
+          ? parsed.currency.trim().toUpperCase()
+          : sold.data.currency || discogsMarket.data.currency || 'USD'
+
+      const rationale =
+        typeof parsed.rationale === 'string' && parsed.rationale.trim()
+          ? parsed.rationale.trim()
+          : 'Grok valuation generated from sold and market intelligence signals.'
+
+      return {
+        estimateLow: Math.round(sorted[0] * 100) / 100,
+        estimateMid: Math.round(sorted[1] * 100) / 100,
+        estimateHigh: Math.round(sorted[2] * 100) / 100,
+        currency,
+        confidence: this._normalizeConfidence(parsed.confidence),
+        momentumSignal: this._normalizeMomentumSignal(parsed.momentumSignal),
+        rationale,
+      }
+    } catch (err) {
+      console.warn('Grok value identification failed:', err)
+      return null
+    }
+  }
+
+  private async _resolveXaiCredentials(): Promise<{ apiKey: string; model: string } | null> {
+    const directApiKey = localStorage.getItem('xai_api_key')
+    const directModel = localStorage.getItem('xai_model') || 'grok-4-1-fast-reasoning'
+    if (directApiKey) {
+      return { apiKey: directApiKey, model: directModel }
+    }
+
+    const sparkKv = (globalThis as { spark?: { kv?: { get?: (key: string) => Promise<unknown> } } })?.spark?.kv
+    if (!sparkKv?.get) return null
+
+    try {
+      const raw = await sparkKv.get('vinyl-vault-api-keys')
+      if (!raw) return null
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+      if (!parsed || typeof parsed !== 'object') return null
+
+      const apiKey = typeof parsed.xaiApiKey === 'string' ? parsed.xaiApiKey : null
+      const model = typeof parsed.xaiModel === 'string' ? parsed.xaiModel : 'grok-4-1-fast-reasoning'
+      if (!apiKey) return null
+
+      localStorage.setItem('xai_api_key', apiKey)
+      localStorage.setItem('xai_model', model)
+      return { apiKey, model }
+    } catch {
+      return null
+    }
+  }
+
+  private _extractJsonObject(content: string): string {
+    const fenced = content.match(/```json\s*([\s\S]*?)\s*```/)
+    if (fenced) return fenced[1].trim()
+
+    const start = content.indexOf('{')
+    if (start === -1) return content.trim()
+
+    let depth = 0
+    for (let i = start; i < content.length; i++) {
+      if (content[i] === '{') depth++
+      else if (content[i] === '}') depth--
+      if (depth === 0) {
+        return content.substring(start, i + 1).trim()
+      }
+    }
+
+    return content.substring(start).trim()
+  }
+
+  private _normalizeMomentumSignal(
+    signal: unknown
+  ): ValuationResult['momentumSignal'] {
+    if (signal === 'strong_buy' || signal === 'buy' || signal === 'hold' || signal === 'sell') {
+      return signal
+    }
+    return 'hold'
+  }
+
+  private _normalizeConfidence(value: unknown): number {
+    const numeric = Number(value)
+    if (!Number.isFinite(numeric)) return 0.5
+    const normalized = numeric > 1 ? numeric / 100 : numeric
+    return Math.round(Math.max(0, Math.min(1, normalized)) * 100) / 100
+  }
 
   private _normalizeMatrix(raw: string): string[] {
     if (!raw?.trim()) return []
