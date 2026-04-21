@@ -368,15 +368,16 @@ export default function NewListingView() {
       toast.success('Analysis complete! Review the results below.')
     } catch (error) {
       if (isCancelled()) return
-      console.error('Analysis failed:', error)
       const toastMessage = 'AI analysis failed. Please try again or enter details manually.'
       const rawErrorMessage = getErrorMessage(error)
       const errorMessage = rawErrorMessage ? sanitizeErrorMessage(rawErrorMessage) : null
       if (errorMessage) {
+        console.error('Analysis failed:', errorMessage)
         toast.error(toastMessage, {
           description: `Error: ${errorMessage}`
         })
       } else {
+        console.error('Analysis failed')
         toast.error(toastMessage)
       }
       setAnalysisStep('idle')
