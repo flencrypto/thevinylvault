@@ -118,6 +118,21 @@ function hasManualData(data: ManualData | undefined): boolean {
   )
 }
 
+function getErrorMessage(error: unknown): string | null {
+  if (error instanceof Error && error.message.trim()) return error.message.trim()
+  if (typeof error === 'string' && error.trim()) return error.trim()
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof (error as { message?: unknown }).message === 'string' &&
+    (error as { message: string }).message.trim()
+  ) {
+    return (error as { message: string }).message.trim()
+  }
+  return null
+}
+
 function loadListingDraft(): ListingDraft | null {
   try {
     const saved = localStorage.getItem(LISTING_DRAFT_KEY)
@@ -333,7 +348,14 @@ export default function NewListingView() {
     } catch (error) {
       if (isCancelled()) return
       console.error('Analysis failed:', error)
-      toast.error('Analysis failed. Please try again or enter details manually.')
+      const errorMessage = getErrorMessage(error)
+      if (errorMessage) {
+        toast.error('AI analysis failed. Please try again or enter details manually.', {
+          description: `Error produced: ${errorMessage}`
+        })
+      } else {
+        toast.error('AI analysis failed. Please try again or enter details manually.')
+      }
       setAnalysisStep('idle')
     } finally {
       if (runId === analysisRunIdRef.current) {
