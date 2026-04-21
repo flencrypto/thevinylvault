@@ -333,7 +333,7 @@ class TesseractOCRService {
 
     if (!result.title && !result.artist) {
       if (hasDenseTracklist) {
-        const heading = lines[0]?.trim()
+        const heading = lines.length > 0 ? lines[0].trim() : ''
         if (
           heading &&
           heading.length >= 4 &&
@@ -358,18 +358,28 @@ class TesseractOCRService {
   private _isLikelyTracklistLine(line: string): boolean {
     const normalized = line.trim()
     if (!normalized) return false
-    if (normalized.length < 4 || normalized.length > 60) return false
-    if (/\d/.test(normalized)) return false
-    if (!/[A-Za-z]{3}/.test(normalized)) return false
-    if (/[,:;()[\]{}]/.test(normalized)) return false
+    if (normalized.length < 4 || normalized.length > 80) return false
+
+    const stripped = normalized
+      .replace(/^(?:side\s*[AB12]\s*[-:.]?\s*)/i, '')
+      .replace(/^(?:track\s*\d+\s*[-:.]?\s*)/i, '')
+      .replace(/^\d{1,2}[\).:-]?\s*/, '')
+      .trim()
+
+    if (stripped.length < 3 || stripped.length > 60) return false
+    if (/\d/.test(stripped)) return false
+    if (!/[A-Za-z]{3}/.test(stripped)) return false
+    if (/[,:;()[\]{}]/.test(stripped)) return false
     if (/^(artist|title|album|record|made in|catalog|cat\.?|side)\b/i.test(normalized)) return false
 
-    const words = normalized.split(/\s+/).filter(Boolean)
+    const words = stripped.split(/\s+/).filter(Boolean)
     if (words.length < 2 || words.length > 9) return false
 
-    const lettersOnly = normalized.replace(/[^A-Za-z]/g, '')
+    const lettersOnly = stripped.replace(/[^A-Za-z]/g, '')
     if (!lettersOnly) return false
-    const uppercaseRatio = lettersOnly.split('').filter((c) => c === c.toUpperCase()).length / lettersOnly.length
+    const letterChars = lettersOnly.split('')
+    const uppercaseChars = letterChars.filter((c) => c === c.toUpperCase()).length
+    const uppercaseRatio = uppercaseChars / letterChars.length
 
     return uppercaseRatio >= 0.9
   }

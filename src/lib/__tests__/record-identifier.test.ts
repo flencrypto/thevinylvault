@@ -394,6 +394,26 @@ describe('parseVinylText', () => {
     expect(result.catalogueNumber).toBe('SD 16018')
   })
 
+  it('treats numbered uppercase tracklists as non-artist/title content', () => {
+    const text = [
+      '1. HELLS BELLS',
+      '2. SHOOT TO THRILL',
+      '3. GIVEN THE DOG A BONE',
+      '4. WHAT DO YOU DO FOR MONEY HONEY',
+      "5. ROCK AND ROLL AIN'T NOISE POLLUTION",
+      '6. LET ME PUT MY LOVE INTO YOU',
+      '7. YOU SHOOK ME ALL NIGHT LONG',
+      '8. SHAKE A LEG',
+      '9. HAVE A DRINK ON ME',
+      'ATLANTIC RECORDS',
+      'SD 16018',
+    ].join('\n')
+    const result = tesseractOCRService.parseVinylText(text)
+    expect(result.artist).toBeNull()
+    expect(result.title).toBeNull()
+    expect(result.label).toBe('Atlantic')
+  })
+
   it('sets high confidence when 4+ fields are populated', () => {
     const text = [
       'Artist: Miles Davis',
