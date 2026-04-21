@@ -25,14 +25,25 @@ interface PressingIdentificationDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSelect?: (pressing: ScoredPressingCandidate, images: ItemImage[]) => void
+  existingImages?: ItemImage[]
 }
 
 export function PressingIdentificationDialog({
   open,
   onOpenChange,
   onSelect,
+  existingImages,
 }: PressingIdentificationDialogProps) {
-  const [images, setImages] = useState<ItemImage[]>([])
+  const [images, setImages] = useState<ItemImage[]>(existingImages ?? [])
+
+  // When the dialog is (re)opened, seed its image state with any images the
+  // caller has already collected so the user doesn't have to re-upload them
+  // after running image analysis or other AI flows.
+  useEffect(() => {
+    if (open && existingImages && existingImages.length > 0) {
+      setImages(prev => (prev.length === 0 ? existingImages : prev))
+    }
+  }, [open, existingImages])
   const [manualHints, setManualHints] = useState({
     artist: '',
     title: '',

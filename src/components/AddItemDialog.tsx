@@ -447,6 +447,7 @@ export function AddItemDialog({ open, onOpenChange, onAdd }: AddItemDialogProps)
       open={identificationDialogOpen}
       onOpenChange={setIdentificationDialogOpen}
       onSelect={handlePressingIdentified}
+      existingImages={images}
     />
 
     <ConditionGradingDialog

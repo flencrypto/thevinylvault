@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -44,6 +44,15 @@ export function ConditionGradingDialog({
   const [progress, setProgress] = useState(0)
   const [result, setResult] = useState<ConditionResult | null>(null)
   const { checkConfidence, getThreshold, getConfidenceBand } = useConfidenceThresholds()
+
+  // When the dialog is (re)opened, seed its image state with any images the
+  // caller has already uploaded so the user doesn't have to re-upload them
+  // after other AI flows (e.g. image analysis, pressing identification).
+  useEffect(() => {
+    if (open && existingImages.length > 0) {
+      setImages(prev => (prev.length === 0 ? existingImages : prev))
+    }
+  }, [open, existingImages])
 
   const handleAnalyze = async () => {
     if (images.length === 0) {
