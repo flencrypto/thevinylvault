@@ -101,7 +101,6 @@ export function ImageAnalysisDialog({
       setProgress(((i + 1) / images.length) * 100)
     }
 
-    setProgress(100)
     setCurrentStep('Analysis complete!')
     setResults(analysisResults)
     setAnalysisErrors(errors)
@@ -147,6 +146,26 @@ export function ImageAnalysisDialog({
     return { variant: 'destructive' as const, label: 'Low Confidence', icon: <Warning size={14} weight="fill" /> }
   }
 
+  const renderAnalysisErrors = (className?: string) => {
+    if (analysisErrors.length === 0) return null
+
+    return (
+      <Alert variant="destructive" className={className}>
+        <Warning size={16} />
+        <AlertDescription className="space-y-1">
+          <p className="font-medium">Analysis errors detected while analyzing images:</p>
+          <ul className="list-disc pl-4 text-xs">
+            {analysisErrors.map((entry) => (
+              <li key={entry.imageId}>
+                {IMAGE_TYPE_LABELS[entry.imageType]}: {entry.message}
+              </li>
+            ))}
+          </ul>
+        </AlertDescription>
+      </Alert>
+    )
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
@@ -186,21 +205,7 @@ export function ImageAnalysisDialog({
                   <span>Condition defects</span>
                 </div>
               </div>
-              {analysisErrors.length > 0 && (
-                <Alert variant="destructive" className="mt-6 w-full max-w-2xl text-left">
-                  <Warning size={16} />
-                  <AlertDescription className="space-y-1">
-                    <p className="font-medium">Identifier faults detected while analyzing images:</p>
-                    <ul className="list-disc pl-4 text-xs">
-                      {analysisErrors.map((entry) => (
-                        <li key={entry.imageId}>
-                          {IMAGE_TYPE_LABELS[entry.imageType]}: {entry.message}
-                        </li>
-                      ))}
-                    </ul>
-                  </AlertDescription>
-                </Alert>
-              )}
+              {renderAnalysisErrors('mt-6 w-full max-w-2xl text-left')}
             </div>
           ) : isAnalyzing ? (
             <div className="flex flex-col items-center justify-center h-full py-12">
@@ -223,21 +228,7 @@ export function ImageAnalysisDialog({
           ) : (
             <ScrollArea className="h-full pr-4">
               <div className="space-y-6 py-4">
-                {analysisErrors.length > 0 && (
-                  <Alert variant="destructive">
-                    <Warning size={16} />
-                    <AlertDescription className="space-y-1">
-                      <p className="font-medium">Some images could not be analyzed:</p>
-                      <ul className="list-disc pl-4 text-xs">
-                        {analysisErrors.map((entry) => (
-                          <li key={entry.imageId}>
-                            {IMAGE_TYPE_LABELS[entry.imageType]}: {entry.message}
-                          </li>
-                        ))}
-                      </ul>
-                    </AlertDescription>
-                  </Alert>
-                )}
+                {renderAnalysisErrors()}
                 {Array.from(results.entries()).map(([imageId, analysis]) => {
                   const image = images.find(img => img.id === imageId)
                   if (!image) return null
