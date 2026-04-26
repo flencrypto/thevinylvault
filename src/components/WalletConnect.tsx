@@ -84,7 +84,11 @@ export function WalletConnect({ className }: WalletConnectProps) {
       }
 
       const response = await walletProvider.connect()
-      const publicKey = response.publicKey.toString()
+      const rawPublicKey = response?.publicKey ?? walletProvider.publicKey
+      if (!rawPublicKey) {
+        throw new Error('Could not retrieve public key from wallet')
+      }
+      const publicKey = rawPublicKey.toString()
 
       const newConnection: WalletConnection = {
         publicKey,
