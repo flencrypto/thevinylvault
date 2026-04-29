@@ -93,6 +93,31 @@ const CONDITION_ID_MAP: Record<string, string> = {
   'Poor': '7000',
 }
 
+/**
+ * Safely resolve `localStorage` without throwing. Property access on
+ * `window.localStorage` (or `globalThis.localStorage`) can raise a
+ * `SecurityError` in sandboxed/blocked-storage contexts (some privacy
+ * modes, third-party iframes, etc.) — even before any method is called.
+ * Returns `undefined` when storage is unreachable for any reason.
+ */
+function resolveLocalStorage(): Storage | undefined {
+  try {
+    if (typeof window !== 'undefined') {
+      const ls = window.localStorage
+      if (ls) return ls
+    }
+  } catch {
+    // window.localStorage threw — fall through to globalThis.
+  }
+  try {
+    const ls = (globalThis as { localStorage?: Storage }).localStorage
+    if (ls) return ls
+  } catch {
+    // globalThis.localStorage threw — give up.
+  }
+  return undefined
+}
+
 // ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
@@ -138,9 +163,7 @@ export class EbayBrowseService {
 
     // Fallback: legacy localStorage keys mirrored by SettingsView.
     if (!clientId || !clientSecret) {
-      const ls: Storage | undefined =
-        (typeof window !== 'undefined' && window.localStorage) ||
-        (globalThis as { localStorage?: Storage }).localStorage
+      const ls = resolveLocalStorage()
       if (ls) {
         try {
           clientId = clientId || ls.getItem('ebay_client_id') || ls.getItem('ebay_app_id') || ''

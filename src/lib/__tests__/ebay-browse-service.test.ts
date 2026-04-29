@@ -163,4 +163,28 @@ describe('EbayBrowseService', () => {
     }
     expect(await service.hasCredentials()).toBe(false)
   })
+
+  it('hasCredentials returns false when localStorage property access throws SecurityError', async () => {
+    // Simulate a sandboxed/privacy-mode environment where touching the
+    // localStorage property itself raises before any method call.
+    const throwing = {
+      get localStorage(): Storage {
+        throw new DOMException('Access denied', 'SecurityError')
+      },
+    }
+    Object.defineProperty(globalThis, 'localStorage', {
+      get() {
+        throw new DOMException('Access denied', 'SecurityError')
+      },
+      configurable: true,
+    })
+    if (typeof window !== 'undefined') {
+      Object.defineProperty(window, 'localStorage', {
+        get: () => throwing.localStorage,
+        configurable: true,
+      })
+    }
+    await expect(service.hasCredentials()).resolves.toBe(false)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
 })
