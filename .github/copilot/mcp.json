@@ -27,6 +27,14 @@
         "${workspaceFolder}/src",
         "${workspaceFolder}/public"
       ]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@0.0.71", "--headless", "--isolated"]
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@2.2.3"]
     }
   }
 }

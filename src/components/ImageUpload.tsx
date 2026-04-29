@@ -30,18 +30,27 @@ export function ImageUpload({ images, onImagesChange, maxImages = 10, autoUpload
   const [detectingTypes, setDetectingTypes] = useState<Set<string>>(new Set())
   const { checkConfidence, getThreshold } = useConfidenceThresholds()
 
+  // Keep a ref to the latest images so async callbacks (auto-detect, imgBB upload)
+  // never operate on a stale closure and accidentally drop newly-added images
+  // or a sibling's just-applied imgBB metadata. Sync during render so a
+  // parent-driven `images` update is visible to event handlers immediately —
+  // a useEffect-only sync would leave a post-commit gap where handlers could
+  // still read the previous value and write back stale state.
+  const imagesRef = useRef(images)
+  imagesRef.current = images
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0) return
 
-    if (images.length >= maxImages) {
+    if (imagesRef.current.length >= maxImages) {
       toast.error(`Maximum ${maxImages} images allowed`)
       return
     }
 
     const newImages: ItemImage[] = []
 
-    for (let i = 0; i < files.length && images.length + newImages.length < maxImages; i++) {
+    for (let i = 0; i < files.length && imagesRef.current.length + newImages.length < maxImages; i++) {
       const file = files[i]
       
       if (!file.type.startsWith('image/')) continue
@@ -59,7 +68,11 @@ export function ImageUpload({ images, onImagesChange, maxImages = 10, autoUpload
       newImages.push(newImage)
     }
 
-    const updatedImages = [...images, ...newImages]
+    // Read from imagesRef.current rather than the prop snapshot — `fileToDataUrl`
+    // is awaited above, so any in-flight async update (imgBB upload / type
+    // detection) may have already written newer state we must not clobber.
+    const updatedImages = [...imagesRef.current, ...newImages]
+    imagesRef.current = updatedImages
     onImagesChange(updatedImages)
 
     if (autoDetectType && apiKeys?.openaiKey) {
@@ -116,13 +129,13 @@ export function ImageUpload({ images, onImagesChange, maxImages = 10, autoUpload
       const meetsThreshold = checkConfidence('imageClassification', result.confidence)
       
       if (meetsThreshold) {
-        onImagesChange(
-          images.map(img =>
-            img.id === image.id
-              ? { ...img, type: result.imageType as ImageType }
-              : img
-          )
+        const next = imagesRef.current.map(img =>
+          img.id === image.id
+            ? { ...img, type: result.imageType as ImageType }
+            : img
         )
+        imagesRef.current = next
+        onImagesChange(next)
         toast.success(`Auto-detected: ${result.imageType.replace(/_/g, ' ')}`, {
           description: `${Math.round(result.confidence * 100)}% confidence - ${result.reasoning}`
         })
@@ -147,13 +160,15 @@ export function ImageUpload({ images, onImagesChange, maxImages = 10, autoUpload
   }
 
   const handleRemoveImage = (imageId: string) => {
-    onImagesChange(images.filter(img => img.id !== imageId))
+    const next = imagesRef.current.filter(img => img.id !== imageId)
+    imagesRef.current = next
+    onImagesChange(next)
   }
 
   const handleTypeChange = (imageId: string, newType: ImageType) => {
-    onImagesChange(
-      images.map(img => img.id === imageId ? { ...img, type: newType } : img)
-    )
+    const next = imagesRef.current.map(img => img.id === imageId ? { ...img, type: newType } : img)
+    imagesRef.current = next
+    onImagesChange(next)
   }
 
   const uploadToImgBB = async (image: ItemImage) => {
@@ -175,19 +190,19 @@ export function ImageUpload({ images, onImagesChange, maxImages = 10, autoUpload
     try {
       const uploaded = await uploadImageToImgBB(image.dataUrl, imgbbKey, `vinyl-${image.type}`)
       
-      onImagesChange(
-        images.map(img => 
-          img.id === image.id 
-            ? {
-                ...img,
-                imgbbUrl: uploaded.url,
-                imgbbDisplayUrl: uploaded.displayUrl,
-                imgbbThumbUrl: uploaded.thumbUrl,
-                imgbbDeleteUrl: uploaded.deleteUrl
-              }
-            : img
-        )
+      const next = imagesRef.current.map(img =>
+        img.id === image.id 
+          ? {
+              ...img,
+              imgbbUrl: uploaded.url,
+              imgbbDisplayUrl: uploaded.displayUrl,
+              imgbbThumbUrl: uploaded.thumbUrl,
+              imgbbDeleteUrl: uploaded.deleteUrl
+            }
+          : img
       )
+      imagesRef.current = next
+      onImagesChange(next)
 
       toast.success('Image uploaded to imgBB', {
         description: 'Image URL ready for eBay listings'
@@ -237,16 +252,17 @@ export function ImageUpload({ images, onImagesChange, maxImages = 10, autoUpload
 
     let successCount = 0
     let failCount = 0
-    const updatedImages = [...images]
+    const detectedTypes = new Map<string, ImageType>()
+    const targetImages = images
 
-    for (let i = 0; i < images.length; i++) {
-      const img = images[i]
+    for (let i = 0; i < targetImages.length; i++) {
+      const img = targetImages[i]
       setDetectingTypes(prev => new Set(prev).add(img.id))
 
       try {
         const result = await classifyImage(img.dataUrl)
-        
-        updatedImages[i] = { ...updatedImages[i], type: result.imageType as ImageType }
+
+        detectedTypes.set(img.id, result.imageType as ImageType)
         successCount++
       } catch (error) {
         console.error(`Image type detection failed for ${img.id}:`, error)
@@ -260,7 +276,15 @@ export function ImageUpload({ images, onImagesChange, maxImages = 10, autoUpload
       }
     }
 
-    onImagesChange(updatedImages)
+    // Merge detected types into the LATEST images array so we don't drop
+    // images added during processing or wipe imgBB metadata applied in parallel.
+    const next = imagesRef.current.map(img =>
+      detectedTypes.has(img.id)
+        ? { ...img, type: detectedTypes.get(img.id)! }
+        : img
+    )
+    imagesRef.current = next
+    onImagesChange(next)
 
     if (successCount > 0) {
       toast.success(`Auto-detected ${successCount} image${successCount > 1 ? 's' : ''}`, {
