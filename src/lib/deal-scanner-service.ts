@@ -16,6 +16,7 @@
 
 import { telegramService } from './telegram-service'
 import { webScrapingService } from './web-scraping-service'
+import { ebayBrowseService } from './ebay-browse-service'
 import type { CollectionItem } from './types'
 
 // ---------------------------------------------------------------------------
@@ -379,72 +380,165 @@ class DealScannerService {
       }
     }
 
-    // --- eBay BIN listings (API pattern) ---
+    // --- eBay BIN listings ---
+    // Prefer the Browse API (OAuth Client Credentials) when Client ID + Secret
+    // are configured. Fall back to the legacy Finding API only when an App ID
+    // alone is available.
     try {
-      const ebayAppId = localStorage.getItem('ebay_app_id') || ''
-      if (ebayAppId) {
-        const keywords = encodeURIComponent(
-          `${record.artist || record.Artist || ''} ${record.title || record.Title || record.album || record.Album || ''} vinyl`,
-        )
-        const ebayUrl =
-          `https://svcs.ebay.com/services/search/FindingService/v1` +
-          `?OPERATION-NAME=findItemsAdvanced` +
-          `&SERVICE-VERSION=1.0.0` +
-          `&SECURITY-APPNAME=${ebayAppId}` +
-          `&RESPONSE-DATA-FORMAT=JSON` +
-          `&keywords=${keywords}` +
-          `&itemFilter(0).name=ListingType&itemFilter(0).value=FixedPrice` +
-          `&paginationInput.entriesPerPage=5`
+      const ebayQuery = `${record.artist || record.Artist || ''} ${record.title || record.Title || record.album || record.Album || ''} vinyl`.trim()
+      const marketValue = parseFloat(
+        String(record.marketValue || record.estimated_value || 0),
+      )
 
-        const response = await fetch(ebayUrl)
-        if (response.ok) {
-          const data = await response.json()
-          const items =
-            data.findItemsAdvancedResponse?.[0]?.searchResult?.[0]?.item || []
-          for (const item of items) {
-            const price = parseFloat(
-              item.sellingStatus?.[0]?.currentPrice?.[0]?.__value__ || '0',
-            )
-            const marketValue = parseFloat(
-              String(record.marketValue || record.estimated_value || 0),
-            )
-            if (!marketValue || price <= 0) continue
+      const usedBrowseApi = await this._scanEbayBrowse(
+        ebayQuery,
+        record,
+        config,
+        marketValue,
+        found,
+      )
 
-            const ebayFee = this._estimateFees(price)
-            const netProfit = marketValue - price - ebayFee
-            const roi = price > 0 ? parseFloat(((netProfit / price) * 100).toFixed(1)) : 0
-
-            const deal: Deal = {
-              artist: record.artist || record.Artist || '',
-              title:
-                record.title || record.Title || record.album || record.Album || '',
-              condition: item.condition?.conditionDisplayName || 'VG+',
-              price,
-              buyPrice: price,
-              adjustedValue: marketValue,
-              marketValue,
-              netProfit: Math.round(netProfit * 100) / 100,
-              roi,
-              fees: Math.round(ebayFee * 100) / 100,
-              source: 'eBay',
-              ebayItemId: item.itemId?.[0] || '',
-              releaseId: record.discogsReleaseId || record.release_id,
-              url: item.viewItemURL?.[0] || '',
-              isHot: netProfit >= 8 && roi >= 40,
-              isViable: netProfit >= 3,
-            }
-
-            if (this._meetsThreshold(deal, config)) {
-              found.push(deal)
-            }
-          }
-        }
+      if (!usedBrowseApi) {
+        await this._scanEbayFinding(record, config, found)
       }
     } catch {
-      // Skip silently
+      // Skip silently — eBay path is best-effort.
     }
 
     return found
+  }
+
+  /**
+   * Scan eBay using the modern Browse API (OAuth Client Credentials).
+   * Returns true if the call was attempted (regardless of result count) so
+   * callers know not to fall through to the legacy Finding API.
+   */
+  private async _scanEbayBrowse(
+    query: string,
+    record: ScanRecord,
+    config: ScanConfig,
+    marketValue: number,
+    found: Deal[],
+  ): Promise<boolean> {
+    if (!query) return false
+    if (!(await ebayBrowseService.hasCredentials())) return false
+
+    let result
+    try {
+      result = await ebayBrowseService.searchVinylRecords(query, {
+        limit: 10,
+        filter: 'buyingOptions:{FIXED_PRICE}',
+        sort: 'price',
+      })
+    } catch (err) {
+      console.warn('eBay Browse API search failed:', err)
+      return true
+    }
+
+    for (const item of result.items) {
+      const price = parseFloat(item.price?.value || '0')
+      if (!marketValue || price <= 0) continue
+
+      const ebayFee = this._estimateFees(price)
+      const netProfit = marketValue - price - ebayFee
+      const roi = price > 0 ? parseFloat(((netProfit / price) * 100).toFixed(1)) : 0
+
+      const deal: Deal = {
+        artist: record.artist || record.Artist || '',
+        title:
+          record.title || record.Title || record.album || record.Album || '',
+        condition: item.condition?.conditionDisplayName || 'VG+',
+        price,
+        buyPrice: price,
+        adjustedValue: marketValue,
+        marketValue,
+        netProfit: Math.round(netProfit * 100) / 100,
+        roi,
+        fees: Math.round(ebayFee * 100) / 100,
+        source: 'eBay (Browse)',
+        ebayItemId: item.itemId || '',
+        releaseId: record.discogsReleaseId || record.release_id,
+        url: item.itemWebUrl || '',
+        isHot: netProfit >= 8 && roi >= 40,
+        isViable: netProfit >= 3,
+      }
+
+      if (this._meetsThreshold(deal, config)) {
+        found.push(deal)
+      }
+    }
+
+    return true
+  }
+
+  /**
+   * Legacy fallback: eBay Finding API (App ID only). Used only when modern
+   * OAuth Client Credentials are not configured.
+   */
+  private async _scanEbayFinding(
+    record: ScanRecord,
+    config: ScanConfig,
+    found: Deal[],
+  ): Promise<void> {
+    const ebayAppId = localStorage.getItem('ebay_app_id') || ''
+    if (!ebayAppId) return
+
+    const keywords = encodeURIComponent(
+      `${record.artist || record.Artist || ''} ${record.title || record.Title || record.album || record.Album || ''} vinyl`,
+    )
+    const ebayUrl =
+      `https://svcs.ebay.com/services/search/FindingService/v1` +
+      `?OPERATION-NAME=findItemsAdvanced` +
+      `&SERVICE-VERSION=1.0.0` +
+      `&SECURITY-APPNAME=${ebayAppId}` +
+      `&RESPONSE-DATA-FORMAT=JSON` +
+      `&keywords=${keywords}` +
+      `&itemFilter(0).name=ListingType&itemFilter(0).value=FixedPrice` +
+      `&paginationInput.entriesPerPage=5`
+
+    const response = await fetch(ebayUrl)
+    if (!response.ok) return
+
+    const data = await response.json()
+    const items =
+      data.findItemsAdvancedResponse?.[0]?.searchResult?.[0]?.item || []
+    for (const item of items) {
+      const price = parseFloat(
+        item.sellingStatus?.[0]?.currentPrice?.[0]?.__value__ || '0',
+      )
+      const marketValue = parseFloat(
+        String(record.marketValue || record.estimated_value || 0),
+      )
+      if (!marketValue || price <= 0) continue
+
+      const ebayFee = this._estimateFees(price)
+      const netProfit = marketValue - price - ebayFee
+      const roi = price > 0 ? parseFloat(((netProfit / price) * 100).toFixed(1)) : 0
+
+      const deal: Deal = {
+        artist: record.artist || record.Artist || '',
+        title:
+          record.title || record.Title || record.album || record.Album || '',
+        condition: item.condition?.conditionDisplayName || 'VG+',
+        price,
+        buyPrice: price,
+        adjustedValue: marketValue,
+        marketValue,
+        netProfit: Math.round(netProfit * 100) / 100,
+        roi,
+        fees: Math.round(ebayFee * 100) / 100,
+        source: 'eBay',
+        ebayItemId: item.itemId?.[0] || '',
+        releaseId: record.discogsReleaseId || record.release_id,
+        url: item.viewItemURL?.[0] || '',
+        isHot: netProfit >= 8 && roi >= 40,
+        isViable: netProfit >= 3,
+      }
+
+      if (this._meetsThreshold(deal, config)) {
+        found.push(deal)
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------

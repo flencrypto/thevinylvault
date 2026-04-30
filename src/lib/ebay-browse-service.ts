@@ -1,4 +1,9 @@
-declare const spark: Window['spark']
+import {
+  EBAY_DEFAULT_SCOPE,
+  EBAY_GRANTED_SCOPES,
+  validateScopes,
+  type ScopeValidationResult,
+} from './ebay-oauth-scopes'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -88,22 +93,86 @@ const CONDITION_ID_MAP: Record<string, string> = {
   'Poor': '7000',
 }
 
+/**
+ * Safely resolve `localStorage` without throwing. Property access on
+ * `window.localStorage` (or `globalThis.localStorage`) can raise a
+ * `SecurityError` in sandboxed/blocked-storage contexts (some privacy
+ * modes, third-party iframes, etc.) — even before any method is called.
+ * Returns `undefined` when storage is unreachable for any reason.
+ */
+function resolveLocalStorage(): Storage | undefined {
+  try {
+    if (typeof window !== 'undefined') {
+      const ls = window.localStorage
+      if (ls) return ls
+    }
+  } catch {
+    // window.localStorage threw — fall through to globalThis.
+  }
+  try {
+    const ls = (globalThis as { localStorage?: Storage }).localStorage
+    if (ls) return ls
+  } catch {
+    // globalThis.localStorage threw — give up.
+  }
+  return undefined
+}
+
 // ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
 
 export class EbayBrowseService {
-  private cachedToken: string | null = null
-  private tokenExpiresAt = 0
+  /** Cache of access tokens keyed by sorted-scope-string. */
+  private tokenCache = new Map<string, { token: string; expiresAt: number }>()
+
+  /**
+   * The set of scopes Vinylasis is permitted to request via the Client
+   * Credentials grant. Returns a defensive copy.
+   */
+  getGrantedScopes(): string[] {
+    return [...EBAY_GRANTED_SCOPES]
+  }
+
+  /**
+   * Validate that a requested scope (or scope list) is a subset of the
+   * granted scopes. Pure helper — does not perform any I/O.
+   */
+  validateScopes(scopes: string | readonly string[] | undefined): ScopeValidationResult {
+    return validateScopes(scopes)
+  }
 
   private async getCredentials(): Promise<{ clientId: string; clientSecret: string }> {
-    const apiKeys = await spark.kv.get<{
-      ebayClientId?: string
-      ebayClientSecret?: string
-    }>(API_KEYS_STORAGE_KEY)
+    let clientId = ''
+    let clientSecret = ''
 
-    const clientId = apiKeys?.ebayClientId || ''
-    const clientSecret = apiKeys?.ebayClientSecret || ''
+    // Preferred source: Spark KV under the same key SettingsView writes to.
+    try {
+      const sparkKv = (globalThis as { spark?: { kv?: { get: <T>(k: string) => Promise<T | undefined> } } }).spark?.kv
+      if (sparkKv && typeof sparkKv.get === 'function') {
+        const apiKeys = await sparkKv.get<{
+          ebayClientId?: string
+          ebayClientSecret?: string
+        }>(API_KEYS_STORAGE_KEY)
+        clientId = apiKeys?.ebayClientId || ''
+        clientSecret = apiKeys?.ebayClientSecret || ''
+      }
+    } catch {
+      // KV unavailable — fall through to localStorage.
+    }
+
+    // Fallback: legacy localStorage keys mirrored by SettingsView.
+    if (!clientId || !clientSecret) {
+      const ls = resolveLocalStorage()
+      if (ls) {
+        try {
+          clientId = clientId || ls.getItem('ebay_client_id') || ls.getItem('ebay_app_id') || ''
+          clientSecret = clientSecret || ls.getItem('ebay_client_secret') || ''
+        } catch {
+          // localStorage may be blocked — leave empty so the explicit error fires.
+        }
+      }
+    }
 
     if (!clientId || !clientSecret) {
       throw new Error(
@@ -115,16 +184,61 @@ export class EbayBrowseService {
   }
 
   /**
-   * Obtain an eBay App Token via the Client Credentials OAuth flow.
-   * Caches the token until close to expiry.
+   * True iff Client ID + Client Secret are present somewhere we can read them.
+   * Useful for callers that want to decide whether to even attempt OAuth.
    */
-  async getAccessToken(): Promise<string> {
-    if (this.cachedToken && Date.now() < this.tokenExpiresAt) {
-      return this.cachedToken
+  async hasCredentials(): Promise<boolean> {
+    try {
+      await this.getCredentials()
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * Obtain an eBay App Token via the Client Credentials OAuth flow.
+   * Caches the token (per scope-set) until close to expiry.
+   *
+   * @param scopes Optional list/space-separated string of scopes. Must be
+   *   a subset of `EBAY_GRANTED_SCOPES`. Defaults to the public Browse
+   *   API scope when omitted.
+   */
+  async getAccessToken(
+    scopes?: string | readonly string[],
+  ): Promise<string> {
+    const { token } = await this.getAccessTokenInfo(scopes)
+    return token
+  }
+
+  /**
+   * Like `getAccessToken` but also returns the absolute expiry timestamp
+   * (ms since epoch) and the scope list that was minted.
+   */
+  async getAccessTokenInfo(
+    scopes?: string | readonly string[],
+  ): Promise<{ token: string; expiresAt: number; scopes: string[] }> {
+    const validation = validateScopes(scopes ?? EBAY_DEFAULT_SCOPE)
+    if (!validation.valid) {
+      throw new Error(
+        `Refusing to request unsupported eBay OAuth scope(s): ${validation.invalid.join(', ')}`,
+      )
+    }
+
+    const requested = validation.normalised
+    const cacheKey = [...requested].sort().join(' ')
+    const cached = this.tokenCache.get(cacheKey)
+    if (cached && Date.now() < cached.expiresAt) {
+      return { token: cached.token, expiresAt: cached.expiresAt, scopes: requested }
     }
 
     const { clientId, clientSecret } = await this.getCredentials()
     const credentials = btoa(`${clientId}:${clientSecret}`)
+
+    const body = new URLSearchParams({
+      grant_type: 'client_credentials',
+      scope: requested.join(' '),
+    })
 
     const response = await fetch(OAUTH_ENDPOINT, {
       method: 'POST',
@@ -132,7 +246,7 @@ export class EbayBrowseService {
         Authorization: `Basic ${credentials}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: 'grant_type=client_credentials&scope=https%3A%2F%2Fapi.ebay.com%2Foauth%2Fapi_scope',
+      body: body.toString(),
     })
 
     if (!response.ok) {
@@ -145,10 +259,48 @@ export class EbayBrowseService {
       expires_in: number
     }
 
-    this.cachedToken = data.access_token
-    this.tokenExpiresAt = Date.now() + data.expires_in * 1000 - TOKEN_BUFFER_MS
+    const expiresAt = Date.now() + data.expires_in * 1000 - TOKEN_BUFFER_MS
+    this.tokenCache.set(cacheKey, { token: data.access_token, expiresAt })
 
-    return this.cachedToken
+    return { token: data.access_token, expiresAt, scopes: requested }
+  }
+
+  /**
+   * Probe the OAuth endpoint with the user's configured credentials and
+   * report success/failure plus token metadata.
+   *
+   * Never throws — wraps any error in the result object.
+   */
+  async testConnection(
+    scopes?: string | readonly string[],
+  ): Promise<
+    | { ok: true; expiresAt: number; scopes: string[] }
+    | { ok: false; error: string }
+  > {
+    try {
+      // Bypass the token cache so the user gets a real round-trip every time.
+      const validation = validateScopes(scopes ?? EBAY_DEFAULT_SCOPE)
+      if (!validation.valid) {
+        return {
+          ok: false,
+          error: `Unsupported scope(s): ${validation.invalid.join(', ')}`,
+        }
+      }
+      const cacheKey = [...validation.normalised].sort().join(' ')
+      this.tokenCache.delete(cacheKey)
+      const info = await this.getAccessTokenInfo(validation.normalised)
+      return { ok: true, expiresAt: info.expiresAt, scopes: info.scopes }
+    } catch (err) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      }
+    }
+  }
+
+  /** Clear all cached tokens (e.g. after credentials change). */
+  clearTokenCache(): void {
+    this.tokenCache.clear()
   }
 
   /**

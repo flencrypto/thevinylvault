@@ -15,6 +15,7 @@ import { uploadImageToImgBB } from '@/lib/imgbb-service'
 import { DiscogsTestDialog } from '@/components/DiscogsTestDialog'
 import { DiscogsCacheStats } from '@/components/DiscogsCacheStats'
 import DiscogsSetupGuide from '@/components/DiscogsSetupGuide'
+import EbayOAuthTestPanel from '@/components/EbayOAuthTestPanel'
 
 interface APIKeys {
   openaiKey: string
@@ -804,6 +805,10 @@ export default function SettingsView() {
                 <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
                 Used for marketplace listings, pricing data, and sales analytics
               </p>
+
+              <EbayOAuthTestPanel
+                hasCredentials={Boolean(apiKeys?.ebayClientId && apiKeys?.ebayClientSecret)}
+              />
             </div>
 
             <Separator className="bg-slate-800" />
